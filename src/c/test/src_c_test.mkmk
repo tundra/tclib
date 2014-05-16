@@ -1,0 +1,13 @@
+# Copyright 2014 the Neutrino authors (see AUTHORS).
+# Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+filenames = [
+  "unittest.cc"
+]
+
+library = get_group("library")
+for filename in filenames:
+  source = c.get_source_file(filename)
+  object = source.get_object()
+  library.add_member(object)
+ 
