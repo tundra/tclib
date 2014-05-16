@@ -11,3 +11,5 @@ for filename in filenames:
   object = source.get_object()
   library.add_member(object)
  
+
+add_alias("testlib", library)
