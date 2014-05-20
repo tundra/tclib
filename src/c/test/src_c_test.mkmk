@@ -2,7 +2,8 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 filenames = [
-  "unittest.cc"
+  "unittest.cc",
+  "../realtime.c"
 ]
 
 library = get_group("library")

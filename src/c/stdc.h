@@ -42,4 +42,21 @@
 #  define IF_64_BIT(T, F) T
 #endif
 
+// Includes of C headers from C++ files should be surrounded by these macros to
+// ensure that they're linked appropriately.
+#ifdef IS_GCC
+#  if defined(__cplusplus)
+#    define BEGIN_C_INCLUDES extern "C" {
+#    define END_C_INCLUDES }
+#  else
+#    define BEGIN_C_INCLUDES
+#    define END_C_INCLUDES
+#  endif
+#else
+   // On windows everything gets compiled as C++ so there's no need to handle
+   // C includes differently.
+#  define BEGIN_C_INCLUDES
+#  define END_C_INCLUDES
+#endif
+
 #endif // _STDC

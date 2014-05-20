@@ -3,23 +3,13 @@
 
 #include "unittest.hh"
 
-// TODO: fix timing for msvc
+BEGIN_C_INCLUDES
+#include "../realtime.h"
+END_C_INCLUDES
+
 #ifdef IS_GCC
-#include <time.h>
 extern char *strdup(const char*);
 #endif
-
-// Returns the current time since epoch counted in seconds.
-static double get_current_time_seconds() {
-  // TODO: fix timing for msvc.
-#ifdef IS_GCC
-  struct timespec spec;
-  clock_gettime(CLOCK_REALTIME, &spec);
-  return spec.tv_sec + (spec.tv_nsec / 1000000000.0);
-#else
-  return 0;
-#endif
-}
 
 // Match the given suite and test name against the given unit test data, return
 // true iff the test should be run.
