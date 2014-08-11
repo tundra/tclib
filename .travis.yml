@@ -2,5 +2,5 @@
 # and which are defined though the build matrix.
 language: c
 compiler: gcc
-script: mkmk init --config tclib.mkmk && ./build.sh testlib
+script: mkmk init --config tclib.mkmk && ./build.sh run-tests
 install: source ./tools/enter-devenv.sh

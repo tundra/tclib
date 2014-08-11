@@ -1,16 +1,26 @@
 # Copyright 2014 the Neutrino authors (see AUTHORS).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-filenames = [
+library_files = [
   "unittest.cc",
   "../realtime.c"
 ]
 
 library = get_group("library")
-for filename in filenames:
+for filename in library_files:
   source = c.get_source_file(filename)
   object = source.get_object()
   library.add_member(object)
- 
+
+
+
+stderr_fail_files = [
+  "stderr-fail.cc",
+]
+stderr_fail = get_group("stderr-fail")
+for filename in stderr_fail_files:
+  source = c.get_source_file(filename)
+  object = source.get_object()
+  stderr_fail.add_member(object)
 
 add_alias("testlib", library)
