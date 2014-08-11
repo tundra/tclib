@@ -12,8 +12,6 @@ for filename in library_files:
   object = source.get_object()
   library.add_member(object)
 
-
-
 stderr_fail_files = [
   "stderr-fail.cc",
 ]
