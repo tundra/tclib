@@ -6,16 +6,23 @@
 
 using namespace tclib;
 
-static int call_count = 0;
+class CallCounter {
+public:
+  CallCounter() : value(0) { }
+  void *run();
+  int value;
+};
 
-static void *run_thread() {
-  call_count++;
-  return static_cast<void*>(&call_count);
+void *CallCounter::run() {
+  value++;
+  return static_cast<void*>(this);
 }
 
-TEST(thread, simple) {
-  NativeThread thread(run_thread);
+TEST(thread, simple_cpp) {
+  CallCounter counter;
+  ASSERT_EQ(1, counter.value);
+  NativeThread thread(callback_t<void*(void)>(&CallCounter::run, &counter));
   thread.start();
-  ASSERT_PTREQ(&call_count, thread.join());
-  ASSERT_EQ(1, call_count);
+  ASSERT_PTREQ(&counter, thread.join());
+  ASSERT_EQ(1, counter.value);
 }
