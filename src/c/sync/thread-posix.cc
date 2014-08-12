@@ -21,8 +21,8 @@ void *NativeThread::Data::run_bridge(void *arg) {
   return data->callback_();
 }
 
-void NativeThread::start() {
-  pthread_create(&data()->thread(), NULL, Data::run_bridge, data());
+bool NativeThread::start() {
+  return pthread_create(&data()->thread(), NULL, Data::run_bridge, data()) == 0;
 }
 
 void *NativeThread::join() {

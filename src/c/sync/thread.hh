@@ -19,8 +19,8 @@ public:
   NativeThread(run_callback_t callback);
   ~NativeThread();
 
-  // Starts this thread.
-  void start();
+  // Starts this thread. Returns true on success.
+  bool start();
 
   // Waits for this thread to finish, returning the result of the invocation
   // of the callback.

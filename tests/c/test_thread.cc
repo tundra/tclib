@@ -20,9 +20,9 @@ void *CallCounter::run() {
 
 TEST(thread, simple_cpp) {
   CallCounter counter;
-  ASSERT_EQ(1, counter.value);
+  ASSERT_EQ(0, counter.value);
   NativeThread thread(callback_t<void*(void)>(&CallCounter::run, &counter));
-  thread.start();
+  ASSERT_TRUE(thread.start());
   ASSERT_PTREQ(&counter, thread.join());
   ASSERT_EQ(1, counter.value);
 }
