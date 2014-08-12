@@ -2,5 +2,6 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 include('test', 'src_c_test.mkmk')
+include('sync', 'src_c_sync.mkmk')
 
 add_alias('all')

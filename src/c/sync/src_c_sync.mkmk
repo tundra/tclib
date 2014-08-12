@@ -1,0 +1,14 @@
+# Copyright 2014 the Neutrino authors (see AUTHORS).
+# Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+library_files = [
+  "thread.cc",
+]
+
+library = get_group("library")
+for filename in library_files:
+  source = c.get_source_file(filename)
+  source.add_include(get_root().get_child('src', 'c'))
+  object = source.get_object()
+  object.add_library_requirement(posix="pthread")
+  library.add_member(object)
