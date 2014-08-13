@@ -10,6 +10,7 @@ library = get_group("library")
 for filename in library_files:
   source = c.get_source_file(filename)
   object = source.get_object()
+  object.add_library_requirement(posix="rt")
   library.add_member(object)
 
 stderr_fail_files = [
@@ -19,7 +20,6 @@ stderr_fail = get_group("stderr-fail")
 for filename in stderr_fail_files:
   source = c.get_source_file(filename)
   object = source.get_object()
-  object.add_library_requirement(posix="rt")
   stderr_fail.add_member(object)
 
 add_alias("testlib", library)
