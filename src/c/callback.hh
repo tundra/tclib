@@ -19,7 +19,7 @@ public:
     no_arg_t();
   };
 
-  class AnyClass;
+  class AnyClass { };
 
   // The type used to hold the invoker functions. C++ doesn't allow function
   // pointers to be cast to void* but casting to a dummy function type and back
@@ -141,8 +141,8 @@ public:
 
   virtual R call(A0 *a0) {
     typedef R(A0::*invoker_t)(void);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
-    return (a0->*(method))();
+    invoker_t *method = reinterpret_cast<invoker_t*>(&this->invoker_.as_method_);
+    return (a0->*(*method))();
   }
 
   virtual R call(A0 *a0, A1 a1) {

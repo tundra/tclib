@@ -25,7 +25,7 @@ int add_n_to_local_tick(int *ticks, int n) {
 
 TEST(callback, functions) {
   global_ticks = 0;
-  callback_t<int(void)> cb0 = add_global_tick;
+  callback_t<int(void)> cb0 = &add_global_tick;
   ASSERT_EQ(0, global_ticks);
   ASSERT_EQ(9, cb0());
   ASSERT_EQ(1, global_ticks);

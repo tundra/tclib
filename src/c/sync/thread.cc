@@ -24,19 +24,19 @@ NativeThread::~NativeThread() {
   delete data();
 }
 
-extern "C" native_thread_t *new_native_thread(void *(callback)(void*), void *data) {
+native_thread_t *new_native_thread(void *(callback)(void*), void *data) {
   NativeThread *result = new NativeThread(callback_t<void*(void)>(callback, data));
   return reinterpret_cast<native_thread_t*>(result);
 }
 
-extern "C" void dispose_native_thread(native_thread_t *thread) {
+void dispose_native_thread(native_thread_t *thread) {
   delete reinterpret_cast<NativeThread*>(thread);
 }
 
-extern "C" bool native_thread_start(native_thread_t *thread) {
+bool native_thread_start(native_thread_t *thread) {
   return reinterpret_cast<NativeThread*>(thread)->start();
 }
 
-extern "C" void *native_thread_join(native_thread_t *thread) {
+void *native_thread_join(native_thread_t *thread) {
   return reinterpret_cast<NativeThread*>(thread)->join();
 }
