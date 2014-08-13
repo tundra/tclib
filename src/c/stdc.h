@@ -37,9 +37,11 @@
 #ifdef IS_32_BIT
 #  define IF_32_BIT(T, F) T
 #  define IF_64_BIT(T, F) F
+#  define WORD_SIZE 4
 #else
 #  define IF_32_BIT(T, F) F
 #  define IF_64_BIT(T, F) T
+#  define WORD_SIZE 8
 #endif
 
 // Includes of C headers from C++ files should be surrounded by these macros to

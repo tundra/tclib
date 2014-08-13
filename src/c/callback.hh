@@ -19,18 +19,6 @@ public:
     no_arg_t();
   };
 
-  class AnyClass { };
-
-  // The type used to hold the invoker functions. C++ doesn't allow function
-  // pointers to be cast to void* but casting to a dummy function type and back
-  // is okay.
-  typedef void (*any_function_t)(void);
-
-  // The type used to hold the invoker methods. C++ doesn't allow method
-  // pointers to be cast to void* but casting to a dummy method type and back
-  // is okay.
-  typedef void (AnyClass::*any_method_t)(void);
-
   abstract_binder_t()
     : refcount_(0) { }
 
@@ -64,10 +52,14 @@ template <typename R,
           typename A3 = abstract_binder_t::no_arg_t>
 class binder_t : public abstract_binder_t {
 public:
+  // The max size in bytes of any method or function pointer. It seems generally
+  // that 2 words are sufficient (and also necessary).
+  static const size_t kMaxInvokerSize = (WORD_SIZE << 1);
+
   // On destruction clear the invoker just to ensure that any code that uses
   // this after destruction fails.
   virtual ~binder_t() {
-    invoker_.as_method_ = NULL;
+    memset(raw_invoker_, 0, kMaxInvokerSize);
   }
 
   // Methods for invoking the bound function with the bound parameters and
@@ -77,18 +69,23 @@ public:
   virtual R call(A0 a0) = 0;
   virtual R call(A0 a0, A1 a1) = 0;
 protected:
-  binder_t(any_function_t invoker) {
-    invoker_.as_function_ = invoker;
+  template <typename T>
+  binder_t(T invoker) {
+    // Bitcast the invoker into the pointer. Function and method pointer
+    // representations are funky and this is the only way I've found that
+    // actually works across platforms without making the compilers nervous.
+    memcpy(raw_invoker_, &invoker, sizeof(T));
   }
 
-  binder_t(any_method_t invoker) {
-    invoker_.as_method_ = invoker;
+  template <typename T>
+  T invoker() {
+    // Bitcast the invoker back to the appropriate type.
+    T result = NULL;
+    memcpy(&result, raw_invoker_, sizeof(T));
+    return result;
   }
 
-  union {
-    any_function_t as_function_;
-    any_method_t as_method_;
-  } invoker_;
+  uint8_t raw_invoker_[kMaxInvokerSize];
 };
 
 // A binder that binds no parameters. As with all the binders, this one is
@@ -102,23 +99,23 @@ class function_binder_0_t : public binder_t<R, A0, A1, A2, A3> {
 public:
   template <typename T>
   function_binder_0_t(T fun)
-    : binder_t<R, A0, A1, A2, A3>(reinterpret_cast<abstract_binder_t::any_function_t>(fun)) { }
+    : binder_t<R, A0, A1, A2, A3>(fun) { }
 
   virtual R call(void) {
     typedef R (*invoker_t)(void);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function();
   }
 
   virtual R call(A0 a0) {
     typedef R(*invoker_t)(A0);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(a0);
   }
 
   virtual R call(A0 a0, A1 a1) {
     typedef R(*invoker_t)(A0, A1);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(a0, a1);
   }
 };
@@ -132,7 +129,7 @@ class method_binder_0_t : public binder_t<R, A0*, A1, A2, A3> {
 public:
   template <typename T>
   method_binder_0_t(T method)
-    : binder_t<R, A0*, A1, A2, A3>(reinterpret_cast<abstract_binder_t::any_method_t>(method)) { }
+    : binder_t<R, A0*, A1, A2, A3>(method) { }
 
   virtual R call(void) {
     // ignore
@@ -141,13 +138,13 @@ public:
 
   virtual R call(A0 *a0) {
     typedef R(A0::*invoker_t)(void);
-    invoker_t *method = reinterpret_cast<invoker_t*>(&this->invoker_.as_method_);
-    return (a0->*(*method))();
+    invoker_t method = this->template invoker<invoker_t>();
+    return (a0->*(method))();
   }
 
   virtual R call(A0 *a0, A1 a1) {
     typedef R(A0::*invoker_t)(A1 a1);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
+    invoker_t method = this->template invoker<invoker_t>();
     return (a0->*(method))(a1);
   }
 };
@@ -163,24 +160,24 @@ class function_binder_1_t : public binder_t<R, A1, A2, A3> {
 public:
   template <typename T>
   function_binder_1_t(T fun, B0 b0)
-    : binder_t<R, A1, A2, A3>(reinterpret_cast<abstract_binder_t::any_function_t>(fun))
+    : binder_t<R, A1, A2, A3>(fun)
     , b0_(b0) { }
 
   virtual R call(void) {
     typedef R (*invoker_t)(B0);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(b0_);
   }
 
   virtual R call(A1 a1) {
     typedef R(*invoker_t)(B0, A1);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(b0_, a1);
   }
 
   virtual R call(A1 a1, A2 a2) {
     typedef R(*invoker_t)(B0, A1, A2);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(b0_, a1, a2);
   }
 
@@ -197,24 +194,24 @@ class method_binder_1_t : public binder_t<R, A1, A2, A3> {
 public:
   template <typename T>
   method_binder_1_t(T method, B0 *b0)
-    : binder_t<R, A1, A2, A3>(reinterpret_cast<abstract_binder_t::any_method_t>(method))
+    : binder_t<R, A1, A2, A3>(method)
     , b0_(b0) { }
 
   virtual R call(void) {
     typedef R(B0::*invoker_t)(void);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
+    invoker_t method = this->template invoker<invoker_t>();
     return (b0_->*(method))();
   }
 
   virtual R call(A1 a1) {
     typedef R(B0::*invoker_t)(A1);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
+    invoker_t method = this->template invoker<invoker_t>();
     return (b0_->*(method))(a1);
   }
 
   virtual R call(A1 a1, A2 a2) {
     typedef R(B0::*invoker_t)(A1, A2);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
+    invoker_t method = this->template invoker<invoker_t>();
     return (b0_->*(method))(a1, a2);
   }
 
@@ -233,25 +230,25 @@ class function_binder_2_t : public binder_t<R, A2, A3> {
 public:
   template <typename T>
   function_binder_2_t(T fun, B0 b0, B1 b1)
-    : binder_t<R, A2, A3>(reinterpret_cast<abstract_binder_t::any_function_t>(fun))
+    : binder_t<R, A2, A3>(fun)
     , b0_(b0)
     , b1_(b1) { }
 
   virtual R call(void) {
     typedef R (*invoker_t)(B0, B1);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(b0_, b1_);
   }
 
   virtual R call(A2 a2) {
     typedef R(*invoker_t)(B0, B1, A2);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(b0_, b1_, a2);
   }
 
   virtual R call(A2 a2, A3 a3) {
     typedef R(*invoker_t)(B0, B1, A2, A3);
-    invoker_t function = reinterpret_cast<invoker_t>(this->invoker_.as_function_);
+    invoker_t function = this->template invoker<invoker_t>();
     return function(b0_, b1_, a2, a3);
   }
 
@@ -269,25 +266,25 @@ class method_binder_2_t : public binder_t<R, A2, A3> {
 public:
   template <typename T>
   method_binder_2_t(T method, B0 *b0, B1 b1)
-    : binder_t<R, A2, A3>(reinterpret_cast<abstract_binder_t::any_method_t>(method))
+    : binder_t<R, A2, A3>(method)
     , b0_(b0)
     , b1_(b1) { }
 
   virtual R call(void) {
     typedef R(B0::*invoker_t)(B1);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
+    invoker_t method = this->template invoker<invoker_t>();
     return (b0_->*(method))(b1_);
   }
 
   virtual R call(A2 a2) {
     typedef R(B0::*invoker_t)(B1, A2);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
+    invoker_t method = this->template invoker<invoker_t>();
     return (b0_->*(method))(b1_, a2);
   }
 
   virtual R call(A2 a2, A3 a3) {
     typedef R(B0::*invoker_t)(B1, A2, A3);
-    invoker_t method = reinterpret_cast<invoker_t>(this->invoker_.as_method_);
+    invoker_t method = this->template invoker<invoker_t>();
     return (b0_->*(method))(b1_, a2, a3);
   }
 
