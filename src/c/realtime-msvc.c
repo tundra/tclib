@@ -2,16 +2,14 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 // This is just idiotic.
-#pragma warning(push, 0)
-#include <windows.h>
-#pragma warning(pop)
+#include "winhdr.h"
 
 double get_current_time_seconds() {
   SYSTEMTIME time;
   GetSystemTime(&time);
-  WORD hr = time.wHour;
-  WORD mn = time.wMinute;
-  WORD sc = time.wSecond;
-  WORD ms = time.wMilliseconds;
+  word_t hr = time.wHour;
+  word_t mn = time.wMinute;
+  word_t sc = time.wSecond;
+  word_t ms = time.wMilliseconds;
   return (60.0 * 60.0 * hr) + (60.0 * mn) + sc + (ms / 1000.0);
 }
