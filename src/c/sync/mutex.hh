@@ -34,15 +34,6 @@ public:
   // you shouldn't depend on any particular behavior.
   bool unlock();
 
-  class With {
-  public:
-    explicit With(NativeMutex &mutex) : mutex_(mutex) { mutex.lock(); }
-    ~With() { mutex().unlock(); }
-  private:
-    NativeMutex &mutex() { return mutex_; }
-    NativeMutex &mutex_;
-  };
-
   // The largest possible size of the underlying data. Public for testing only.
   static const size_t kMaxDataSize = WORD_SIZE * 6;
 

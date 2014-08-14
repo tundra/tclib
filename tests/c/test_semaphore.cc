@@ -101,4 +101,5 @@ TEST(semaphore, waiters) {
   }
   // Now all the waiters have been released so they should join.
   ASSERT_TRUE(all_joined.acquire());
+  join_monitor.join();
 }

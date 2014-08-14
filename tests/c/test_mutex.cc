@@ -109,4 +109,7 @@ TEST(mutex, barriers) {
   threads[kBarrierCount - 1].join();
   for (size_t i = 0; i < kBarrierCount; i++)
     ASSERT_EQ(i, order[i]);
+  // Remember to join the remaining threads.
+  for (size_t i = 1; i < kBarrierCount - 1; i++)
+    threads[i].join();
 }
