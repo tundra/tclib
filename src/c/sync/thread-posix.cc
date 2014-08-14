@@ -5,28 +5,28 @@
 
 class NativeThread::Data {
 public:
-  Data(run_callback_t callback)
-    : callback_(callback)
-    , thread_(0) { }
-  pthread_t &thread() { return thread_; }
+  Data() : thread_(0) { }
 
-  static void *run_bridge(void *arg);
+  bool start(NativeThread *thread);
+
+  void *join();
+
+  static void *entry_point(void *arg);
 private:
-  run_callback_t callback_;
   pthread_t thread_;
 };
 
-void *NativeThread::Data::run_bridge(void *arg) {
-  Data *data = static_cast<Data*>(arg);
-  return data->callback_();
+void *NativeThread::Data::entry_point(void *arg) {
+  NativeThread *thread = static_cast<NativeThread*>(arg);
+  return thread->callback_();
 }
 
-bool NativeThread::start() {
-  return pthread_create(&data()->thread(), NULL, Data::run_bridge, data()) == 0;
+bool NativeThread::Data::start(NativeThread *thread) {
+  return pthread_create(&thread_, NULL, entry_point, thread) == 0;
 }
 
-void *NativeThread::join() {
+void *NativeThread::Data::join() {
   void *value = NULL;
-  pthread_join(data()->thread(), &value);
+  pthread_join(thread_, &value);
   return value;
 }

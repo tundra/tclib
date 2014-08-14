@@ -2,6 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "thread.hh"
+#include <new>
 
 BEGIN_C_INCLUDES
 #include "thread.h"
@@ -18,10 +19,38 @@ using namespace tclib;
 #endif
 
 NativeThread::NativeThread(run_callback_t callback)
-  : data_(new Data(callback)) { }
+  : callback_(callback)
+  , data_(NULL) { }
+
+NativeThread::NativeThread()
+  : data_(NULL) { }
 
 NativeThread::~NativeThread() {
-  delete data();
+  if (data_ != NULL) {
+    data_->~Data();
+    data_ = NULL;
+  }
+}
+
+bool NativeThread::start() {
+  if (callback_.is_empty())
+    return false;
+  if (kMaxDataSize < sizeof(Data))
+    return false;
+  data_ = new (data_memory_) Data();
+  return data_->start(this);
+}
+
+void *NativeThread::join() {
+  return data_->join();
+}
+
+void NativeThread::set_callback(run_callback_t callback) {
+  callback_ = callback;
+}
+
+size_t NativeThread::get_data_size() {
+  return sizeof(Data);
 }
 
 native_thread_t *new_native_thread(void *(callback)(void*), void *data) {

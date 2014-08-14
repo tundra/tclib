@@ -10,6 +10,10 @@ END_C_INCLUDES
 
 using namespace tclib;
 
+TEST(thread, data_size) {
+  ASSERT_TRUE(NativeThread::get_data_size() <= NativeThread::kMaxDataSize);
+}
+
 class CallCounter {
 public:
   CallCounter() : value(0) { }
@@ -24,8 +28,8 @@ void *CallCounter::run() {
 
 TEST(thread, simple_cpp) {
   CallCounter counter;
-  ASSERT_EQ(0, counter.value);
   NativeThread thread(callback_t<void*(void)>(&CallCounter::run, &counter));
+  ASSERT_EQ(0, counter.value);
   ASSERT_TRUE(thread.start());
   ASSERT_PTREQ(&counter, thread.join());
   ASSERT_EQ(1, counter.value);
@@ -38,8 +42,8 @@ static void *run_call_counter_bridge(void *data) {
 
 TEST(thread, simple_c) {
   CallCounter counter;
-  ASSERT_EQ(0, counter.value);
   native_thread_t *thread = new_native_thread(run_call_counter_bridge, &counter);
+  ASSERT_EQ(0, counter.value);
   ASSERT_TRUE(native_thread_start(thread));
   ASSERT_PTREQ(&counter, native_thread_join(thread));
   ASSERT_EQ(1, counter.value);

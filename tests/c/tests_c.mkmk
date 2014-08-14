@@ -5,6 +5,8 @@ import re
 
 test_file_names = [
   "test_callback.cc",
+  "test_mutex.cc",
+  "test_semaphore.cc",
   "test_stdc.cc",
   "test_thread.cc"
 ]

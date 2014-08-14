@@ -257,6 +257,44 @@ private:
   B1 b1_;
 };
 
+// A binder that binds three parameters. As with all the binders, this one is
+// spectacularly type unsafe if not used carefully.
+template <typename R,
+          typename B0 = abstract_binder_t::no_arg_t,
+          typename B1 = abstract_binder_t::no_arg_t,
+          typename B2 = abstract_binder_t::no_arg_t,
+          typename A3 = abstract_binder_t::no_arg_t>
+class function_binder_3_t : public binder_t<R, A3> {
+public:
+  template <typename T>
+  function_binder_3_t(T fun, B0 b0, B1 b1, B2 b2)
+    : binder_t<R, A3>(fun)
+    , b0_(b0)
+    , b1_(b1)
+    , b2_(b2) { }
+
+  virtual R call(void) {
+    typedef R (*invoker_t)(B0, B1, B2);
+    invoker_t function = this->template invoker<invoker_t>();
+    return function(b0_, b1_, b2_);
+  }
+
+  virtual R call(A3 a3) {
+    typedef R(*invoker_t)(B0, B1, B2, A3);
+    invoker_t function = this->template invoker<invoker_t>();
+    return function(b0_, b1_, b2_, a3);
+  }
+
+  virtual R call(A3 a3, abstract_binder_t::no_arg_t) {
+    return R();
+  }
+
+private:
+  B0 b0_;
+  B1 b1_;
+  B2 b2_;
+};
+
 template <typename R,
           typename B0 = abstract_binder_t::no_arg_t,
           typename B1 = abstract_binder_t::no_arg_t,
@@ -293,6 +331,42 @@ private:
   B1 b1_;
 };
 
+template <typename R,
+          typename B0 = abstract_binder_t::no_arg_t,
+          typename B1 = abstract_binder_t::no_arg_t,
+          typename B2 = abstract_binder_t::no_arg_t,
+          typename A3 = abstract_binder_t::no_arg_t>
+class method_binder_3_t : public binder_t<R, A3> {
+public:
+  template <typename T>
+  method_binder_3_t(T method, B0 *b0, B1 b1, B2 b2)
+    : binder_t<R, A3>(method)
+    , b0_(b0)
+    , b1_(b1)
+    , b2_(b2) { }
+
+  virtual R call(void) {
+    typedef R(B0::*invoker_t)(B1, B2);
+    invoker_t method = this->template invoker<invoker_t>();
+    return (b0_->*(method))(b1_, b2_);
+  }
+
+  virtual R call(A3 a3) {
+    typedef R(B0::*invoker_t)(B1, B2, A3);
+    invoker_t method = this->template invoker<invoker_t>();
+    return (b0_->*(method))(b1_, b2_, a3);
+  }
+
+  virtual R call(A3 a3, abstract_binder_t::no_arg_t) {
+    return R();
+  }
+
+private:
+  B0 *b0_;
+  B1 b1_;
+  B2 b2_;
+};
+
 // Functionality shared between callbacks. The main purpose of this is to
 // keep track of the types involved and allow the same binder to be passed
 // around and disposed as appropriate, without the client having to keep track
@@ -327,6 +401,11 @@ public:
   ~abstract_callback_t() {
     if (binder_)
       binder_->deref();
+  }
+
+  // Has this callback been set to an actual value?
+  bool is_empty() {
+    return binder_ == NULL;
   }
 
 protected:
@@ -374,6 +453,14 @@ public:
   template <typename B0, typename B1>
   callback_t(R (B0::*invoker)(B1), B0 *b0, B1 b1)
     : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_2_t<R, B0, B1>(invoker, b0, b1))) { }
+
+  template <typename B0, typename B1, typename B2>
+  callback_t(R (*invoker)(B0, B1, B2), B0 b0, B1 b1, B2 b2)
+    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_3_t<R, B0, B1, B2>(invoker, b0, b1, b2))) { }
+
+  template <typename B0, typename B1, typename B2>
+  callback_t(R (B0::*invoker)(B1), B0 *b0, B1 b1, B2 b2)
+    : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_3_t<R, B0, B1, B2>(invoker, b0, b1, b2))) { }
 
   R operator()() {
     return (static_cast<my_binder_t*>(binder_))->call();

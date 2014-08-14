@@ -17,6 +17,10 @@ public:
   // Initialize a thread that calls the given callback when started. The thread
   // must be started explicitly by calling start().
   NativeThread(run_callback_t callback);
+
+  // Initialize a thread without an initial callback. The set_callback method
+  // must be used to set the callback before starting the thread.
+  NativeThread();
   ~NativeThread();
 
   // Starts this thread. Returns true on success.
@@ -26,9 +30,23 @@ public:
   // of the callback.
   void *join();
 
+  // If no callback was given at initialization this sets it to the given value.
+  void set_callback(run_callback_t callback);
+
+  // The largest possible size of the underlying data. Public for testing only.
+  static const size_t kMaxDataSize = WORD_SIZE * 4;
+
+  // Returns the size in bytes of a data object.
+  static size_t get_data_size();
+
 private:
+  // The raw memory that will hold the platform-specific data.
+  uint8_t data_memory_[kMaxDataSize];
+
+  run_callback_t callback_;
+
+  // Pointer to the initialized platform-specific data.
   class Data;
-  Data *data() { return data_; }
   Data *data_;
 };
 
