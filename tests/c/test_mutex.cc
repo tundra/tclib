@@ -37,7 +37,7 @@ TEST(mutex, simple) {
   ASSERT_TRUE(m1.lock());
 
   // Try and fail to lock/unlock from a different thread.
-  NativeThread failer(callback_t<void*(void)>(fail_to_unlock, &m0, &m1));
+  NativeThread failer(new_callback(fail_to_unlock, &m0, &m1));
   ASSERT_TRUE(failer.start());
   failer.join();
 
@@ -51,7 +51,7 @@ TEST(mutex, simple) {
 
   // Unlock completely and let a different thread try locking.
   ASSERT_TRUE(m0.unlock());
-  NativeThread succeeder(callback_t<void*(void)>(do_unlock, &m0, &m1));
+  NativeThread succeeder(new_callback(do_unlock, &m0, &m1));
   ASSERT_TRUE(succeeder.start());
   succeeder.join();
 
@@ -91,8 +91,8 @@ TEST(mutex, barriers) {
   size_t order[kBarrierCount];
   memset(order, 0, sizeof(size_t) * kBarrierCount);
   for (size_t i = 1; i < kBarrierCount; i++) {
-    threads[i].set_callback(callback_t<void*(void)>(run_thread, &locked_count,
-        mutexes + i, order + i));
+    threads[i].set_callback(new_callback(run_thread, &locked_count, mutexes + i,
+        order + i));
     // Start the thread and then wait for it to release the locked_count.
     ASSERT_FALSE(locked_count.try_acquire());
     ASSERT_TRUE(threads[i].start());

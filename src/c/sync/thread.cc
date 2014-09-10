@@ -54,7 +54,7 @@ size_t NativeThread::get_data_size() {
 }
 
 native_thread_t *new_native_thread(void *(callback)(void*), void *data) {
-  NativeThread *result = new NativeThread(callback_t<void*(void)>(callback, data));
+  NativeThread *result = new NativeThread(new_callback(callback, data));
   return reinterpret_cast<native_thread_t*>(result);
 }
 

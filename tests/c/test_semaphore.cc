@@ -73,13 +73,12 @@ TEST(semaphore, waiters) {
   // Spin off all the waiter threads.
   NativeThread threads[kThreadCount];
   for (size_t i = 0; i < kThreadCount; i++) {
-    threads[i].set_callback(callback_t<void*(void)>(run_waiter, &started_count,
+    threads[i].set_callback(new_callback(run_waiter, &started_count,
         &released_count, &done_count));
     ASSERT_TRUE(threads[i].start());
   }
   // Spin off the join monitor.
-  NativeThread join_monitor(callback_t<void*(void)>(run_join_monitor, &all_joined,
-      threads));
+  NativeThread join_monitor(new_callback(run_join_monitor, &all_joined, threads));
   ASSERT_TRUE(join_monitor.start());
   // Wait for all the threads to have started.
   for (size_t i = 0; i < kThreadCount; i++)

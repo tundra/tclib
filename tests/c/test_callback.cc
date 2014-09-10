@@ -42,28 +42,28 @@ int add_n_to_local_tick(int *ticks, int n) {
 
 TEST(callback, functions) {
   global_ticks = 0;
-  callback_t<int(void)> cb0 = add_global_tick;
+  callback_t<int(void)> cb0 = new_callback(add_global_tick);
   ASSERT_EQ(0, global_ticks);
   ASSERT_EQ(9, cb0());
   ASSERT_EQ(1, global_ticks);
   int local_ticks = 0;
-  callback_t<int(int*)> cb1 = &add_local_tick;
+  callback_t<int(int*)> cb1 = new_callback(&add_local_tick);
   ASSERT_EQ(0, local_ticks);
   ASSERT_EQ(19, cb1(&local_ticks));
   ASSERT_EQ(1, local_ticks);
-  callback_t<int(void)> cb2(&add_local_tick, &local_ticks);
+  callback_t<int(void)> cb2 = new_callback(&add_local_tick, &local_ticks);
   ASSERT_EQ(1, local_ticks);
   ASSERT_EQ(19, cb2());
   ASSERT_EQ(2, local_ticks);
-  callback_t<int(int*, int)> cb3 = &add_n_to_local_tick;
+  callback_t<int(int*, int)> cb3 = new_callback(&add_n_to_local_tick);
   ASSERT_EQ(2, local_ticks);
   ASSERT_EQ(29, cb3(&local_ticks, 4));
   ASSERT_EQ(6, local_ticks);
-  callback_t<int(int)> cb4(&add_n_to_local_tick, &local_ticks);
+  callback_t<int(int)> cb4 = new_callback(&add_n_to_local_tick, &local_ticks);
   ASSERT_EQ(6, local_ticks);
   ASSERT_EQ(29, cb4(5));
   ASSERT_EQ(11, local_ticks);
-  callback_t<int(void)> cb5(&add_n_to_local_tick, &local_ticks, 7);
+  callback_t<int(void)> cb5 = new_callback(&add_n_to_local_tick, &local_ticks, 7);
   ASSERT_EQ(11, local_ticks);
   ASSERT_EQ(29, cb5());
   ASSERT_EQ(18, local_ticks);
@@ -107,24 +107,24 @@ int Testy::add_n(int n) {
 }
 
 TEST(callback, methods) {
-  callback_t<int(Testy::*)(void)> c0 = &Testy::add_one;
+  callback_t<int(Testy::*)(void)> c0 = new_callback(&Testy::add_one);
   Testy testy;
   ASSERT_EQ(0, testy.ticks_);
   ASSERT_EQ(39, c0(&testy));
   ASSERT_EQ(1, testy.ticks_);
-  callback_t<int(void)> c1(&Testy::add_one, &testy);
+  callback_t<int(void)> c1 = new_callback(&Testy::add_one, &testy);
   ASSERT_EQ(1, testy.ticks_);
   ASSERT_EQ(39, c1());
   ASSERT_EQ(2, testy.ticks_);
-  callback_t<int(Testy::*)(int)> c2 = &Testy::add_n;
+  callback_t<int(Testy::*)(int)> c2 = new_callback(&Testy::add_n);
   ASSERT_EQ(2, testy.ticks_);
   ASSERT_EQ(49, c2(&testy, 3));
   ASSERT_EQ(5, testy.ticks_);
-  callback_t<int(int)> c3(&Testy::add_n, &testy);
+  callback_t<int(int)> c3 = new_callback(&Testy::add_n, &testy);
   ASSERT_EQ(5, testy.ticks_);
   ASSERT_EQ(49, c3(5));
   ASSERT_EQ(10, testy.ticks_);
-  callback_t<int(void)> c4(&Testy::add_n, &testy, 7);
+  callback_t<int(void)> c4 = new_callback(&Testy::add_n, &testy, 7);
   ASSERT_EQ(10, testy.ticks_);
   ASSERT_EQ(49, c4());
   ASSERT_EQ(17, testy.ticks_);

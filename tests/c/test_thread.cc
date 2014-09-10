@@ -28,7 +28,7 @@ void *CallCounter::run() {
 
 TEST(thread, simple_cpp) {
   CallCounter counter;
-  NativeThread thread(callback_t<void*(void)>(&CallCounter::run, &counter));
+  NativeThread thread(new_callback(&CallCounter::run, &counter));
   ASSERT_EQ(0, counter.value);
   ASSERT_TRUE(thread.start());
   ASSERT_PTREQ(&counter, thread.join());
@@ -62,7 +62,7 @@ TEST(thread, cpp_equality) {
   ASSERT_TRUE(NativeThread::ids_equal(current, current));
   ASSERT_TRUE(NativeThread::ids_equal(NativeThread::get_current_id(),
       NativeThread::get_current_id()));
-  NativeThread thread(callback_t<void*(void)>(&check_thread_not_equal, current));
+  NativeThread thread(new_callback(&check_thread_not_equal, current));
   thread.start();
   thread.join();
 }

@@ -435,37 +435,62 @@ public:
 
   callback_t() : abstract_callback_t() { }
 
-  callback_t(R (*invoker)(void))
-    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_0_t<R>(invoker))) { }
-
-  template <typename B0>
-  callback_t(R (*invoker)(B0), B0 b0)
-    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_1_t<R, B0>(invoker, b0))) { }
-
-  template <typename B0>
-  callback_t(R (B0::*invoker)(void), B0 *b0)
-    : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_1_t<R, B0>(invoker, b0))) { }
-
-  template <typename B0, typename B1>
-  callback_t(R (*invoker)(B0, B1), B0 b0, B1 b1)
-    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_2_t<R, B0, B1>(invoker, b0, b1))) { }
-
-  template <typename B0, typename B1>
-  callback_t(R (B0::*invoker)(B1), B0 *b0, B1 b1)
-    : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_2_t<R, B0, B1>(invoker, b0, b1))) { }
-
-  template <typename B0, typename B1, typename B2>
-  callback_t(R (*invoker)(B0, B1, B2), B0 b0, B1 b1, B2 b2)
-    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_3_t<R, B0, B1, B2>(invoker, b0, b1, b2))) { }
-
-  template <typename B0, typename B1, typename B2>
-  callback_t(R (B0::*invoker)(B1), B0 *b0, B1 b1, B2 b2)
-    : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_3_t<R, B0, B1, B2>(invoker, b0, b1, b2))) { }
-
   R operator()() {
     return (static_cast<my_binder_t*>(binder_))->call();
   }
+
+private:
+  template <typename FR>
+  friend callback_t<FR(void)> new_callback(FR (*)(void));
+  template <typename FR, typename FB0>
+  friend callback_t<FR(void)> new_callback(FR (*)(FB0), FB0);
+  template <typename FR, typename FB0>
+  friend callback_t<FR(void)> new_callback(FR (FB0::*)(void), FB0*);
+  template <typename FR, typename FB0, typename FB1>
+  friend callback_t<FR(void)> new_callback(FR (*)(FB0, FB1), FB0, FB1);
+  template <typename FR, typename FB0, typename FB1>
+  friend callback_t<FR(void)> new_callback(FR (FB0::*)(FB1), FB0*, FB1);
+  template <typename FR, typename FB0, typename FB1, typename FB2>
+  friend callback_t<FR(void)> new_callback(FR (*)(FB0, FB1, FB2), FB0, FB1, FB2);
+  template <typename FR, typename FB0, typename FB1, typename FB2>
+  friend callback_t<FR(void)> new_callback(FR (FB0::*)(FB1), FB0*, FB1, FB2);
+  callback_t(my_binder_t *binder) : abstract_callback_t(binder) { }
 };
+
+template <typename R>
+callback_t<R(void)> new_callback(R (*invoker)(void)) {
+  return callback_t<R(void)>(new function_binder_0_t<R>(invoker));
+}
+
+template <typename R, typename B0>
+callback_t<R(void)> new_callback(R (*invoker)(B0), B0 b0) {
+  return callback_t<R(void)>(new function_binder_1_t<R, B0>(invoker, b0));
+}
+
+template <typename R, typename B0>
+callback_t<R(void)> new_callback(R (B0::*invoker)(void), B0 *b0) {
+  return callback_t<R(void)>(new method_binder_1_t<R, B0>(invoker, b0));
+}
+
+template <typename R, typename B0, typename B1>
+callback_t<R(void)> new_callback(R (*invoker)(B0, B1), B0 b0, B1 b1) {
+  return callback_t<R(void)>(new function_binder_2_t<R, B0, B1>(invoker, b0, b1));
+}
+
+template <typename R, typename B0, typename B1>
+callback_t<R(void)> new_callback(R (B0::*invoker)(B1), B0 *b0, B1 b1) {
+  return callback_t<R(void)>(new method_binder_2_t<R, B0, B1>(invoker, b0, b1));
+}
+
+template <typename R, typename B0, typename B1, typename B2>
+callback_t<R(void)> new_callback(R (*invoker)(B0, B1, B2), B0 b0, B1 b1, B2 b2) {
+  return callback_t<R(void)>(new function_binder_3_t<R, B0, B1, B2>(invoker, b0, b1, b2));
+}
+
+template <typename R, typename B0, typename B1, typename B2>
+callback_t<R(void)> new_callback(R (B0::*invoker)(B1), B0 *b0, B1 b1, B2 b2) {
+  return callback_t<R(void)>(new method_binder_3_t<R, B0, B1, B2>(invoker, b0, b1, b2));
+}
 
 template <typename R, typename A0>
 class callback_t<R(A0)> : public abstract_callback_t {
@@ -476,21 +501,34 @@ public:
 
   callback_t() : abstract_callback_t() { }
 
-  callback_t(R (*invoker)(A0))
-    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_0_t<R, A0>(invoker))) { }
-
-  template <typename B0>
-  callback_t(R (*invoker)(B0, A0), B0 b0)
-    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_1_t<R, B0, A0>(invoker, b0))) { }
-
-  template <typename B0>
-  callback_t(R (B0::*invoker)(A0), B0 *b0)
-    : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_1_t<R, B0, A0>(invoker, b0))) { }
-
   R operator()(A0 a0) {
     return (static_cast<my_binder_t*>(binder_))->call(a0);
   }
+
+private:
+  template <typename FR, typename FA0>
+  friend callback_t<FR(FA0)> new_callback(FR (*)(FA0));
+  template <typename FR, typename FA0, typename FB0>
+  friend callback_t<FR(FA0)> new_callback(FR (*)(FB0, FA0), FB0);
+  template <typename FR, typename FA0, typename FB0>
+  friend callback_t<FR(FA0)> new_callback(FR (FB0::*)(FA0), FB0*);
+  callback_t(my_binder_t *binder) : abstract_callback_t(binder) { }
 };
+
+template <typename R, typename A0>
+callback_t<R(A0)> new_callback(R (*invoker)(A0)) {
+  return callback_t<R(A0)>(new function_binder_0_t<R, A0>(invoker));
+}
+
+template <typename R, typename A0, typename B0>
+callback_t<R(A0)> new_callback(R (*invoker)(B0, A0), B0 b0) {
+  return callback_t<R(A0)>(new function_binder_1_t<R, B0, A0>(invoker, b0));
+}
+
+template <typename R, typename A0, typename B0>
+callback_t<R(A0)> new_callback(R (B0::*invoker)(A0), B0 *b0) {
+  return callback_t<R(A0)>(new method_binder_1_t<R, B0, A0>(invoker, b0));
+}
 
 template <typename R, typename A0>
 class callback_t<R(A0::*)(void)> : public abstract_callback_t {
@@ -499,13 +537,20 @@ public:
 
   callback_t() : abstract_callback_t() { }
 
-  callback_t(R (A0::*invoker)(void))
-    : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_0_t<R, A0>(invoker))) { }
-
   R operator()(A0 *a0) {
     return (static_cast<my_binder_t*>(binder_))->call(a0);
   }
+
+private:
+  template <typename FR, typename FA0>
+  friend callback_t<FR(FA0::*)(void)> new_callback(FR (FA0::*)(void));
+  callback_t(my_binder_t *binder) : abstract_callback_t(binder) { }
 };
+
+template <typename R, typename A0>
+callback_t<R(A0::*)(void)> new_callback(R (A0::*invoker)(void)) {
+  return callback_t<R(A0::*)(void)>(new method_binder_0_t<R, A0>(invoker));
+}
 
 template <typename R, typename A0, typename A1>
 class callback_t<R(A0, A1)> : public abstract_callback_t {
@@ -516,13 +561,20 @@ public:
 
   callback_t() : abstract_callback_t() { }
 
-  callback_t(R (*invoker)(A0, A1))
-    : abstract_callback_t(static_cast<my_binder_t*>(new function_binder_0_t<R, A0, A1>(invoker))) { }
-
   R operator()(A0 a0, A1 a1) {
     return (static_cast<my_binder_t*>(binder_))->call(a0, a1);
   }
+
+private:
+  template <typename FR, typename FA0, typename FA1>
+  friend callback_t<FR(FA0, FA1)> new_callback(FR (*)(FA0, FA1));
+  callback_t(my_binder_t *binder) : abstract_callback_t(binder) { }
 };
+
+template <typename R, typename A0, typename A1>
+callback_t<R(A0, A1)> new_callback(R (*invoker)(A0, A1)) {
+  return callback_t<R(A0, A1)>(new function_binder_0_t<R, A0, A1>(invoker));
+}
 
 template <typename R, typename A0, typename A1>
 class callback_t<R(A0::*)(A1)> : public abstract_callback_t {
@@ -531,13 +583,20 @@ public:
 
   callback_t() : abstract_callback_t() { }
 
-  callback_t(R (A0::*invoker)(A1))
-    : abstract_callback_t(static_cast<my_binder_t*>(new method_binder_0_t<R, A0, A1>(invoker))) { }
-
   R operator()(A0 *a0, A1 a1) {
     return (static_cast<my_binder_t*>(binder_))->call(a0, a1);
   }
+
+private:
+  template <typename FR, typename FA0, typename FA1>
+  friend callback_t<FR(FA0::*)(FA1)> new_callback(FR (FA0::*)(FA1));
+  callback_t(my_binder_t *binder) : abstract_callback_t(binder) { }
 };
+
+template <typename R, typename A0, typename A1>
+callback_t<R(A0::*)(A1)> new_callback(R (A0::*invoker)(A1)) {
+  return callback_t<R(A0::*)(A1)>(new method_binder_0_t<R, A0, A1>(invoker));
+}
 
 } // namespace tclib
 
