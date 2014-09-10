@@ -4,8 +4,9 @@
 #ifndef _TCLIB_THREAD_HH
 #define _TCLIB_THREAD_HH
 
-#include "stdc.h"
 #include "callback.hh"
+#include "stdc.h"
+#include "sync.h"
 
 namespace tclib {
 
@@ -38,6 +39,13 @@ public:
 
   // Returns the size in bytes of a data object.
   static size_t get_data_size();
+
+  // Returns the id of the current thread. The value is opaque and can only be
+  // used for equality testing.
+  static native_thread_id_t get_current_id();
+
+  // Returns true iff the two given thread ids are identical.
+  static bool ids_equal(native_thread_id_t a, native_thread_id_t b);
 
 private:
   // The raw memory that will hold the platform-specific data.

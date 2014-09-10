@@ -49,3 +49,20 @@ TEST(thread, simple_c) {
   ASSERT_EQ(1, counter.value);
   dispose_native_thread(thread);
 }
+
+void *check_thread_not_equal(native_thread_id_t that) {
+  native_thread_id_t own = NativeThread::get_current_id();
+  ASSERT_TRUE(NativeThread::ids_equal(own, own));
+  ASSERT_FALSE(NativeThread::ids_equal(own, that));
+  return NULL;
+}
+
+TEST(thread, cpp_equality) {
+  native_thread_id_t current = NativeThread::get_current_id();
+  ASSERT_TRUE(NativeThread::ids_equal(current, current));
+  ASSERT_TRUE(NativeThread::ids_equal(NativeThread::get_current_id(),
+      NativeThread::get_current_id()));
+  NativeThread thread(callback_t<void*(void)>(&check_thread_not_equal, current));
+  thread.start();
+  thread.join();
+}

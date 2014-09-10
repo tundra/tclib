@@ -4,10 +4,10 @@
 #ifndef _TCLIB_THREAD_H
 #define _TCLIB_THREAD_H
 
-#include "stdc.h"
+#include "sync.h"
 
 // Opaque thread type.
-struct native_thread_t;
+typedef struct native_thread_t native_thread_t;
 
 // Creates and returns a new native thread that will run the given callback
 // with the given data when started.
@@ -22,5 +22,11 @@ bool native_thread_start(native_thread_t *thread);
 // Waits for the given thread to finish, then returns the result returned from
 // the thread's callback.
 void *native_thread_join(native_thread_t *thread);
+
+// Returns the id of the calling thread.
+native_thread_id_t native_thread_get_current_id();
+
+// Returns true iff the two thread ids correspond to the same thread.
+bool native_thread_ids_equal(native_thread_id_t a, native_thread_id_t b);
 
 #endif // _TCLIB_THREAD_H

@@ -69,3 +69,11 @@ bool native_thread_start(native_thread_t *thread) {
 void *native_thread_join(native_thread_t *thread) {
   return reinterpret_cast<NativeThread*>(thread)->join();
 }
+
+native_thread_id_t native_thread_get_current_id() {
+  return NativeThread::get_current_id();
+}
+
+bool native_thread_ids_equal(native_thread_id_t a, native_thread_id_t b) {
+  return NativeThread::ids_equal(a, b);
+}

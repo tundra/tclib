@@ -46,3 +46,11 @@ void *NativeThread::Data::join() {
   WaitForSingleObject(thread_, INFINITE);
   return result_;
 }
+
+native_thread_id_t NativeThread::get_current_id() {
+  return GetCurrentThreadId();
+}
+
+bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {
+  return a == b;
+}
