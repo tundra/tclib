@@ -4,7 +4,11 @@
 #include "realtime.h"
 
 #ifdef IS_GCC
-#include "realtime-posix.c"
+#  ifdef IS_MACH
+#    include "realtime-mach.c"
+#  else
+#    include "realtime-posix.c"
+#  endif
 #endif
 
 #ifdef IS_MSVC

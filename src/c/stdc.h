@@ -11,25 +11,35 @@
 // Convert the compiler-defined macros into simpler ones that express the
 // differences we're interested in.
 #ifdef _MSC_VER
-#define IS_MSVC 1
+#  define IS_MSVC 1
 #else
-#define IS_GCC 1
+#  define IS_GCC 1
+#endif
+
+#ifdef __MACH__
+#  define IS_MACH
 #endif
 
 // Include custom headers for each toolchain.
 #ifdef IS_MSVC
-#include "stdc-msvc.h"
+#  include "stdc-msvc.h"
 #else // !IS_MSVC
-#include "stdc-posix.h"
+#  include "stdc-posix.h"
 #endif
 
 // Define some expression macros for small pieces of platform-dependent code.
 #ifdef IS_MSVC
-#define IF_MSVC(T, E) T
-#define IF_GCC(T, E) E
+#  define IF_MSVC(T, E) T
+#  define IF_GCC(T, E) E
 #else
-#define IF_MSVC(T, E) E
-#define IF_GCC(T, E) T
+#  define IF_MSVC(T, E) E
+#  define IF_GCC(T, E) T
+#endif
+
+#ifdef IS_MACH
+#  define IF_MACH(T, E) T
+#else
+#  define IF_MACH(T, E) E
 #endif
 
 // Define some expression macros for wordsize dependent code. The IS_..._BIT
