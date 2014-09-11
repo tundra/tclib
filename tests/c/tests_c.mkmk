@@ -6,8 +6,10 @@ import re
 test_file_names = [
   "test_callback.cc",
   "test_mutex.cc",
+  "test_ook.cc",
   "test_semaphore.cc",
   "test_stdc.cc",
+  "test_string.cc",
   "test_thread.cc"
 ]
 
@@ -20,6 +22,7 @@ def compile_test_file(source):
 
 # Create a group containing the test files along with the runtime library.
 test_library = get_group("library")
+test_library.add_dependency(get_external('src', 'c', 'utils', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'sync', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'stderr-fail'))
