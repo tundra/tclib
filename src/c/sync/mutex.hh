@@ -35,7 +35,7 @@ public:
   bool unlock();
 
   // The largest possible size of the underlying data. Public for testing only.
-  static const size_t kMaxDataSize = WORD_SIZE * 6;
+  static const size_t kMaxDataSize = WORD_SIZE * 8;
 
   // Returns the size in bytes of a data object.
   static size_t get_data_size();

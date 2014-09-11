@@ -2,16 +2,25 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "semaphore.hh"
+
+BEGIN_C_INCLUDES
+#include "utils/log.h"
+END_C_INCLUDES
+
 #include <new>
 
 using namespace tclib;
 
 #ifdef IS_GCC
-#include "semaphore-posix.cc"
+#  ifdef IS_MACH
+#    include "semaphore-mach.cc"
+#  else
+#    include "semaphore-posix.cc"
+#  endif
 #endif
 
 #ifdef IS_MSVC
-#include "semaphore-msvc.cc"
+#  include "semaphore-msvc.cc"
 #endif
 
 NativeSemaphore::NativeSemaphore()
@@ -30,8 +39,10 @@ NativeSemaphore::~NativeSemaphore() {
 }
 
 bool NativeSemaphore::initialize() {
-  if (kMaxDataSize < sizeof(Data))
+  if (kMaxDataSize < sizeof(Data)) {
+    WARN("Semaphore data size too small: %i < %i", kMaxDataSize, sizeof(Data));
     return false;
+  }
   data_ = new (data_memory_) Data();
   return data_->initialize(initial_count_);
 }

@@ -8,6 +8,10 @@
 
 #include "asserts.hh"
 
+BEGIN_C_INCLUDES
+#include "utils/log.h"
+END_C_INCLUDES
+
 // Data that picks out a particular test or suite to run.
 struct unit_test_selector_t {
   // If non-null, the test suite to run.
@@ -55,5 +59,9 @@ private:
   void run_##suite##_##name();                                                 \
   TestCaseInfo* const test_case_info_##suite##_##name = new TestCaseInfo(#suite, #name, run_##suite##_##name); \
   void run_##suite##_##name()
+
+// Sets the global log to a value that ignores all messages. Returns the current
+// log.
+log_o *silence_global_log();
 
 #endif // _UNITTEST

@@ -2,6 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include <pthread.h>
+#include <errno.h>
 
 class NativeMutex::Data {
 public:
@@ -18,21 +19,44 @@ bool NativeMutex::Data::initialize() {
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-  return pthread_mutex_init(&mutex_, &attr) == 0;
+  int result = pthread_mutex_init(&mutex_, &attr);
+  if (result == 0)
+    return true;
+  WARN("Call to pthread_mutex_init failed: %i (error: %s)", result, strerror(result));
+  return false;
 }
 
 NativeMutex::Data::~Data() {
-  pthread_mutex_destroy(&mutex_);
+  int result = pthread_mutex_destroy(&mutex_);
+  if (result == 0)
+    return;
+  WARN("Call to pthread_mutex_destroy failed: %i (error: %s)", result, strerror(result));
+  exit(0);
 }
 
 bool NativeMutex::Data::lock() {
-  return pthread_mutex_lock(&mutex_) == 0;
+  int result = pthread_mutex_lock(&mutex_);
+  if (result == 0)
+    return true;
+  WARN("Call to pthread_mutex_lock failed: %i (error: %s)", result, strerror(result));
+  return false;
 }
 
 bool NativeMutex::Data::try_lock() {
-  return pthread_mutex_trylock(&mutex_) == 0;
+  int result = pthread_mutex_trylock(&mutex_);
+  if (result == 0)
+    return true;
+  if (result != EBUSY)
+    // Busy means that it's already held which is a normal result so don't warn
+    // on that.
+    WARN("Call to pthread_mutex_trylock failed: %i (error: %s)", result, strerror(result));
+  return false;
 }
 
 bool NativeMutex::Data::unlock() {
-  return pthread_mutex_unlock(&mutex_) == 0;
+  int result = pthread_mutex_unlock(&mutex_);
+  if (result == 0)
+    return true;
+  WARN("Call to pthread_mutex_unlock failed: %i (error: %s)", result, strerror(result));
+  return false;
 }

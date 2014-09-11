@@ -8,6 +8,7 @@ library_files = [
 ]
 
 library = get_group("library")
+library.add_dependency(get_external('src', 'c', 'utils', 'library'))
 for filename in library_files:
   source = c.get_source_file(filename)
   source.add_include(get_root().get_child('src', 'c'))

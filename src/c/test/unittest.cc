@@ -11,6 +11,26 @@ END_C_INCLUDES
 extern char *strdup(const char*);
 #endif
 
+IMPLEMENTATION(silent_log_o, log_o);
+
+// The default abort handler which prints the message to stderr and aborts
+// execution.
+static void ignore_log(log_o *log, log_entry_t *entry) {
+  // ignore
+}
+
+VTABLE(silent_log_o, log_o) { ignore_log };
+
+log_o *silence_global_log() {
+  static log_o kSilentLog;
+  static log_o *silent_log = NULL;
+  if (silent_log == NULL) {
+    VTABLE_INIT(silent_log_o, &kSilentLog);
+    silent_log = &kSilentLog;
+  }
+  return set_global_log(silent_log);
+}
+
 // Match the given suite and test name against the given unit test data, return
 // true iff the test should be run.
 bool TestCaseInfo::matches(unit_test_selector_t *selector) {

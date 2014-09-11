@@ -6,6 +6,7 @@
 
 BEGIN_C_INCLUDES
 #include "thread.h"
+#include "utils/log.h"
 END_C_INCLUDES
 
 using namespace tclib;

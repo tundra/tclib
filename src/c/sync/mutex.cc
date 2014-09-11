@@ -2,6 +2,11 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "mutex.hh"
+
+BEGIN_C_INCLUDES
+#include "utils/log.h"
+END_C_INCLUDES
+
 #include <new>
 
 using namespace tclib;
@@ -25,8 +30,10 @@ NativeMutex::~NativeMutex() {
 }
 
 bool NativeMutex::initialize() {
-  if (kMaxDataSize < sizeof(Data))
+  if (kMaxDataSize < sizeof(Data)) {
+    WARN("Mutex data size too small: %i < %i", kMaxDataSize, sizeof(Data));
     return false;
+  }
   data_ = new (data_memory_) Data();
   return data_->initialize();
 }

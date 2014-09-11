@@ -20,13 +20,19 @@ static void *fail_to_unlock(NativeMutex *m0, NativeMutex *m1) {
   return NULL;
 }
 
-static void *do_unlock(NativeMutex *m0, NativeMutex *m1) {
+static void *do_lock(NativeMutex *m0, NativeMutex *m1) {
   ASSERT_TRUE(m0->lock());
   ASSERT_TRUE(m1->lock());
+  ASSERT_TRUE(m0->unlock());
+  ASSERT_TRUE(m1->unlock());
   return NULL;
 }
 
 TEST(mutex, simple) {
+  // Some of the failures cause log messages to be issued, which we don't want
+  // to see.
+  log_o *noisy_log = silence_global_log();
+
   NativeMutex m0;
   ASSERT_TRUE(m0.initialize());
   NativeMutex m1;
@@ -51,13 +57,11 @@ TEST(mutex, simple) {
 
   // Unlock completely and let a different thread try locking.
   ASSERT_TRUE(m0.unlock());
-  NativeThread succeeder(new_callback(do_unlock, &m0, &m1));
+  NativeThread succeeder(new_callback(do_lock, &m0, &m1));
   ASSERT_TRUE(succeeder.start());
   succeeder.join();
 
-  // Now this thread can't unlock.
-  ASSERT_FALSE(m0.try_lock());
-  ASSERT_FALSE(m1.try_lock());
+  set_global_log(noisy_log);
 }
 
 #define kBarrierCount 128
@@ -73,6 +77,8 @@ void *run_thread(NativeSemaphore *locked, NativeMutex *mutexes, size_t *order) {
   order[0] = order[-1] + 1;
   // Then it's done and can release its own mutex.
   ASSERT_TRUE(mutexes[0].unlock());
+  // Remember to also unlock the previous mutex which this thread now holds.
+  ASSERT_TRUE(mutexes[-1].unlock());
   return 0;
 }
 
