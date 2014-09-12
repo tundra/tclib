@@ -5,6 +5,7 @@
 
 BEGIN_C_INCLUDES
 #include "../realtime.h"
+#include "utils/crash.h"
 END_C_INCLUDES
 
 #ifdef IS_GCC
@@ -93,6 +94,7 @@ void TestCaseInfo::run_tests(unit_test_selector_t *selector) {
 
 // Run!
 int main(int argc, char *argv[]) {
+  install_crash_handler();
   if (argc >= 2) {
     // If there are arguments run the relevant test suites.
     for (int i = 1; i < argc; i++) {

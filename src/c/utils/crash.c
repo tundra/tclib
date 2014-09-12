@@ -7,9 +7,12 @@
 #include "strbuf.h"
 
 #ifdef IS_GCC
-#include "crash-posix-opt.c"
-#else
-#include "crash-fallback-opt.c"
+#include "crash-posix.c"
+#endif
+
+#ifdef IS_MSVC
+// Would you believe it -- we can just use the posix api on windows!
+#include "crash-posix.c"
 #endif
 
 // --- A b o r t ---

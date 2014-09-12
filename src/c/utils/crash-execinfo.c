@@ -4,8 +4,13 @@
 // Implementation of crash dumps that uses execinfo.
 
 #include <execinfo.h>
+#include <unistd.h>
 
 static const size_t kMaxStackSize = 128;
+
+void initialize_crash_handler() {
+  // nothing to initialize
+}
 
 void print_stack_trace(FILE *out, int signum) {
   fprintf(out, "# Received condition %i\n", signum);

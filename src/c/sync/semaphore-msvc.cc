@@ -24,28 +24,46 @@ bool NativeSemaphore::Data::initialize(uint32_t initial_count) {
       initial_count, // lInitialCount
       0x7FFFFFFF, // lMaximumCount
       NULL); // lpName
-  if (result == NULL)
+  if (result == NULL) {
+    WARN("Call to CreateSemaphore failed: %i", GetLastError());
     return false;
+  }
   sema_ = result;
   return true;
 }
 
 NativeSemaphore::Data::~Data() {
-  if (sema_ != INVALID_HANDLE_VALUE)
-    CloseHandle(sema_);
+  if (sema_ != INVALID_HANDLE_VALUE) {
+    if (!CloseHandle(sema_))
+      WARN("Call to CloseHandle failed: %i", GetLastError());
+  }
 }
 
 bool NativeSemaphore::Data::acquire() {
-  return WaitForSingleObject(sema_, INFINITE) == WAIT_OBJECT_0;
+  dword_t result = WaitForSingleObject(sema_, INFINITE);
+  if (result == WAIT_OBJECT_0)
+    return true;
+  if (result == WAIT_FAILED)
+    WARN("Call to WaitForSingleObject failed: %i", GetLastError());
+  return false;
 }
 
 bool NativeSemaphore::Data::try_acquire() {
-  return WaitForSingleObject(sema_, 0) == WAIT_OBJECT_0;
+  dword_t result = WaitForSingleObject(sema_, 0);
+  if (result == WAIT_OBJECT_0)
+    return true;
+  if (result == WAIT_FAILED)
+    WARN("Call to WaitForSingleObject failed: %i", GetLastError());
+  return false;
 }
 
 bool NativeSemaphore::Data::release() {
-  return ReleaseSemaphore(
+  bool result = ReleaseSemaphore(
       sema_, // hSemaphore
       1,     // lReleaseCount
       NULL); // lpPreviousCount
+  if (result)
+    return true;
+  WARN("Call to ReleaseSemaphore failed: %i", GetLastError());
+  return false;
 }

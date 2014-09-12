@@ -8,8 +8,6 @@
 
 #define __USE_POSIX
 #include <signal.h>
-#include <unistd.h>
-
 
 // --- S i g n a l   h a n d l i n g ---
 
@@ -19,17 +17,33 @@ void print_stack_trace(FILE *out, int signum);
 // After handling the condition here, propagate it so that it doesn't get swallowed.
 void propagate_condition(int signum);
 
+// Optional platform-specific initialization code.
+void initialize_crash_handler();
+
+// Disable the signal handler such that nested signals go directly to the
+// default handler rather than risk looping.
+static void uninstall_signals() {
+  signal(SIGSEGV, SIG_DFL);
+  signal(SIGABRT, SIG_DFL);
+}
+
 // Processes crashes.
 static void crash_handler(int signum) {
-  print_stack_trace(stdout, signum);
+  uninstall_signals();
+  print_stack_trace(stderr, signum);
   propagate_condition(signum);
 }
 
 void install_crash_handler() {
+  initialize_crash_handler();
   signal(SIGSEGV, crash_handler);
   signal(SIGABRT, crash_handler);
 }
 
+#ifdef IS_MSVC
+#  include "crash-msvc.c"
+#else
 // For now always use execinfo. Later on some more logic can be built in to deal
 // with the case where execinfo isn't available.
-#include "crash-execinfo-opt.c"
+#  include "crash-execinfo.c"
+#endif

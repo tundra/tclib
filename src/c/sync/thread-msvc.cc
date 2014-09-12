@@ -21,8 +21,10 @@ private:
 };
 
 NativeThread::Data::~Data() {
-  if (thread_ != INVALID_HANDLE_VALUE)
-    CloseHandle(thread_);
+  if (thread_ != INVALID_HANDLE_VALUE) {
+    if (!CloseHandle(thread_))
+      WARN("Call to CloseHandle failed: %i", GetLastError());
+  }
 }
 
 dword_t __stdcall NativeThread::Data::entry_point(void *arg) {
@@ -32,18 +34,24 @@ dword_t __stdcall NativeThread::Data::entry_point(void *arg) {
 }
 
 bool NativeThread::Data::start(NativeThread *thread) {
-  thread_ = CreateThread(
+  handle_t result = CreateThread(
       NULL,         // lpThreadAttributes
       0,            // dwStackSize
       entry_point,  // lpStartAddress
       thread,       // lpParameter
       0,            // dwCreationFlags
       &thread_id_); // lpThreadId
+  if (result == NULL) {
+    WARN("Call to CreateThread failed: %i", GetLastError());
+    return false;
+  }
+  thread_ = result;
   return true;
 }
 
 void *NativeThread::Data::join() {
-  WaitForSingleObject(thread_, INFINITE);
+  if (WaitForSingleObject(thread_, INFINITE) != WAIT_OBJECT_0)
+    WARN("Call to WaitForSingleObject failed: %i", GetLastError());
   return result_;
 }
 
