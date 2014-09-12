@@ -59,7 +59,7 @@ bool NativeMutex::Data::try_lock() {
 bool NativeMutex::Data::unlock() {
   bool result = ReleaseMutex(mutex_);
   if (result)
-      return true;
+    return true;
   WARN("Call to ReleaseMutex failed: %i", GetLastError());
   return false;
 }

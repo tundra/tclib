@@ -20,7 +20,7 @@ private:
 
 bool NativeSemaphore::Data::initialize(uint32_t initial_count) {
   kern_return_t result = semaphore_create(mach_task_self(), &sema_,
-      SYNC_POLICY_FIFO, -1);
+      SYNC_POLICY_FIFO, initial_count);
   if (result == KERN_SUCCESS)
     return true;
   WARN("Call to semaphore_create failed: %i", result);
