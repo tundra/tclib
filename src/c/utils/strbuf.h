@@ -7,8 +7,8 @@
 #include "alloc.h"
 #include "ook.h"
 #include "string.h"
+#include "stdc-inl.h"
 
-#include <stdarg.h>
 
 // Buffer for building a string incrementally.
 typedef struct {
@@ -57,7 +57,7 @@ typedef struct {
 
 // Type of abort functions.
 typedef void (*write_format_value_m)(format_handler_o *self, format_request_t *request,
-    va_list argp);
+    va_list_ref_t argp);
 
 struct format_handler_o_vtable_t {
   write_format_value_m write_format_value;

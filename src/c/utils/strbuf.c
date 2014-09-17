@@ -163,7 +163,7 @@ void string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
             string_buffer_native_printf(buf, "%%%c", c);
           } else {
             format_request_t request = {buf, int_param, c};
-            METHOD(*handler, write_format_value)(*handler, &request, argp);
+            METHOD(*handler, write_format_value)(*handler, &request, VA_LIST_REF(argp));
           }
           break;
         }
