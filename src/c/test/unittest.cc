@@ -79,8 +79,18 @@ TestCaseInfo::TestCaseInfo(const char *suite, const char *name, unit_test_t unit
   this->suite = suite;
   this->name = name;
   this->unit_test = unit_test;
-  this->next = TestCaseInfo::chain;
-  TestCaseInfo::chain = this;
+  // Add this test at the end of the chain. This makes setting up the tests
+  // quadratic in the number of cases but on the other hand it's a simple way
+  // to ensure that they're run in declaration order and there shouldn't be
+  // too many tests.
+  if (TestCaseInfo::chain == NULL) {
+    TestCaseInfo::chain = this;
+  } else {
+    TestCaseInfo *current = TestCaseInfo::chain;
+    while (current->next != NULL)
+      current = current->next;
+    current->next = this;
+  }
 }
 
 void TestCaseInfo::run_tests(unit_test_selector_t *selector) {
