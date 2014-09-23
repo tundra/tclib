@@ -17,8 +17,10 @@ char string_char_at(string_t *str, size_t index) {
 void string_copy_to(string_t *str, char *dest, size_t count) {
   // The count must be strictly greater than the number of chars because we
   // also need to fit the terminating null character.
-  CHECK_REL("string copy destination too small", string_length(str), <, count);
-  strncpy(dest, str->chars, string_length(str) + 1);
+  size_t length = string_length(str);
+  CHECK_REL("string copy destination too small", length, <, count);
+  strncpy(dest, str->chars, length);
+  dest[length] = '\0';
 }
 
 bool string_equals(string_t *a, string_t *b) {
