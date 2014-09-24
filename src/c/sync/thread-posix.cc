@@ -3,34 +3,24 @@
 
 #include <errno.h>
 
-class NativeThread::Data {
-public:
-  Data() : thread_(0) { }
-
-  bool start(NativeThread *thread);
-
-  void *join();
-
-  static void *entry_point(void *arg);
-private:
-  pthread_t thread_;
-};
-
-void *NativeThread::Data::entry_point(void *arg) {
+void *NativeThread::entry_point(void *arg) {
   NativeThread *thread = static_cast<NativeThread*>(arg);
   return (thread->callback_)();
 }
 
-bool NativeThread::Data::start(NativeThread *thread) {
-  int result = pthread_create(&thread_, NULL, entry_point, thread);
+bool NativeThread::platform_start() {
+  int result = pthread_create(&thread_, NULL, entry_point, this);
   if (result == 0)
     return true;
   WARN("Call to pthread_create failed: %i (error: %s)", result, strerror(result));
   return false;
-
 }
 
-void *NativeThread::Data::join() {
+bool NativeThread::platform_dispose() {
+  return true;
+}
+
+void *NativeThread::join() {
   void *value = NULL;
   int result = pthread_join(thread_, &value);
   if (result == 0)

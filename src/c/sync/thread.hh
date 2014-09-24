@@ -22,6 +22,7 @@ public:
   // Initialize a thread without an initial callback. The set_callback method
   // must be used to set the callback before starting the thread.
   NativeThread();
+
   ~NativeThread();
 
   // Starts this thread. Returns true on success.
@@ -34,12 +35,6 @@ public:
   // If no callback was given at initialization this sets it to the given value.
   void set_callback(run_callback_t callback);
 
-  // The largest possible size of the underlying data. Public for testing only.
-  static const size_t kMaxDataSize = WORD_SIZE * 4;
-
-  // Returns the size in bytes of a data object.
-  static size_t get_data_size();
-
   // Returns the id of the current thread. The value is opaque and can only be
   // used for equality testing.
   static native_thread_id_t get_current_id();
@@ -48,14 +43,20 @@ public:
   static bool ids_equal(native_thread_id_t a, native_thread_id_t b);
 
 private:
-  // The raw memory that will hold the platform-specific data.
-  uint8_t data_memory_[kMaxDataSize];
+  // Platform-specific start routine.
+  bool platform_start();
 
+  // Platform-specific start routine.
+  bool platform_dispose();
+
+  static PLATFORM_THREAD_ENTRY_POINT;
+
+  // Callback to run on start.
   run_callback_t callback_;
 
-  // Pointer to the initialized platform-specific data.
-  class Data;
-  Data *data_;
+  bool is_initialized_;
+  // Platform-specific data.
+  platform_thread_t thread_;
 };
 
 } // namespace tclib

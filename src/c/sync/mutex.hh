@@ -6,6 +6,10 @@
 
 #include "stdc.h"
 
+BEGIN_C_INCLUDES
+#include "sync.h"
+END_C_INCLUDES
+
 namespace tclib {
 
 // An os-native mutex.
@@ -13,6 +17,8 @@ class NativeMutex {
 public:
   // Create a new uninitialized mutex.
   NativeMutex();
+
+  // Dispose this mutex.
   ~NativeMutex();
 
   // Initialize this mutex. Returns true iff initialization succeeds.
@@ -34,19 +40,15 @@ public:
   // you shouldn't depend on any particular behavior.
   bool unlock();
 
-  // The largest possible size of the underlying data. Public for testing only.
-  static const size_t kMaxDataSize = WORD_SIZE * 8;
-
-  // Returns the size in bytes of a data object.
-  static size_t get_data_size();
-
 private:
-  // The raw memory that will hold the platform-specific data.
-  uint8_t data_memory_[kMaxDataSize];
+  // Platform-specific initialization.
+  bool platform_initialize();
 
-  // Pointer to the initialized platform-specific data.
-  class Data;
-  Data *data_;
+  // Platform-specific destruction.
+  bool platform_dispose();
+
+  bool is_initialized_;
+  platform_mutex_t mutex_;
 };
 
 } // namespace tclib

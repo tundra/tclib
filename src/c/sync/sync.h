@@ -9,11 +9,15 @@
 #include "stdc.h"
 
 #ifdef IS_GCC
-#include "sync-posix.h"
+# ifdef IS_MACH
+#   include "sync-mach.h"
+# else
+#   include "sync-posix.h"
+# endif
 #endif
 
 #ifdef IS_MSVC
-#include "sync-msvc.h"
+# include "sync-msvc.h"
 #endif
 
 #endif // _TCLIB_SYNC_H

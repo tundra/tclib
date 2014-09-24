@@ -20,36 +20,20 @@ using namespace tclib;
 #endif
 
 NativeMutex::NativeMutex()
-  : data_(NULL) { }
+  : is_initialized_(false) {
+  platform_mutex_t init = kPlatformMutexInit;
+  mutex_ = init;
+}
 
 NativeMutex::~NativeMutex() {
-  if (data_ != NULL) {
-    data_->~Data();
-    data_ = NULL;
-  }
+  if (!is_initialized_)
+    return;
+  is_initialized_ = false;
+  platform_dispose();
 }
 
 bool NativeMutex::initialize() {
-  if (kMaxDataSize < sizeof(Data)) {
-    WARN("Mutex data size too small: %i < %i", kMaxDataSize, sizeof(Data));
-    return false;
-  }
-  data_ = new (data_memory_) Data();
-  return data_->initialize();
-}
-
-bool NativeMutex::lock() {
-  return data_->lock();
-}
-
-bool NativeMutex::try_lock() {
-  return data_->try_lock();
-}
-
-bool NativeMutex::unlock() {
-  return data_->unlock();
-}
-
-size_t NativeMutex::get_data_size() {
-  return sizeof(Data);
+  if (!is_initialized_)
+    is_initialized_ = platform_initialize();
+  return is_initialized_;
 }

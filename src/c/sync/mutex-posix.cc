@@ -4,18 +4,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-class NativeMutex::Data {
-public:
-  ~Data();
-  bool initialize();
-  bool lock();
-  bool try_lock();
-  bool unlock();
-private:
-  pthread_mutex_t mutex_;
-};
-
-bool NativeMutex::Data::initialize() {
+bool NativeMutex::platform_initialize() {
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
@@ -26,15 +15,15 @@ bool NativeMutex::Data::initialize() {
   return false;
 }
 
-NativeMutex::Data::~Data() {
+bool NativeMutex::platform_dispose() {
   int result = pthread_mutex_destroy(&mutex_);
   if (result == 0)
-    return;
+    return true;
   WARN("Call to pthread_mutex_destroy failed: %i (error: %s)", result, strerror(result));
-  exit(0);
+  return false;
 }
 
-bool NativeMutex::Data::lock() {
+bool NativeMutex::lock() {
   int result = pthread_mutex_lock(&mutex_);
   if (result == 0)
     return true;
@@ -42,7 +31,7 @@ bool NativeMutex::Data::lock() {
   return false;
 }
 
-bool NativeMutex::Data::try_lock() {
+bool NativeMutex::try_lock() {
   int result = pthread_mutex_trylock(&mutex_);
   if (result == 0)
     return true;
@@ -53,7 +42,7 @@ bool NativeMutex::Data::try_lock() {
   return false;
 }
 
-bool NativeMutex::Data::unlock() {
+bool NativeMutex::unlock() {
   int result = pthread_mutex_unlock(&mutex_);
   if (result == 0)
     return true;

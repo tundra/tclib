@@ -3,22 +3,7 @@
 
 #include "winhdr.h"
 
-class NativeMutex::Data {
-public:
-  Data();
-  ~Data();
-  bool initialize();
-  bool lock();
-  bool try_lock();
-  bool unlock();
-private:
-  handle_t mutex_;
-};
-
-NativeMutex::Data::Data()
-  : mutex_(INVALID_HANDLE_VALUE) { }
-
-bool NativeMutex::Data::initialize() {
+bool NativeMutex::platform_initialize() {
   handle_t result = CreateMutex(
       NULL,  // lpMutexAttributes
       false, // bInitialOwner
@@ -31,14 +16,17 @@ bool NativeMutex::Data::initialize() {
   return true;
 }
 
-NativeMutex::Data::~Data() {
-  if (mutex_ != INVALID_HANDLE_VALUE) {
-    if (!CloseHandle(mutex_))
-      WARN("Call to CloseHandle failed: %i", GetLastError());
+bool NativeMutex::platform_dispose() {
+  bool result = CloseHandle(mutex_);
+  if (result) {
+    mutex_ = INVALID_HANDLE_VALUE;
+  } else {
+    WARN("Call to CloseHandle failed: %i", GetLastError());
   }
+  return result;
 }
 
-bool NativeMutex::Data::lock() {
+bool NativeMutex::lock() {
   dword_t result = WaitForSingleObject(mutex_, INFINITE);
   if (result == WAIT_OBJECT_0)
     return true;
@@ -47,7 +35,7 @@ bool NativeMutex::Data::lock() {
   return false;
 }
 
-bool NativeMutex::Data::try_lock() {
+bool NativeMutex::try_lock() {
   dword_t result = WaitForSingleObject(mutex_, 0);
   if (result == WAIT_OBJECT_0)
     return true;
@@ -56,7 +44,7 @@ bool NativeMutex::Data::try_lock() {
   return false;
 }
 
-bool NativeMutex::Data::unlock() {
+bool NativeMutex::unlock() {
   bool result = ReleaseMutex(mutex_);
   if (result)
     return true;

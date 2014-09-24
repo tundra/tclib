@@ -8,33 +8,22 @@
 // they return error codes through errno instead of their result values which
 // will always be -1 on errors. It's okay though, errno should be thread safe.
 
-class NativeSemaphore::Data {
-public:
-  ~Data();
-  bool initialize(uint32_t initial_count);
-  bool acquire();
-  bool try_acquire();
-  bool release();
-private:
-  sem_t sema_;
-};
-
-bool NativeSemaphore::Data::initialize(uint32_t initial_count) {
-  int result = sem_init(&sema_, false, initial_count);
+bool NativeSemaphore::platform_initialize() {
+  int result = sem_init(&sema_, false, initial_count_);
   if (result == 0)
     return true;
   WARN("Call to sem_init failed: %i (error: %s)", result, strerror(errno));
   return false;
 }
 
-NativeSemaphore::Data::~Data() {
+bool NativeSemaphore::platform_dispose() {
   int result = sem_destroy(&sema_);
-  if (result == 0)
-    return;
-  WARN("Call to sem_destroy failed: %i (error: %s)", result, strerror(errno));
+  if (result != 0)
+    WARN("Call to sem_destroy failed: %i (error: %s)", result, strerror(errno));
+  return result == 0;
 }
 
-bool NativeSemaphore::Data::acquire() {
+bool NativeSemaphore::acquire() {
   int result = sem_wait(&sema_);
   if (result == 0)
     return true;
@@ -42,7 +31,7 @@ bool NativeSemaphore::Data::acquire() {
   return false;
 }
 
-bool NativeSemaphore::Data::try_acquire() {
+bool NativeSemaphore::try_acquire() {
   int result = sem_trywait(&sema_);
   if (result == 0)
     return true;
@@ -53,7 +42,7 @@ bool NativeSemaphore::Data::try_acquire() {
   return false;
 }
 
-bool NativeSemaphore::Data::release() {
+bool NativeSemaphore::release() {
   int result = sem_post(&sema_);
   if (result == 0)
     return true;

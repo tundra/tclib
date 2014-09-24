@@ -25,40 +25,26 @@ using namespace tclib;
 
 NativeSemaphore::NativeSemaphore()
   : initial_count_(1)
-  , data_(NULL) { }
+  , is_initialized_(false) {
+#ifdef kNativeSemaphoreInit
+  native_semaphore_t init = kNativeSemaphoreInit;
+  sema_ = init;
+#endif
+}
 
 NativeSemaphore::NativeSemaphore(uint32_t initial_count)
   : initial_count_(initial_count)
-  , data_(NULL) { }
+  , is_initialized_(false) { }
 
 NativeSemaphore::~NativeSemaphore() {
-  if (data_ != NULL) {
-    data_->~Data();
-    data_ = NULL;
-  }
+  if (!is_initialized_)
+    return;
+  is_initialized_ = false;
+  platform_dispose();
 }
 
 bool NativeSemaphore::initialize() {
-  if (kMaxDataSize < sizeof(Data)) {
-    WARN("Semaphore data size too small: %i < %i", kMaxDataSize, sizeof(Data));
-    return false;
-  }
-  data_ = new (data_memory_) Data();
-  return data_->initialize(initial_count_);
-}
-
-bool NativeSemaphore::acquire() {
-  return data_->acquire();
-}
-
-bool NativeSemaphore::try_acquire() {
-  return data_->try_acquire();
-}
-
-bool NativeSemaphore::release() {
-  return data_->release();
-}
-
-size_t NativeSemaphore::get_data_size() {
-  return sizeof(Data);
+  if (!is_initialized_)
+    is_initialized_ = platform_initialize();
+  return is_initialized_;
 }

@@ -3,25 +3,10 @@
 
 #include "winhdr.h"
 
-class NativeSemaphore::Data {
-public:
-  Data();
-  ~Data();
-  bool initialize(uint32_t initial_count);
-  bool acquire();
-  bool try_acquire();
-  bool release();
-private:
-  handle_t sema_;
-};
-
-NativeSemaphore::Data::Data()
-  : sema_(INVALID_HANDLE_VALUE) { }
-
-bool NativeSemaphore::Data::initialize(uint32_t initial_count) {
+bool NativeSemaphore::platform_initialize() {
   handle_t result = CreateSemaphore(
       NULL, // lpSemaphoreAttributes
-      initial_count, // lInitialCount
+      initial_count_, // lInitialCount
       0x7FFFFFFF, // lMaximumCount
       NULL); // lpName
   if (result == NULL) {
@@ -32,14 +17,17 @@ bool NativeSemaphore::Data::initialize(uint32_t initial_count) {
   return true;
 }
 
-NativeSemaphore::Data::~Data() {
+bool NativeSemaphore::platform_dispose() {
   if (sema_ != INVALID_HANDLE_VALUE) {
-    if (!CloseHandle(sema_))
+    if (!CloseHandle(sema_)) {
       WARN("Call to CloseHandle failed: %i", GetLastError());
+      return false;
+    }
   }
+  return true;
 }
 
-bool NativeSemaphore::Data::acquire() {
+bool NativeSemaphore::acquire() {
   dword_t result = WaitForSingleObject(sema_, INFINITE);
   if (result == WAIT_OBJECT_0)
     return true;
@@ -48,7 +36,7 @@ bool NativeSemaphore::Data::acquire() {
   return false;
 }
 
-bool NativeSemaphore::Data::try_acquire() {
+bool NativeSemaphore::try_acquire() {
   dword_t result = WaitForSingleObject(sema_, 0);
   if (result == WAIT_OBJECT_0)
     return true;
@@ -57,7 +45,7 @@ bool NativeSemaphore::Data::try_acquire() {
   return false;
 }
 
-bool NativeSemaphore::Data::release() {
+bool NativeSemaphore::release() {
   bool result = ReleaseSemaphore(
       sema_, // hSemaphore
       1,     // lReleaseCount

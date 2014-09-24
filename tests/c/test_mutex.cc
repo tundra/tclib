@@ -8,10 +8,6 @@
 
 using namespace tclib;
 
-TEST(mutex, data_size) {
-  ASSERT_TRUE(NativeMutex::get_data_size() <= NativeMutex::kMaxDataSize);
-}
-
 static void *fail_to_unlock(NativeMutex *m0, NativeMutex *m1) {
   ASSERT_FALSE(m0->try_lock());
   ASSERT_FALSE(m0->unlock());

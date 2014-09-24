@@ -10,10 +10,6 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-TEST(thread, data_size) {
-  ASSERT_TRUE(NativeThread::get_data_size() <= NativeThread::kMaxDataSize);
-}
-
 class CallCounter {
 public:
   CallCounter() : value(0) { }

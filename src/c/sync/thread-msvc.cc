@@ -3,56 +3,42 @@
 
 #include "winhdr.h"
 
-class NativeThread::Data {
-public:
-  Data()
-    : thread_(INVALID_HANDLE_VALUE)
-    , thread_id_(0)
-    , result_(NULL) { }
-  ~Data();
-  bool start(NativeThread *thread);
-  void *join();
-  static dword_t __stdcall entry_point(void *arg);
-
-private:
-  handle_t thread_;
-  dword_t thread_id_;
-  void *result_;
-};
-
-NativeThread::Data::~Data() {
-  if (thread_ != INVALID_HANDLE_VALUE) {
-    if (!CloseHandle(thread_))
+bool NativeThread::platform_dispose() {
+  if (thread_.handle_ != INVALID_HANDLE_VALUE) {
+    if (!CloseHandle(thread_.handle_)) {
       WARN("Call to CloseHandle failed: %i", GetLastError());
+      return false;
+    }
   }
+  return true;
 }
 
-dword_t __stdcall NativeThread::Data::entry_point(void *arg) {
+unsigned long __stdcall NativeThread::entry_point(void *arg) {
   NativeThread *thread = static_cast<NativeThread*>(arg);
-  thread->data_->result_ = (thread->callback_)();
+  thread->thread_.result_ = (thread->callback_)();
   return 0;
 }
 
-bool NativeThread::Data::start(NativeThread *thread) {
+bool NativeThread::platform_start() {
   handle_t result = CreateThread(
       NULL,         // lpThreadAttributes
       0,            // dwStackSize
       entry_point,  // lpStartAddress
-      thread,       // lpParameter
+      this,         // lpParameter
       0,            // dwCreationFlags
-      &thread_id_); // lpThreadId
+      NULL);        // lpThreadId
   if (result == NULL) {
     WARN("Call to CreateThread failed: %i", GetLastError());
     return false;
   }
-  thread_ = result;
+  thread_.handle_ = result;
   return true;
 }
 
-void *NativeThread::Data::join() {
-  if (WaitForSingleObject(thread_, INFINITE) != WAIT_OBJECT_0)
+void *NativeThread::join() {
+  if (WaitForSingleObject(thread_.handle_, INFINITE) != WAIT_OBJECT_0)
     WARN("Call to WaitForSingleObject failed: %i", GetLastError());
-  return result_;
+  return thread_.result_;
 }
 
 native_thread_id_t NativeThread::get_current_id() {

@@ -7,10 +7,6 @@
 
 using namespace tclib;
 
-TEST(semaphore, data_size) {
-  ASSERT_TRUE(NativeSemaphore::get_data_size() <= NativeSemaphore::kMaxDataSize);
-}
-
 TEST(semaphore, default_initial) {
   NativeSemaphore sema;
   ASSERT_TRUE(sema.initialize());

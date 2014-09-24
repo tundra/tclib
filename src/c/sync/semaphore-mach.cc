@@ -4,36 +4,25 @@
 // Mach looks like it supports posix-style unnamed semaphores through the posix
 // api but actually it doesn't, the calls fail.
 
-#include <mach/semaphore.h>
-#include <mach/mach.h>
-
-class NativeSemaphore::Data {
-public:
-  ~Data();
-  bool initialize(uint32_t initial_count);
-  bool acquire();
-  bool try_acquire();
-  bool release();
-private:
-  semaphore_t sema_;
-};
-
-bool NativeSemaphore::Data::initialize(uint32_t initial_count) {
+bool NativeSemaphore::platform_initialize() {
   kern_return_t result = semaphore_create(mach_task_self(), &sema_,
-      SYNC_POLICY_FIFO, initial_count);
+      SYNC_POLICY_FIFO, initial_count_);
   if (result == KERN_SUCCESS)
     return true;
   WARN("Call to semaphore_create failed: %i", result);
   return false;
 }
 
-NativeSemaphore::Data::~Data() {
+bool NativeSemaphore::platform_dispose() {
   kern_return_t result = semaphore_destroy(mach_task_self(), sema_);
-  if (result != KERN_SUCCESS)
+  if (result != KERN_SUCCESS) {
     WARN("Call to semaphore_destroy failed: %i", result);
+    return false;
+  }
+  return true;
 }
 
-bool NativeSemaphore::Data::acquire() {
+bool NativeSemaphore::acquire() {
   kern_return_t result = semaphore_wait(sema_);
   if (result == KERN_SUCCESS)
     return true;
@@ -41,7 +30,7 @@ bool NativeSemaphore::Data::acquire() {
   return false;
 }
 
-bool NativeSemaphore::Data::try_acquire() {
+bool NativeSemaphore::try_acquire() {
   mach_timespec time;
   time.tv_sec = 0;
   time.tv_nsec = 0;
@@ -55,7 +44,7 @@ bool NativeSemaphore::Data::try_acquire() {
   return false;
 }
 
-bool NativeSemaphore::Data::release() {
+bool NativeSemaphore::release() {
   kern_return_t result = semaphore_signal(sema_);
   if (result == KERN_SUCCESS)
     return true;

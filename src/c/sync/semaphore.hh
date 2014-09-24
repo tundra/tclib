@@ -6,6 +6,10 @@
 
 #include "stdc.h"
 
+BEGIN_C_INCLUDES
+#include "sync.h"
+END_C_INCLUDES
+
 namespace tclib {
 
 // An os-native mutex.
@@ -38,21 +42,20 @@ public:
   // Release a permit to this semaphore.
   bool release();
 
-  // The largest possible size of the underlying data. Public for testing only.
-  static const size_t kMaxDataSize = WORD_SIZE * 4;
-
-  // Returns the size in bytes of a data object.
-  static size_t get_data_size();
-
 private:
-  // The raw memory that will hold the platform-specific data.
-  uint8_t data_memory_[kMaxDataSize];
+  // Platform-specific initialization.
+  bool platform_initialize();
 
+  // Platform-specific destruction.
+  bool platform_dispose();
+
+  // The count immediately after initialization.
   uint32_t initial_count_;
 
-  // Pointer to the initialized platform-specific data.
-  class Data;
-  Data *data_;
+  bool is_initialized_;
+
+  // Platform-specific data.
+  platform_semaphore_t sema_;
 };
 
 } // namespace tclib
