@@ -2,8 +2,9 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "crash.h"
-#include "stdc.h"
+#include "io/file.h"
 #include "log.h"
+#include "stdc.h"
 #include "string.h"
 
 #define __USE_POSIX
@@ -12,7 +13,7 @@
 // --- S i g n a l   h a n d l i n g ---
 
 // Print a stack trace if the platform supports it.
-void print_stack_trace(FILE *out, int signum);
+void print_stack_trace(open_file_t *out, int signum);
 
 // After handling the condition here, propagate it so that it doesn't get swallowed.
 void propagate_condition(int signum);
@@ -30,7 +31,8 @@ static void uninstall_signals() {
 // Processes crashes.
 static void crash_handler(int signum) {
   uninstall_signals();
-  print_stack_trace(stderr, signum);
+  file_system_t *fs = file_system_native();
+  print_stack_trace(file_system_stderr(fs), signum);
   propagate_condition(signum);
 }
 

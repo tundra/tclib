@@ -4,5 +4,6 @@
 include('test', 'src_c_test.mkmk')
 include('utils', 'src_c_utils.mkmk')
 include('sync', 'src_c_sync.mkmk')
+include('io', 'src_c_io.mkmk')
 
 add_alias('all')

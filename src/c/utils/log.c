@@ -1,6 +1,7 @@
 //- Copyright 2013 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#include "io/file.h"
 #include "log.h"
 #include "ook.h"
 #include "strbuf.h"
@@ -65,16 +66,18 @@ static log_o *global_log = NULL;
 // The default abort handler which prints the message to stderr and aborts
 // execution.
 static void default_log(log_o *log, log_entry_t *entry) {
+  open_file_t *dest = file_system_stderr(file_system_native());
   if (entry->file == NULL) {
     // This is typically used for testing where including the filename and line
     // makes the output unpredictable.
-    fprintf(stderr, "%s: %s\n",
+    open_file_printf(dest, "%s: %s\n",
         get_log_level_name(entry->level), entry->message->chars);
   } else {
-    fprintf(stderr, "%s:%i: %s: %s [%s%s]\n", entry->file, entry->line,
+    open_file_printf(dest, "%s:%i: %s: %s [%s%s]\n", entry->file, entry->line,
         get_log_level_name(entry->level), entry->message->chars,
         get_log_level_char(entry->level), entry->timestamp->chars);
   }
+  open_file_flush(dest);
 }
 
 VTABLE(default_log_o, log_o) { default_log };

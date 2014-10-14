@@ -12,16 +12,16 @@ void initialize_crash_handler() {
   // nothing to initialize
 }
 
-void print_stack_trace(FILE *out, int signum) {
-  fprintf(out, "# Received condition %i\n", signum);
+void print_stack_trace(open_file_t *out, int signum) {
+  open_file_printf(out, "# Received condition %i\n", signum);
   void *raw_frames[kMaxStackSize];
   size_t size = backtrace(raw_frames, kMaxStackSize);
   char **frames = backtrace_symbols(raw_frames, size);
   for (size_t i = 0; i < size; i++) {
-    fprintf(out, "# - %s\n", frames[i]);
+    open_file_printf(out, "# - %s\n", frames[i]);
   }
   free(frames);
-  fflush(out);
+  open_file_flush(out);
 }
 
 void propagate_condition(int signum) {

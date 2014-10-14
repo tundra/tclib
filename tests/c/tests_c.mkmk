@@ -22,6 +22,7 @@ def compile_test_file(source):
 
 # Create a group containing the test files along with the runtime library.
 test_library = get_group("library")
+test_library.add_dependency(get_external('src', 'c', 'io', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'sync', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'stderr-fail'))

@@ -26,7 +26,6 @@ static abort_o *global_abort = NULL;
 // execution.
 static void default_abort(abort_o *self, abort_message_t *message) {
   log_message(llError, message->file, message->line, "%s", message->text);
-  fflush(stderr);
   abort();
 }
 
