@@ -44,15 +44,15 @@ public:
 
   // Returns a handle for standard input. The result should be statically
   // allocated so you don't need to dispose it after use.
-  virtual OpenFile *stdin() = 0;
+  virtual OpenFile *std_in() = 0;
 
   // Returns a handle for standard output. The result should be statically
   // allocated so you don't need to dispose it after use.
-  virtual OpenFile *stdout() = 0;
+  virtual OpenFile *std_out() = 0;
 
   // Returns a handle for standard error. The result should be statically
   // allocated so you don't need to dispose it after use.
-  virtual OpenFile *stderr() = 0;
+  virtual OpenFile *std_err() = 0;
 
   virtual ~FileSystem() { }
 

@@ -13,3 +13,6 @@ typedef unsigned __int64 uint64_t;
 
 // TODO: Add some logic to set this depending on the environment.
 #define IS_32_BIT 1
+
+// Windows doesn't have va_copy but this appears to work.
+#define va_copy(d,s) ((d) = (s))

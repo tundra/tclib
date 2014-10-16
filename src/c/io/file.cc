@@ -49,19 +49,19 @@ bool StdioOpenFile::flush() {
   return fflush(file_) == 0;
 }
 
-extern "C" void open_file_close(open_file_t *file) {
+void open_file_close(open_file_t *file) {
   delete static_cast<OpenFile*>(file);
 }
 
-extern "C" bool open_file_flush(open_file_t *file) {
+bool open_file_flush(open_file_t *file) {
   return static_cast<OpenFile*>(file)->flush();
 }
 
-extern "C" size_t open_file_read_bytes(open_file_t *file, void *dest, size_t size) {
+size_t open_file_read_bytes(open_file_t *file, void *dest, size_t size) {
   return static_cast<OpenFile*>(file)->read_bytes(dest, size);
 }
 
-extern "C" size_t open_file_vprintf(open_file_t *file, const char *fmt, va_list argp) {
+size_t open_file_vprintf(open_file_t *file, const char *fmt, va_list argp) {
   va_list next;
   va_copy(next, argp);
   size_t result = static_cast<OpenFile*>(file)->vprintf(fmt, next);
@@ -69,7 +69,7 @@ extern "C" size_t open_file_vprintf(open_file_t *file, const char *fmt, va_list 
   return result;
 }
 
-extern "C" size_t open_file_printf(open_file_t *file, const char *fmt, ...) {
+size_t open_file_printf(open_file_t *file, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   size_t result = static_cast<OpenFile*>(file)->vprintf(fmt, argp);
@@ -82,9 +82,9 @@ class StdioFileSystem : public FileSystem {
 public:
   StdioFileSystem();
   virtual StdioOpenFile *open(const char *path, open_file_mode_t mode);
-  virtual StdioOpenFile *stdin() { return &stdin_; }
-  virtual StdioOpenFile *stdout() { return &stdout_; }
-  virtual StdioOpenFile *stderr() { return &stderr_; }
+  virtual StdioOpenFile *std_in() { return &stdin_; }
+  virtual StdioOpenFile *std_out() { return &stdout_; }
+  virtual StdioOpenFile *std_err() { return &stderr_; }
 private:
   StdioOpenFile stdin_;
   StdioOpenFile stdout_;
@@ -92,9 +92,9 @@ private:
 };
 
 StdioFileSystem::StdioFileSystem()
-  : stdin_(::stdin)
-  , stdout_(::stdout)
-  , stderr_(::stderr) { }
+  : stdin_(stdin)
+  , stdout_(stdout)
+  , stderr_(stderr) { }
 
 StdioOpenFile *StdioFileSystem::open(const char *path, open_file_mode_t mode) {
   const char *mode_str = NULL;
@@ -120,23 +120,23 @@ FileSystem *FileSystem::native() {
   return instance;
 }
 
-extern "C" file_system_t *file_system_native() {
+file_system_t *file_system_native() {
   return FileSystem::native();
 }
 
-extern "C" open_file_t *file_system_open(file_system_t *fs, const char *path,
+open_file_t *file_system_open(file_system_t *fs, const char *path,
     open_file_mode_t mode) {
   return static_cast<FileSystem*>(fs)->open(path, mode);
 }
 
-extern "C" open_file_t *file_system_stdin(file_system_t *fs) {
-  return static_cast<FileSystem*>(fs)->stdin();
+open_file_t *file_system_stdin(file_system_t *fs) {
+  return static_cast<FileSystem*>(fs)->std_in();
 }
 
-extern "C" open_file_t *file_system_stdout(file_system_t *fs) {
-  return static_cast<FileSystem*>(fs)->stdout();
+open_file_t *file_system_stdout(file_system_t *fs) {
+  return static_cast<FileSystem*>(fs)->std_out();
 }
 
-extern "C" open_file_t *file_system_stderr(file_system_t *fs) {
-  return static_cast<FileSystem*>(fs)->stderr();
+open_file_t *file_system_stderr(file_system_t *fs) {
+  return static_cast<FileSystem*>(fs)->std_err();
 }

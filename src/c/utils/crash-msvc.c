@@ -10,14 +10,14 @@ void initialize_crash_handler() {
 }
 
 // Print a stack trace if the platform supports it.
-void print_stack_trace(FILE *out, int signum) {
+void print_stack_trace(open_file_t *out, int signum) {
   handle_t process = GetCurrentProcess();
   if (!SymRefreshModuleList(process)) {
-    fprintf(out, "Error refreshing module list: %i", GetLastError());
+    open_file_printf(out, "Error refreshing module list: %i", GetLastError());
     return;
   }
 
-  fprintf(out, "# Received condition %i\n", signum);
+  open_file_printf(out, "# Received condition %i\n", signum);
 
   // Capture the stack trace.
   static const size_t kMaxStackSize = 32;
@@ -40,9 +40,9 @@ void print_stack_trace(FILE *out, int signum) {
     void *addr = backtrace[i];
     DWORD64 addr64 = reinterpret_cast<DWORD64>(addr);
     if (SymFromAddr(process, addr64, 0, info)) {
-      fprintf(out, "# - 0x%p: %s\n", addr, info->Name);
+      open_file_printf(out, "# - 0x%p: %s\n", addr, info->Name);
     } else {
-      fprintf(out, "# - 0x%p\n", addr);
+      open_file_printf(out, "# - 0x%p\n", addr);
     }
   }
 }
