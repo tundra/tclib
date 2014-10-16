@@ -24,6 +24,9 @@ typedef struct file_system_t file_system_t;
 // destination. Returns the number of bytes actually read.
 size_t open_file_read_bytes(open_file_t *file, void *dest, size_t size);
 
+// Returns true if this file has been read to the end.
+bool open_file_at_eof(open_file_t *file);
+
 // Works just like normal printf, it just writes to this file.
 size_t open_file_printf(open_file_t *file, const char *fmt, ...);
 

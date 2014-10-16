@@ -22,6 +22,7 @@ public:
   explicit StdioOpenFile(FILE *file) : file_(file) { }
   virtual ~StdioOpenFile();
   virtual size_t read_bytes(void *dest, size_t size);
+  virtual bool at_eof();
   virtual size_t vprintf(const char *fmt, va_list argp);
   virtual bool flush();
 private:
@@ -35,6 +36,10 @@ StdioOpenFile::~StdioOpenFile() {
 
 size_t StdioOpenFile::read_bytes(void *dest, size_t size) {
   return fread(dest, 1, size, file_);
+}
+
+bool StdioOpenFile::at_eof() {
+  return feof(file_) != 0;
 }
 
 size_t StdioOpenFile::vprintf(const char *fmt, va_list argp) {
@@ -59,6 +64,10 @@ bool open_file_flush(open_file_t *file) {
 
 size_t open_file_read_bytes(open_file_t *file, void *dest, size_t size) {
   return static_cast<OpenFile*>(file)->read_bytes(dest, size);
+}
+
+bool open_file_at_eof(open_file_t *file) {
+  return static_cast<OpenFile*>(file)->at_eof();
 }
 
 size_t open_file_vprintf(open_file_t *file, const char *fmt, va_list argp) {
@@ -100,7 +109,9 @@ StdioOpenFile *StdioFileSystem::open(const char *path, open_file_mode_t mode) {
   const char *mode_str = NULL;
   switch (mode) {
     case OPEN_FILE_MODE_READ:
-      mode_str = "r";
+      // If this is just "r" windows will sometimes think files end before they
+      // actually do for some reason. With "rb" it works correctly.
+      mode_str = "rb";
       break;
     case OPEN_FILE_MODE_WRITE:
       mode_str = "w";

@@ -24,6 +24,9 @@ public:
   // destination. Returns the number of bytes actually read.
   virtual size_t read_bytes(void *dest, size_t size) = 0;
 
+  // Returns true if this file has been read to the end.
+  virtual bool at_eof() = 0;
+
   // Works just like normal printf, it just writes to this file.
   virtual size_t printf(const char *fmt, ...);
 
