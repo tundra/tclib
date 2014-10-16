@@ -130,6 +130,13 @@ log_o *set_global_log(log_o *log);
     log_message(llInfo, __FILE__, __LINE__, __VA_ARGS__);                      \
 } while (false)
 
+// Works the same way as INFO but doesn't print file:line such that the output
+// is the same regardless of how the binary has been compiled. Useful for tests.
+#define INFO_DETERMINISTIC(...) do {                                           \
+  if (LOG_LEVEL_AT_LEAST(llInfo))                                              \
+    log_message(llInfo, NULL, __LINE__, __VA_ARGS__);                          \
+} while (false)
+
 // Log an event relevant to the given topic. If logging is disabled for the
 // given topic nothing happens.
 #define TOPIC_INFO(TOPIC, ...) do {                                            \
