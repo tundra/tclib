@@ -12,6 +12,15 @@ uint8_t string_byte_at(utf8_t str, size_t index) {
   return str.chars[index];
 }
 
+utf8_t string_substring(utf8_t str, int64_t from, int64_t to) {
+  if (from < 0)
+    from = 0;
+  size_t size = string_size(str);
+  if (to > ((int64_t) size))
+    to = size;
+  return new_string(str.chars + from, to - from);
+}
+
 void string_copy_to(utf8_t str, char *dest, size_t count) {
   // The count must be strictly greater than the number of chars because we
   // also need to fit the terminating null character.

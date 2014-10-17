@@ -21,6 +21,11 @@ size_t string_size(utf8_t str);
 // case if you know the input is an ascii string.
 uint8_t string_byte_at(utf8_t str, size_t index);
 
+// Returns a string that represents the substring of the input starting from
+// $from and up to but not including $to. The boundaries are clamped to the
+// input string's boundaries.
+utf8_t string_substring(utf8_t str, int64_t from, int64_t to);
+
 // Write the contents of this string into the given buffer, which must hold
 // at least count characters.
 void string_copy_to(utf8_t str, char *dest, size_t count);
