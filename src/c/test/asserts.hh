@@ -44,20 +44,18 @@ static int64_t ptr_to_int_bit_cast(void *value) {
 
 // Fails unless the two given strings (string_t*) are equal.
 #define ASSERT_STREQ(A, B) do {                                                \
-  string_t *__a__ = (A);                                                       \
-  string_t *__b__ = (B);                                                       \
+  utf8_t __a__ = (A);                                                          \
+  utf8_t __b__ = (B);                                                          \
   if (!(string_equals(__a__, __b__)))                                          \
     fail(__FILE__, __LINE__, "Assertion failed: %s == %s.\n  Expected: %s\n  Found: %s", \
-        #A, #B, __a__->chars, __b__->chars);                                   \
+        #A, #B, __a__.chars, __b__.chars);                                     \
 } while (false)
 
 // Fails unless the two given c-strings are equal.
 #define ASSERT_C_STREQ(A, B) do {                                              \
-  string_t __sa__;                                                             \
-  string_init(&__sa__, (A));                                                   \
-  string_t __sb__;                                                             \
-  string_init(&__sb__, (B));                                                   \
-  ASSERT_STREQ(&__sa__, &__sb__);                                              \
+  utf8_t __sa__ = new_c_string(A);                                             \
+  utf8_t __sb__ = new_c_string(B);                                             \
+  ASSERT_STREQ(__sa__, __sb__);                                                \
 } while (false)
 
 #endif // _ASSERTS

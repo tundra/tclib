@@ -82,13 +82,13 @@ typedef struct {
   const char *file;
   int line;
   log_level_t level;
-  string_t *message;
-  string_t *timestamp;
+  utf8_t message;
+  utf8_t timestamp;
 } log_entry_t;
 
 // Sets all the required fields in a log entry struct.
 void log_entry_init(log_entry_t *entry, log_stream_t destination, const char *file,
-    int line, log_level_t level, string_t *message, string_t *timestamp);
+    int line, log_level_t level, utf8_t message, utf8_t timestamp);
 
 INTERFACE(log_o);
 

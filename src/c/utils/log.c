@@ -5,7 +5,7 @@
 #include "log.h"
 #include "ook.h"
 #include "strbuf.h"
-#include "string.h"
+#include "string-inl.h"
 
 #include <time.h>
 
@@ -71,11 +71,11 @@ static void default_log(log_o *log, log_entry_t *entry) {
     // This is typically used for testing where including the filename and line
     // makes the output unpredictable.
     open_file_printf(dest, "%s: %s\n",
-        get_log_level_name(entry->level), entry->message->chars);
+        get_log_level_name(entry->level), entry->message.chars);
   } else {
     open_file_printf(dest, "%s:%i: %s: %s [%s%s]\n", entry->file, entry->line,
-        get_log_level_name(entry->level), entry->message->chars,
-        get_log_level_char(entry->level), entry->timestamp->chars);
+        get_log_level_name(entry->level), entry->message.chars,
+        get_log_level_char(entry->level), entry->timestamp.chars);
   }
   open_file_flush(dest);
 }
@@ -98,8 +98,8 @@ log_o *set_global_log(log_o *value) {
 }
 
 void log_entry_init(log_entry_t *entry, log_stream_t destination,
-    const char *file, int line, log_level_t level, string_t *message,
-    string_t *timestamp) {
+    const char *file, int line, log_level_t level, utf8_t message,
+    utf8_t timestamp) {
   entry->destination = destination;
   entry->file = file;
   entry->line = line;
@@ -117,20 +117,19 @@ void vlog_message(log_level_t level, const char *file, int line, const char *fmt
   string_buffer_vprintf(&buf, fmt, argp);
   va_end(argp);
   // Flush the string buffer.
-  string_t message_str;
-  string_buffer_flush(&buf, &message_str);
+  utf8_t message_str = string_buffer_flush(&buf);
   // Format the timestamp.
   time_t current_time;
   time(&current_time);
   struct tm local_time = *localtime(&current_time);
   char timestamp[128];
   size_t timestamp_chars = strftime(timestamp, 128, "%d%m%H%M%S", &local_time);
-  string_t timestamp_str = {timestamp_chars, timestamp};
+  utf8_t timestamp_str = new_string(timestamp, timestamp_chars);
   log_stream_t destination = get_log_level_destination(level);
   // Print the result.
   log_entry_t entry;
-  log_entry_init(&entry, destination, file, line, level, &message_str,
-      &timestamp_str);
+  log_entry_init(&entry, destination, file, line, level, message_str,
+      timestamp_str);
   log_o *log = get_global_log();
   METHOD(log, log)(log, &entry);
   string_buffer_dispose(&buf);

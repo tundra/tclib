@@ -1,57 +1,53 @@
-#include "string.h"
+//- Copyright 2014 the Neutrino authors (see AUTHORS).
+//- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-void string_init(string_t *str, const char *chars) {
-  str->chars = chars;
-  str->length = strlen(chars);
+#include "string-inl.h"
+
+size_t string_size(utf8_t str) {
+  return str.size;
 }
 
-size_t string_length(string_t *str) {
-  return str->length;
+uint8_t string_byte_at(utf8_t str, size_t index) {
+  CHECK_REL("string index out of bounds", index, <, string_size(str));
+  return str.chars[index];
 }
 
-char string_char_at(string_t *str, size_t index) {
-  CHECK_REL("string index out of bounds", index, <, string_length(str));
-  return str->chars[index];
-}
-
-void string_copy_to(string_t *str, char *dest, size_t count) {
+void string_copy_to(utf8_t str, char *dest, size_t count) {
   // The count must be strictly greater than the number of chars because we
   // also need to fit the terminating null character.
-  size_t length = string_length(str);
+  size_t length = string_size(str);
   CHECK_REL("string copy destination too small", length, <, count);
-  strncpy(dest, str->chars, length);
+  strncpy(dest, str.chars, length);
   dest[length] = '\0';
 }
 
-bool string_equals(string_t *a, string_t *b) {
-  size_t length = string_length(a);
-  if (length != string_length(b))
+bool string_equals(utf8_t a, utf8_t b) {
+  size_t size = string_size(a);
+  if (size != string_size(b))
     return false;
-  for (size_t i = 0; i < length; i++) {
-    if (string_char_at(a, i) != string_char_at(b, i))
+  for (size_t i = 0; i < size; i++) {
+    if (string_byte_at(a, i) != string_byte_at(b, i))
       return false;
   }
   return true;
 }
 
-int string_compare(string_t *a, string_t *b) {
-  size_t a_length = string_length(a);
-  size_t b_length = string_length(b);
-  if (a_length != b_length)
-    return a_length - b_length;
-  for (size_t i = 0; i < a_length; i++) {
-    char a_char = string_char_at(a, i);
-    char b_char = string_char_at(b, i);
+int string_compare(utf8_t a, utf8_t b) {
+  size_t a_size = string_size(a);
+  size_t b_size = string_size(b);
+  if (a_size != b_size)
+    return a_size - b_size;
+  for (size_t i = 0; i < a_size; i++) {
+    char a_char = string_byte_at(a, i);
+    char b_char = string_byte_at(b, i);
     if (a_char != b_char)
       return a_char - b_char;
   }
   return 0;
 }
 
-bool string_equals_cstr(string_t *a, const char *str) {
-  string_t b;
-  string_init(&b, str);
-  return string_equals(a, &b);
+bool string_equals_cstr(utf8_t a, const char *str) {
+  return string_equals(a, new_c_string(str));
 }
 
 void string_hint_to_c_str(const char *hint, char c_str_out[7]) {

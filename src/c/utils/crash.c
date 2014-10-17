@@ -70,8 +70,7 @@ static void vcheck_fail(const char *file, int line, int condition_cause,
   string_buffer_vprintf(&buf, fmt, argp);
   va_end(argp);
   // Flush the string buffer.
-  string_t str;
-  string_buffer_flush(&buf, &str);
+  utf8_t str = string_buffer_flush(&buf);
   // Print the formatted error message.
   abort_message_t message;
   abort_message_init(&message, file, line, condition_cause, str.chars);

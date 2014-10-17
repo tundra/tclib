@@ -9,11 +9,10 @@ BEGIN_C_INCLUDES
 END_C_INCLUDES
 
 TEST(string, string_simple) {
-  string_t str;
-  string_init(&str, "Hello, World!");
-  ASSERT_EQ(13, string_length(&str));
-  ASSERT_EQ('H', string_char_at(&str, 0));
-  ASSERT_EQ('!', string_char_at(&str, 12));
+  utf8_t str = new_c_string("Hello, World!");
+  ASSERT_EQ(13, string_size(str));
+  ASSERT_EQ('H', string_byte_at(str, 0));
+  ASSERT_EQ('!', string_byte_at(str, 12));
 }
 
 TEST(string, string_comparison) {
@@ -24,49 +23,45 @@ TEST(string, string_comparison) {
   char c2[3] = {'f', 'o', '\0'};
   char c3[4] = {'f', 'o', 'f', '\0'};
 
-  string_t s0;
-  string_init(&s0, c0);
-  string_t s1;
-  string_init(&s1, c1);
-  string_t s2;
-  string_init(&s2, c2);
-  string_t s3;
-  string_init(&s3, c3);
+  utf8_t s0 = new_c_string(c0);
+  utf8_t s1 = new_c_string(c1);
+  utf8_t s2 = new_c_string(c2);
+  utf8_t s3 = new_c_string(c3);
 
 #define ASSERT_STR_COMPARE(A, REL, B)                                          \
-  ASSERT_TRUE(string_compare(&A, &B) REL 0)
+  ASSERT_TRUE(string_compare(A, B) REL 0)
 
-  ASSERT_TRUE(string_equals(&s0, &s0));
+  ASSERT_TRUE(string_equals(s0, s0));
   ASSERT_STR_COMPARE(s0, ==, s0);
-  ASSERT_TRUE(string_equals(&s0, &s1));
+  ASSERT_TRUE(string_equals(s0, s1));
   ASSERT_STR_COMPARE(s0, ==, s1);
-  ASSERT_FALSE(string_equals(&s0, &s2));
+  ASSERT_FALSE(string_equals(s0, s2));
   ASSERT_STR_COMPARE(s0, >, s2);
-  ASSERT_FALSE(string_equals(&s0, &s3));
+  ASSERT_FALSE(string_equals(s0, s3));
   ASSERT_STR_COMPARE(s0, >, s3);
-  ASSERT_TRUE(string_equals(&s1, &s0));
+  ASSERT_TRUE(string_equals(s1, s0));
   ASSERT_STR_COMPARE(s1, ==, s0);
-  ASSERT_TRUE(string_equals(&s1, &s1));
+  ASSERT_TRUE(string_equals(s1, s1));
   ASSERT_STR_COMPARE(s1, ==, s1);
-  ASSERT_FALSE(string_equals(&s1, &s2));
+  ASSERT_FALSE(string_equals(s1, s2));
   ASSERT_STR_COMPARE(s1, >, s2);
-  ASSERT_FALSE(string_equals(&s1, &s3));
+  ASSERT_FALSE(string_equals(s1, s3));
   ASSERT_STR_COMPARE(s1, >, s3);
-  ASSERT_FALSE(string_equals(&s2, &s0));
+  ASSERT_FALSE(string_equals(s2, s0));
   ASSERT_STR_COMPARE(s2, <, s0);
-  ASSERT_FALSE(string_equals(&s2, &s1));
+  ASSERT_FALSE(string_equals(s2, s1));
   ASSERT_STR_COMPARE(s2, <, s1);
-  ASSERT_TRUE(string_equals(&s2, &s2));
+  ASSERT_TRUE(string_equals(s2, s2));
   ASSERT_STR_COMPARE(s2, ==, s2);
-  ASSERT_FALSE(string_equals(&s2, &s3));
+  ASSERT_FALSE(string_equals(s2, s3));
   ASSERT_STR_COMPARE(s2, <, s3);
-  ASSERT_FALSE(string_equals(&s3, &s0));
+  ASSERT_FALSE(string_equals(s3, s0));
   ASSERT_STR_COMPARE(s3, <, s0);
-  ASSERT_FALSE(string_equals(&s3, &s1));
+  ASSERT_FALSE(string_equals(s3, s1));
   ASSERT_STR_COMPARE(s3, <, s1);
-  ASSERT_FALSE(string_equals(&s3, &s2));
+  ASSERT_FALSE(string_equals(s3, s2));
   ASSERT_STR_COMPARE(s3, >, s2);
-  ASSERT_TRUE(string_equals(&s3, &s3));
+  ASSERT_TRUE(string_equals(s3, s3));
   ASSERT_STR_COMPARE(s3, ==, s3);
 
 #undef ASSERT_STR_COMPARE
@@ -77,10 +72,9 @@ TEST(string, string_buffer_simple) {
   string_buffer_init(&buf);
 
   string_buffer_printf(&buf, "[%s: %i]", "test", 8);
-  string_t str;
-  string_buffer_flush(&buf, &str);
-  string_t expected = new_string("[test: 8]");
-  ASSERT_STREQ(&expected, &str);
+  utf8_t str = string_buffer_flush(&buf);
+  utf8_t expected = new_c_string("[test: 8]");
+  ASSERT_STREQ(expected, str);
 
   string_buffer_dispose(&buf);
 }
@@ -92,10 +86,9 @@ TEST(string, string_buffer_concat) {
   string_buffer_printf(&buf, "foo");
   string_buffer_printf(&buf, "bar");
   string_buffer_printf(&buf, "baz");
-  string_t str;
-  string_buffer_flush(&buf, &str);
-  string_t expected = new_string("foobarbaz");
-  ASSERT_STREQ(&expected, &str);
+  utf8_t str = string_buffer_flush(&buf);
+  utf8_t expected = new_c_string("foobarbaz");
+  ASSERT_STREQ(expected, str);
 
   string_buffer_dispose(&buf);
 }
@@ -108,11 +101,10 @@ TEST(string, string_buffer_long) {
   for (size_t i = 0; i < 1024; i++)
     string_buffer_printf(&buf, "0123456789");
   // Check that it's correct.
-  string_t str;
-  string_buffer_flush(&buf, &str);
-  ASSERT_EQ(10240, string_length(&str));
+  utf8_t str = string_buffer_flush(&buf);
+  ASSERT_EQ(10240, string_size(str));
   for (size_t i = 0; i < 10240; i++) {
-    ASSERT_EQ((char) ('0' + (i % 10)), string_char_at(&str, i));
+    ASSERT_EQ((char) ('0' + (i % 10)), string_byte_at(str, i));
   }
 
   string_buffer_dispose(&buf);

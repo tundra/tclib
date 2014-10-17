@@ -19,12 +19,17 @@
   ((__STATIC_STRLEN__(str) <= 2) ? '\0' : str[__STATIC_STRLEN__(str) - 1]),    \
 }}
 
-// Wraps a string_t around a C string.
-static string_t new_string(const char *value) {
-  string_t result;
-  result.length = strlen(value);
-  result.chars = value;
+// Wraps a string_t around a character array and a length.
+static utf8_t new_string(const char *chars, size_t size) {
+  utf8_t result;
+  result.size = size;
+  result.chars = chars;
   return result;
+}
+
+// Wraps a string_t around a C string.
+static utf8_t new_c_string(const char *value) {
+  return new_string(value, strlen(value));
 }
 
 #endif // _TCLIB_STRING_INL_H

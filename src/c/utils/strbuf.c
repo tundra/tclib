@@ -3,6 +3,7 @@
 
 #include "check.h"
 #include "strbuf.h"
+#include "string-inl.h"
 
 void string_buffer_init(string_buffer_t *buf) {
   buf->length = 0;
@@ -25,11 +26,11 @@ static void string_buffer_ensure_capacity(string_buffer_t *buf,
   buf->memory = new_memory;
 }
 
-void string_buffer_append(string_buffer_t *buf, string_t *str) {
-  string_buffer_ensure_capacity(buf, buf->length + string_length(str));
+void string_buffer_append(string_buffer_t *buf, utf8_t str) {
+  string_buffer_ensure_capacity(buf, buf->length + string_size(str));
   char *chars = (char*) buf->memory.memory;
   string_copy_to(str, chars + buf->length, buf->memory.size - buf->length);
-  buf->length += string_length(str);
+  buf->length += string_size(str);
 }
 
 void string_buffer_putc(string_buffer_t *buf, char c) {
@@ -59,8 +60,8 @@ void string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
   // TODO: fix this if we ever hit it.
   CHECK_REL("temp buffer too small", written, <, kMaxSize);
   // Then write the temp string into the string buffer.
-  string_t data = {written, buffer};
-  string_buffer_append(buf, &data);
+  utf8_t data = {written, buffer};
+  string_buffer_append(buf, data);
 }
 
 static format_handler_o **get_format_handler_ref(int c) {
@@ -107,9 +108,7 @@ void string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
           // Ideally the string's length would be given somehow but alas that's
           // not really possibly through var args.
           const char *c_str = va_arg(argp, const char *);
-          string_t str;
-          string_init(&str, c_str);
-          string_buffer_append(buf, &str);
+          string_buffer_append(buf, new_c_string(c_str));
           break;
         }
         case 'i':
@@ -174,12 +173,11 @@ void string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
   }
 }
 
-void string_buffer_flush(string_buffer_t *buf, string_t *str_out) {
+utf8_t string_buffer_flush(string_buffer_t *buf) {
   CHECK_REL("no room for null terminator", buf->length, <, buf->memory.size);
   char *chars = (char*) buf->memory.memory;
   chars[buf->length] = '\0';
-  str_out->length = buf->length;
-  str_out->chars = chars;
+  return new_string(chars, buf->length);
 }
 
 void register_format_handler(char c, format_handler_o *handler) {
