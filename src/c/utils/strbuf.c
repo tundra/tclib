@@ -137,6 +137,11 @@ void string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
               break;
           }
           break;
+        case 'x': {
+          int value = (int) va_arg(argp, int);
+          string_buffer_native_printf(buf, "%x", value);
+          break;
+        }
         case 'f': {
           double value = (double) va_arg(argp, double);
           string_buffer_native_printf(buf, "%f", value);
