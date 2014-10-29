@@ -16,20 +16,29 @@ typedef struct {
   uint64_t tempering_matrix;
 } tinymt64_params_t;
 
+// Dynamic state that changes for each new value returned from the twister.
+// It's wrapped in a struct (ideally it would be a typedef) to make by-value
+// assignment work.
+typedef struct {
+  uint64_t data[2];
+} tinymt64_state_t;
+
 // The internal state of a mersenne twister.
 typedef struct {
   // Current "hidden" state.
-  uint64_t status[2];
+  tinymt64_state_t state;
   // Constant parameters.
   tinymt64_params_t params;
 } tinymt64_t;
 
 // Initialize the tiny twister state based on the given seed.
-void tinymt64_init(tinymt64_t *tinymt, tinymt64_params_t params, uint64_t seed);
+tinymt64_t new_tinymt64(tinymt64_params_t params, uint64_t seed);
 
 // Returns the default parameters. These are known to produce a decent output.
 tinymt64_params_t tinymt64_params_default();
 
-// Returns the next uint64_t generated from the given Mersenne twister, updating
-// the internal state.
-uint64_t tinymt64_next_uint64(tinymt64_t *tinymt);
+// Returns the next uint64_t generated from the given Mersenne twister, storing
+// the new internal state through the state output parameter. It's fine for the
+// output state to point to the other parameter's state if that's convenient
+// but it's not a requirement.
+uint64_t tinymt64_next_uint64(const tinymt64_t *tinymt, tinymt64_state_t *state_out);

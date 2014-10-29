@@ -138,8 +138,30 @@ void string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
           }
           break;
         case 'x': {
-          int value = (int) va_arg(argp, int);
-          string_buffer_native_printf(buf, "%x", value);
+          switch (l_count) {
+            case 0: {
+              int value = va_arg(argp, int);
+              string_buffer_native_printf(buf, "%x", value);
+              break;
+            }
+            case 1: {
+              long value = va_arg(argp, long);
+              string_buffer_native_printf(buf, "%lx", value);
+              break;
+            }
+            case 2: {
+              long long value = va_arg(argp, long long);
+              string_buffer_native_printf(buf, "%llx", value);
+              break;
+            }
+            default:
+              // Emit what we just read since we couldn't make sense of it.
+              string_buffer_putc(buf, '%');
+              for (size_t i = 0; i < l_count; i++)
+                string_buffer_putc(buf, 'l');
+              string_buffer_putc(buf, 'x');
+              break;
+          }
           break;
         }
         case 'f': {

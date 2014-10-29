@@ -7,14 +7,12 @@ BEGIN_C_INCLUDES
 #include "utils/tinymt.h"
 END_C_INCLUDES
 
-
 TEST(tinymt, examples) {
   tinymt64_params_t params;
   params.transition_matrix_1 = 0xfa051f40;
   params.transition_matrix_2 = 0xffd0fff4;
   params.tempering_matrix = 0x58d02ffeffbfffbc;
-  tinymt64_t mt0;
-  tinymt64_init(&mt0, params, 1);
+  tinymt64_t mt0 = new_tinymt64(params, 1);
   uint64_t o0[30] = {
       15503804787016557143ULL, 17280942441431881838ULL, 2177846447079362065ULL,
       10087979609567186558ULL, 8925138365609588954ULL,  13030236470185662861ULL,
@@ -27,6 +25,6 @@ TEST(tinymt, examples) {
       10700258834832712655ULL, 13440132573874649640ULL, 15190104899818839732ULL,
       14179849157427519166ULL, 10328306841423370385ULL, 9266343271776906817ULL
   };
-  for (size_t i = 0; i < 8; i++)
-    ASSERT_EQ(o0[i], tinymt64_next_uint64(&mt0));
+  for (size_t i = 0; i < 30; i++)
+    ASSERT_EQ(o0[i], tinymt64_next_uint64(&mt0, &mt0.state));
 }
