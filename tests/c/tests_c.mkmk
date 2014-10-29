@@ -10,7 +10,8 @@ test_file_names = [
   "test_semaphore.cc",
   "test_stdc.cc",
   "test_string.cc",
-  "test_thread.cc"
+  "test_thread.cc",
+  "test_tinymt.cc",
 ]
 
 # Compile a single test file, ensuring that the include paths are hooked up
