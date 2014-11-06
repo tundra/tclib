@@ -168,9 +168,13 @@ IF_CHECKS_ENABLED(__CHECK_CLASS_OPT__(derived_object_genus_t, dgGenus, EXPR, get
 #define CHECK_MUTABLE(EXPR)                                                    \
 IF_CHECKS_ENABLED(CHECK_TRUE("mutable", is_mutable(EXPR)))
 
-// Check that fails unless the given expression is in a mutable mode.
+// Check that fails unless the given expression is deep frozen.
 #define CHECK_DEEP_FROZEN(EXPR)                                                \
 IF_CHECKS_ENABLED(CHECK_TRUE("deep frozen", peek_deep_frozen(EXPR)))
+
+// Check that fails unless the given expression is frozen.
+#define CHECK_FROZEN(EXPR)                                                     \
+IF_CHECKS_ENABLED(CHECK_TRUE("frozen", is_frozen(EXPR)))
 
 // Check that fails unless the object is in the specified family or nothing.
 #define CHECK_FAMILY_OPT(ofFamily, EXPR)                                       \
