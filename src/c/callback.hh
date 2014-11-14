@@ -492,14 +492,20 @@ callback_t<R(void)> new_callback(R (B0::*invoker)(B1), B0 *b0, B1 b1, B2 b2) {
   return callback_t<R(void)>(new method_binder_3_t<R, B0, B1, B2>(invoker, b0, b1, b2));
 }
 
+// Marker type that indicates a null/empty callback.
+struct null_callback_t { };
+
 template <typename R, typename A0>
 class callback_t<R(A0)> : public abstract_callback_t {
 public:
+
   // This is mainly used for consistency and validation: the binder used by this
   // callback should be of this type.
   typedef binder_t<R, A0> my_binder_t;
 
   callback_t() : abstract_callback_t() { }
+
+  callback_t(null_callback_t null) : abstract_callback_t(NULL) { }
 
   R operator()(A0 a0) {
     return (static_cast<my_binder_t*>(binder_))->call(a0);
@@ -510,10 +516,22 @@ private:
   friend callback_t<FR(FA0)> new_callback(FR (*)(FA0));
   template <typename FR, typename FA0, typename FB0>
   friend callback_t<FR(FA0)> new_callback(FR (*)(FB0, FA0), FB0);
+  template <typename FR, typename FA0, typename FB0, typename FB1>
+  friend callback_t<FR(FA0)> new_callback(FR (*)(FB0, FB1, FA0), FB0, FB1);
   template <typename FR, typename FA0, typename FB0>
   friend callback_t<FR(FA0)> new_callback(FR (FB0::*)(FA0), FB0*);
+  template <typename FR, typename FA0, typename FB0, typename FB1>
+  friend callback_t<FR(FA0)> new_callback(FR (FB0::*invoker)(FB1, FA0), FB0 *b0, FB1 b1);
   callback_t(my_binder_t *binder) : abstract_callback_t(binder) { }
 };
+
+// Returns a value that can be passed as any callback. This relies on an
+// implicit conversion happening so the types may not always add up if you're
+// doing complex type stuff.
+static inline struct null_callback_t empty_callback() {
+  null_callback_t result;
+  return result;
+}
 
 template <typename R, typename A0>
 callback_t<R(A0)> new_callback(R (*invoker)(A0)) {
@@ -525,9 +543,19 @@ callback_t<R(A0)> new_callback(R (*invoker)(B0, A0), B0 b0) {
   return callback_t<R(A0)>(new function_binder_1_t<R, B0, A0>(invoker, b0));
 }
 
+template <typename R, typename A0, typename B0, typename B1>
+callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, A0), B0 b0, B1 b1) {
+  return callback_t<R(A0)>(new function_binder_2_t<R, B0, B1, A0>(invoker, b0, b1));
+}
+
 template <typename R, typename A0, typename B0>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(A0), B0 *b0) {
   return callback_t<R(A0)>(new method_binder_1_t<R, B0, A0>(invoker, b0));
+}
+
+template <typename R, typename A0, typename B0, typename B1>
+callback_t<R(A0)> new_callback(R (B0::*invoker)(B1, A0), B0 *b0, B1 b1) {
+  return callback_t<R(A0)>(new method_binder_2_t<R, B0, B1, A0>(invoker, b0, b1));
 }
 
 template <typename R, typename A0>

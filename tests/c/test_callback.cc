@@ -129,3 +129,8 @@ TEST(callback, methods) {
   ASSERT_EQ(49, c4());
   ASSERT_EQ(17, testy.ticks_);
 }
+
+TEST(callback, empty) {
+  callback_t<int(void*)> e = empty_callback();
+  ASSERT_TRUE(e.is_empty());
+}
