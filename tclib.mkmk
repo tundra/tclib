@@ -3,3 +3,7 @@
 
 include('src', 'c', 'src_c.mkmk')
 include('tests', 'c', 'tests_c.mkmk')
+
+all = add_alias("all")
+all.add_member(get_external("src", "c", "all"))
+all.add_member(get_external("tests", "c", "all"))

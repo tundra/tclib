@@ -13,7 +13,7 @@
 // --- S i g n a l   h a n d l i n g ---
 
 // Print a stack trace if the platform supports it.
-void print_stack_trace(open_file_t *out, int signum);
+void print_stack_trace(io_stream_t *out, int signum);
 
 // After handling the condition here, propagate it so that it doesn't get swallowed.
 void propagate_condition(int signum);
