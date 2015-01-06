@@ -29,7 +29,7 @@ public:
   // Was this invoker initialized using the no-arg constructor, or with a NULL
   // function pointer.
   bool is_empty() {
-    return reinterpret_cast<void**>(data_)[0] == NULL;
+    return data_[0] == NULL;
   }
 
   // Cast the opaque pointer back to the original type. The caller is
@@ -41,12 +41,16 @@ public:
     return result;
   }
 
-  // The max size a function or method pointer can have.
-  static const size_t kMaxSize = (WORD_SIZE << 1);
+  // The max size a function or method pointer can have in bytes.
+  static const size_t kMaxSize = 2 * sizeof(void*);
 
 private:
-  // The raw data that holds the invoker.
-  uint8_t data_[kMaxSize];
+  // The raw data that holds the invoker. This is stored in an array of void*s
+  // because the type doesn't really matter but for is_empty it's convenient
+  // to be able to read a decent-size chunk of the data as one word so to not
+  // have to do too much casting which makes strict aliasing uncomfortable we
+  // keep the data under void** the whole time.
+  void *data_[kMaxSize / sizeof(void*)];
 };
 
 // Implementation shared between binders. Also, this is the stuff that can be
