@@ -171,8 +171,8 @@ template <typename R,
           typename A3 = abstract_binder_t::no_arg_t>
 class method_binder_0_t : public binder_t<R, A0*, A1, A2, A3> {
 public:
-  method_binder_0_t()
-    : binder_t<R, A0*, A1, A2, A3>(abstract_binder_t::amAlloced) { }
+  method_binder_0_t(abstract_binder_t::alloc_mode_t mode)
+    : binder_t<R, A0*, A1, A2, A3>(mode) { }
 
   virtual R call(opaque_invoker_t invoker) {
     // ignore
@@ -190,6 +190,18 @@ public:
     invoker_t method = invoker.open<invoker_t>();
     return (a0->*(method))(a1);
   }
+
+  // For each choice of template parameters, returns the same shared binder
+  // instance.
+  static method_binder_0_t<R, A0, A1, A2, A3> *shared_instance() {
+    // See function_binder_0_t::shared_instance for the issues around
+    // concurrency.
+    static method_binder_0_t<R, A0, A1, A2, A3> *instance = NULL;
+    if (instance == NULL)
+      instance = new method_binder_0_t<R, A0, A1, A2, A3>(abstract_binder_t::amShared);
+    return instance;
+  }
+
 };
 
 // A binder that binds a single parameter. As with all the binders, this one is
@@ -570,7 +582,7 @@ callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, A0), B0 b0, B1 b1) {
 
 template <typename R, typename A0>
 callback_t<R(A0*)> new_callback(R (A0::*invoker)(void)) {
-  return callback_t<R(A0*)>(invoker, new method_binder_0_t<R, A0>());
+  return callback_t<R(A0*)>(invoker, method_binder_0_t<R, A0>::shared_instance());
 }
 
 template <typename R, typename A0, typename B0>
@@ -580,7 +592,7 @@ callback_t<R(A0)> new_callback(R (B0::*invoker)(A0), B0 *b0) {
 
 template <typename R, typename A0, typename A1>
 callback_t<R(A0*, A1)> new_callback(R (A0::*invoker)(A1)) {
-  return callback_t<R(A0*, A1)>(invoker, new method_binder_0_t<R, A0, A1>());
+  return callback_t<R(A0*, A1)>(invoker, method_binder_0_t<R, A0, A1>::shared_instance());
 }
 
 template <typename R, typename A0, typename B0, typename B1>
