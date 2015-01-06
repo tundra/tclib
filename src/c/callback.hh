@@ -150,6 +150,18 @@ public:
     invoker_t function = invoker.open<invoker_t>();
     return function(a0, a1);
   }
+
+  // For each choice of template parameters, returns the same shared binder
+  // instance.
+  static function_binder_0_t<R, A0, A1, A2, A3> *shared_instance() {
+    // This is not strictly thread safe but the worst that can happen if there
+    // is a race condition during initialization should be leaking shared
+    // instances which is unfortunate but should be benign.
+    static function_binder_0_t<R, A0, A1, A2, A3> *instance = NULL;
+    if (instance == NULL)
+      instance = new function_binder_0_t<R, A0, A1, A2, A3>(abstract_binder_t::amShared);
+    return instance;
+  }
 };
 
 template <typename R,
@@ -479,16 +491,11 @@ public:
   callback_t() : abstract_callback_t() { }
   callback_t(opaque_invoker_t invoker, my_binder_t *binder) : abstract_callback_t(invoker, binder) { }
   callback_t(null_callback_t) : abstract_callback_t() { }
-  callback_t(R (*invoker)(void)) : abstract_callback_t(invoker, my_default_binder()) { }
+  callback_t(R (*invoker)(void))
+    : abstract_callback_t(invoker, function_binder_0_t<R>::shared_instance()) { }
 
   R operator()() {
     return (static_cast<my_binder_t*>(binder_))->call(invoker_);
-  }
-
-private:
-  static function_binder_0_t<R> *my_default_binder() {
-    static function_binder_0_t<R> kMyDefaultBinder(abstract_binder_t::amShared);
-    return &kMyDefaultBinder;
   }
 };
 
@@ -538,16 +545,11 @@ public:
   callback_t(opaque_invoker_t invoker, my_binder_t *binder)
     : abstract_callback_t(invoker, binder) { }
   callback_t(null_callback_t) : abstract_callback_t() { }
-  callback_t(R (*invoker)(A0)) : abstract_callback_t(invoker, my_default_binder()) { }
+  callback_t(R (*invoker)(A0))
+    : abstract_callback_t(invoker, function_binder_0_t<R, A0>::shared_instance()) { }
 
   R operator()(A0 a0) {
     return (static_cast<my_binder_t*>(binder_))->call(invoker_, a0);
-  }
-
-private:
-  static function_binder_0_t<R, A0> *my_default_binder() {
-    static function_binder_0_t<R, A0> kMyDefaultBinder(abstract_binder_t::amShared);
-    return &kMyDefaultBinder;
   }
 };
 
@@ -596,16 +598,11 @@ public:
   callback_t() : abstract_callback_t() { }
   callback_t(opaque_invoker_t invoker, my_binder_t *binder) : abstract_callback_t(invoker, binder) { }
   callback_t(null_callback_t) : abstract_callback_t() { }
-  callback_t(R (*invoker)(A0, A1)) : abstract_callback_t(invoker, my_default_binder()) { }
+  callback_t(R (*invoker)(A0, A1))
+    : abstract_callback_t(invoker, function_binder_0_t<R, A0, A1>::shared_instance()) { }
 
   R operator()(A0 a0, A1 a1) {
     return (static_cast<my_binder_t*>(binder_))->call(invoker_, a0, a1);
-  }
-
-private:
-  static function_binder_0_t<R, A0, A1> *my_default_binder() {
-    static function_binder_0_t<R, A0, A1> kMyDefaultBinder(abstract_binder_t::amShared);
-    return &kMyDefaultBinder;
   }
 };
 

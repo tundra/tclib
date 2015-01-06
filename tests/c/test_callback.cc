@@ -146,3 +146,12 @@ TEST(callback, empty) {
   callback_t<int(void*)> e = empty_callback();
   ASSERT_TRUE(e.is_empty());
 }
+
+int return_one() {
+  return 1;
+}
+
+TEST(callback, link_one) {
+  callback_t<int(void)> callback = return_one;
+  ASSERT_EQ(1, callback());
+}
