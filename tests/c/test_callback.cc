@@ -155,3 +155,64 @@ TEST(callback, link_one) {
   callback_t<int(void)> callback = return_one;
   ASSERT_EQ(1, callback());
 }
+
+int f0() { return 100; }
+int f1(int a) { return a; }
+int f2(int a, int b) { return 10 * f1(a) + b; }
+int f3(int a, int b, int c) { return 10 * f2(a, b) + c; }
+int f4(int a, int b, int c, int d) { return 10 * f3(a, b, c) + d; }
+
+class M {
+public:
+  int m0() { return 200; }
+  int m1(int a) { return a; }
+  int m2(int a, int b) { return m1(a) + 10 * b; }
+  int m3(int a, int b, int c) { return m2(a, b) + 10 * c; }
+};
+
+TEST(callback, matrix) {
+  M m;
+  callback_t<int(void)> if0 = new_callback(f0);
+  ASSERT_EQ(100, if0());
+  callback_t<int(void)> if1 = new_callback(f1, 1);
+  ASSERT_EQ(1, if1());
+  callback_t<int(void)> if2 = new_callback(f2, 2, 3);
+  ASSERT_EQ(23, if2());
+  callback_t<int(void)> if3 = new_callback(f3, 4, 5, 6);
+  ASSERT_EQ(456, if3());
+  callback_t<int(void)> im0 = new_callback(&M::m0, &m);
+  ASSERT_EQ(200, im0());
+  callback_t<int(void)> im1 = new_callback(&M::m1, &m, 1);
+  ASSERT_EQ(1, im1());
+  callback_t<int(void)> im2 = new_callback(&M::m2, &m, 2, 3);
+  ASSERT_EQ(32, im2());
+
+  callback_t<int(int)> iif1 = new_callback(f1);
+  ASSERT_EQ(4, iif1(4));
+  callback_t<int(int)> iif2 = new_callback(f2, 5);
+  ASSERT_EQ(56, iif2(6));
+  callback_t<int(int)> iif3 = new_callback(f3, 7, 8);
+  ASSERT_EQ(789, iif3(9));
+  callback_t<int(M*)> imm0 = new_callback(&M::m0);
+  ASSERT_EQ(200, imm0(&m));
+  callback_t<int(int)> iim1 = new_callback(&M::m1, &m);
+  ASSERT_EQ(4, iim1(4));
+  callback_t<int(int)> iim2 = new_callback(&M::m2, &m, 5);
+  ASSERT_EQ(65, iim2(6));
+
+  callback_t<int(int, int)> iiif2 = new_callback(f2);
+  ASSERT_EQ(78, iiif2(7, 8));
+  callback_t<int(int, int)> iiif3 = new_callback(f3, 9);
+  ASSERT_EQ(111, iiif2(10, 11));
+  callback_t<int(M*, int)> imim1 = new_callback(&M::m1);
+  ASSERT_EQ(9, imim1(&m, 9));
+
+  callback_t<int(int, int, int)> iiiif3 = new_callback(f3);
+  ASSERT_EQ(1344, iiiif3(12, 13, 14));
+  callback_t<int(int, int, int)> iiiif4 = new_callback(f4, 15);
+  ASSERT_EQ(16788, iiiif4(16, 17, 18));
+  callback_t<int(M*, int, int)> iiiim2 = new_callback(&M::m2);
+  ASSERT_EQ(175, iiiim2(&m, 15, 16));
+  callback_t<int(int, int, int)> iiiim3 = new_callback(&M::m3, &m);
+  ASSERT_EQ(387, iiiim3(17, 18, 19));
+}
