@@ -15,4 +15,6 @@
 #  define _GLIBCXX_PERMIT_BACKWARD_HASH
 #  include <hash_map>
 #  define platform_hash_map __gnu_cxx::hash_map
+#  include <hash_fun.h>
+#  define platform_hash __gnu_cxx::hash
 #endif
