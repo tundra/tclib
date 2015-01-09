@@ -9,12 +9,12 @@
 namespace tclib {
 
 template <typename T, typename E>
-T &promise_state_t<T, E>::get_value() {
+const T &promise_state_t<T, E>::get_value() {
   return *pointers_.as_value;
 }
 
 template <typename T, typename E>
-E &promise_state_t<T, E>::get_error() {
+const E &promise_state_t<T, E>::get_error() {
   return *pointers_.as_error;
 }
 
@@ -89,12 +89,12 @@ bool promise_state_t<T, E>::fail(const E &error) {
 }
 
 template <typename T, typename E>
-T promise_state_t<T, E>::get_value(T if_unfulfilled) {
+const T &promise_state_t<T, E>::get_value(const T &if_unfulfilled) {
   return (state_ == psSucceeded) ? get_value() : if_unfulfilled;
 }
 
 template <typename T, typename E>
-E promise_state_t<T, E>::get_error(E if_unfulfilled) {
+const E &promise_state_t<T, E>::get_error(const E &if_unfulfilled) {
   return (state_ == psFailed) ? get_error() : if_unfulfilled;
 }
 

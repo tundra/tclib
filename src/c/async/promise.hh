@@ -20,8 +20,8 @@ public:
   bool fulfill(const T &value);
   bool fail(const E &value);
   bool is_empty() { return state_ == psEmpty; }
-  T get_value(T if_unfulfilled);
-  E get_error(E if_unfulfilled);
+  const T &get_value(const T &if_unfulfilled);
+  const E &get_error(const E &if_unfulfilled);
   void on_success(SuccessAction action);
   void on_failure(FailureAction action);
   void ref();
@@ -38,8 +38,8 @@ private:
   std::vector<FailureAction> on_failures_;
   // These will return the raw value or error; only call them after the
   // promise has been fulfilled.
-  T &get_value();
-  E &get_error();
+  const T &get_value();
+  const E &get_error();
   // These must be used to set the value or error. If you try to set them by
   // assigning to one of the get_* methods you're going to have a bad time.
   void set_value(const T &value);
@@ -100,11 +100,11 @@ public:
 
   // Returns the value this promise resolved to or, if it hasn't been resolved
   // yet, the given default value.
-  T get_value(T otherwise) { return state_->get_value(otherwise); }
+  const T &get_value(const T &otherwise) { return state_->get_value(otherwise); }
 
   // Returns the error this promise failed to or, if it hasn't been resolved
   // yet, the given default value.
-  E get_error(E otherwise) { return state_->get_error(otherwise); }
+  const E &get_error(const E &otherwise) { return state_->get_error(otherwise); }
 
   // Copy constructor that makes sure to ref the state so it doesn't get
   // disposed when 'that' is deleted.
