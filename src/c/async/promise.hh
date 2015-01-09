@@ -43,7 +43,11 @@ private:
   union {
     uint8_t as_value[sizeof(T)];
     uint8_t as_error[sizeof(E)];
-  } data_;
+  } memory_;
+  union {
+    T *as_value;
+    E *as_error;
+  } pointers_;
 };
 
 template <typename T, typename E>

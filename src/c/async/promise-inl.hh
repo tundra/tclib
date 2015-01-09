@@ -10,22 +10,24 @@ namespace tclib {
 
 template <typename T, typename E>
 T &promise_state_t<T, E>::get_value() {
-  return *reinterpret_cast<T*>(data_.as_value);
+  return *pointers_.as_value;
 }
 
 template <typename T, typename E>
 E &promise_state_t<T, E>::get_error() {
-  return *reinterpret_cast<E*>(data_.as_error);
+  return *pointers_.as_error;
 }
 
 template <typename T, typename E>
 void promise_state_t<T, E>::set_value(const T &value) {
-  new (data_.as_value) T(value);
+  // This should really be an assignment but it's tricky to do without running
+  // afoul of strict aliasing. This looks pretty awful but works.
+  pointers_.as_value = new (memory_.as_value) T(value);
 }
 
 template <typename T, typename E>
 void promise_state_t<T, E>::set_error(const E &error) {
-  new (data_.as_error) E(error);
+  pointers_.as_error = new (memory_.as_error) E(error);
 }
 
 template <typename T, typename E>
@@ -34,8 +36,8 @@ promise_state_t<T, E>::promise_state_t()
   , state_(psEmpty) {
   // These two overlap so really there is some redundancy here but the compiler
   // can probably figure it out, if not it doesn't matter.
-  memset(data_.as_value, 0, sizeof(T));
-  memset(data_.as_error, 0, sizeof(E));
+  memset(memory_.as_value, 0, sizeof(T));
+  memset(memory_.as_error, 0, sizeof(E));
 }
 
 template <typename T, typename E>
