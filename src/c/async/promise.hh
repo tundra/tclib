@@ -22,8 +22,6 @@ public:
   bool is_empty() { return state_ == psEmpty; }
   T get_value(T if_unfulfilled);
   E get_error(E if_unfulfilled);
-  T &as_value() { return *reinterpret_cast<T*>(data_.as_value); }
-  E &as_error() { return *reinterpret_cast<E*>(data_.as_error); }
   void on_success(SuccessAction action);
   void on_failure(FailureAction action);
   void ref();
@@ -38,6 +36,10 @@ private:
   state_t state_;
   std::vector<SuccessAction> on_successes_;
   std::vector<FailureAction> on_failures_;
+  T &get_value();
+  E &get_error();
+  void set_value(const T &value);
+  void set_error(const E &error);
   union {
     uint8_t as_value[sizeof(T)];
     uint8_t as_error[sizeof(E)];

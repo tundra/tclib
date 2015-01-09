@@ -9,6 +9,26 @@
 namespace tclib {
 
 template <typename T, typename E>
+T &promise_state_t<T, E>::get_value() {
+  return *reinterpret_cast<T*>(data_.as_value);
+}
+
+template <typename T, typename E>
+E &promise_state_t<T, E>::get_error() {
+  return *reinterpret_cast<E*>(data_.as_error);
+}
+
+template <typename T, typename E>
+void promise_state_t<T, E>::set_value(const T &value) {
+  new (data_.as_value) T(value);
+}
+
+template <typename T, typename E>
+void promise_state_t<T, E>::set_error(const E &error) {
+  new (data_.as_error) E(error);
+}
+
+template <typename T, typename E>
 promise_state_t<T, E>::promise_state_t()
   : refcount_(0)
   , state_(psEmpty) {
@@ -21,9 +41,9 @@ promise_state_t<T, E>::promise_state_t()
 template <typename T, typename E>
 promise_state_t<T, E>::~promise_state_t() {
   if (state_ == psSucceeded) {
-    as_value().~T();
+    get_value().~T();
   } else if (state_ == psFailed) {
-    as_error().~E();
+    get_error().~E();
   }
 }
 
@@ -32,7 +52,7 @@ bool promise_state_t<T, E>::fulfill(const T &value) {
   if (state_ != psEmpty)
     return false;
   state_ = psSucceeded;
-  as_value() = value;
+  set_value(value);
   for (size_t i = 0; i < on_successes_.size(); i++)
     (on_successes_[i])(value);
   on_successes_.clear();
@@ -40,25 +60,25 @@ bool promise_state_t<T, E>::fulfill(const T &value) {
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::fail(const E &value) {
+bool promise_state_t<T, E>::fail(const E &error) {
   if (state_ != psEmpty)
     return false;
   state_ = psFailed;
-  as_error() = value;
+  set_error(error);
   for (size_t i = 0; i < on_failures_.size(); i++)
-    (on_failures_[i])(value);
+    (on_failures_[i])(error);
   on_failures_.clear();
   return true;
 }
 
 template <typename T, typename E>
 T promise_state_t<T, E>::get_value(T if_unfulfilled) {
-  return (state_ == psSucceeded) ? as_value() : if_unfulfilled;
+  return (state_ == psSucceeded) ? get_value() : if_unfulfilled;
 }
 
 template <typename T, typename E>
 E promise_state_t<T, E>::get_error(E if_unfulfilled) {
-  return (state_ == psFailed) ? as_error() : if_unfulfilled;
+  return (state_ == psFailed) ? get_error() : if_unfulfilled;
 }
 
 template <typename T, typename E>
@@ -66,7 +86,7 @@ void promise_state_t<T, E>::on_success(SuccessAction action) {
   if (state_ == psEmpty) {
     on_successes_.push_back(action);
   } else if (state_ == psSucceeded) {
-    action(as_value());
+    action(get_value());
   }
 }
 
@@ -75,7 +95,7 @@ void promise_state_t<T, E>::on_failure(FailureAction action) {
   if (state_ == psEmpty) {
     on_failures_.push_back(action);
   } else if (state_ == psFailed) {
-    action(as_error());
+    action(get_error());
   }
 }
 
