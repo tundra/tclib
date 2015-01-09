@@ -4,6 +4,13 @@
 #ifndef _TCLIB_CALLBACK_HH
 #define _TCLIB_CALLBACK_HH
 
+// Callback infrastructure.
+//
+// Strictly, this file should be split in two and all the implementations should
+// be in an -inl file but there is so much redundancy with all the different
+// arg counts that introducing a new source is more of a problem than having
+// everything in the same file.
+
 #include "stdc.h"
 
 namespace tclib {

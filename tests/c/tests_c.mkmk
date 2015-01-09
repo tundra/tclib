@@ -9,6 +9,7 @@ test_file_names = [
   "test_file.cc",
   "test_mutex.cc",
   "test_ook.cc",
+  "test_promise.cc",
   "test_semaphore.cc",
   "test_stdc.cc",
   "test_string.cc",
@@ -27,6 +28,7 @@ def compile_test_file(source):
 test_library = get_group("library")
 test_library.add_dependency(get_external('src', 'c', 'io', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'sync', 'library'))
+test_library.add_dependency(get_external('src', 'c', 'async', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'stderr-fail'))
 

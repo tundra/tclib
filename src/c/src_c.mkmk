@@ -4,10 +4,12 @@
 include('test', 'src_c_test.mkmk')
 include('utils', 'src_c_utils.mkmk')
 include('sync', 'src_c_sync.mkmk')
+include('async', 'src_c_async.mkmk')
 include('io', 'src_c_io.mkmk')
 
 all = get_group('all')
 all.add_member(get_external("src", "c", "test", "library"))
 all.add_member(get_external("src", "c", "utils", "library"))
 all.add_member(get_external("src", "c", "sync", "library"))
+all.add_member(get_external("src", "c", "async", "library"))
 all.add_member(get_external("src", "c", "io", "library"))
