@@ -36,14 +36,23 @@ private:
   state_t state_;
   std::vector<SuccessAction> on_successes_;
   std::vector<FailureAction> on_failures_;
+  // These will return the raw value or error; only call them after the
+  // promise has been fulfilled.
   T &get_value();
   E &get_error();
+  // These must be used to set the value or error. If you try to set them by
+  // assigning to one of the get_* methods you're going to have a bad time.
   void set_value(const T &value);
   void set_error(const E &error);
+  // The way values and errors are stored is a little intricate. Because of
+  // strict aliasing you can't just cast your way from the blocks of memory to
+  // the values, but -- the process of initializing the memory produces a
+  // pointer which is stored and used when reading the value.
   union {
     uint8_t as_value[sizeof(T)];
     uint8_t as_error[sizeof(E)];
   } memory_;
+  // Important note: these are only valid after the promise has been fulfilled.
   union {
     T *as_value;
     E *as_error;
@@ -86,7 +95,7 @@ public:
     return state_->fail(error);
   }
 
-  // Returns true iff this promise doesn't have its value set yet.
+  // Returns true iff this promise hasn't been resolved yet.
   bool is_empty() { return state_->is_empty(); }
 
   // Returns the value this promise resolved to or, if it hasn't been resolved
@@ -100,6 +109,17 @@ public:
   // Copy constructor that makes sure to ref the state so it doesn't get
   // disposed when 'that' is deleted.
   promise_t(const promise_t<T, E> &that) : state_(that.state_) { state_->ref(); }
+
+  // Assignment operator, also needs to ensure that states are reffed and
+  // dereffed appropriately.
+  promise_t<T, E> &operator=(const promise_t<T, E> &that) {
+    // These may point to the same state but as long as we ref before dereffing
+    // we just end up back where we started in that case.
+    that.state_->ref();
+    state_->deref();
+    state_ = that.state_;
+    return *this;
+  }
 
   // Adds a callback to be invoked when (if) this promise is successfully
   // resolved. If this promise has already been resolved the action is invoked
@@ -120,15 +140,6 @@ public:
   // passed through directly.
   template <typename T2>
   promise_t<T2, E> then(callback_t<T2(T)> mapper);
-
-  // Assignment operator, also needs to ensure that states are reffed and
-  // dereffed appropriately.
-  promise_t<T, E> &operator=(const promise_t<T, E> &that) {
-    that.state_->ref();
-    state_->deref();
-    state_ = that.state_;
-    return *this;
-  }
 
   // Returns a fresh empty promise.
   static promise_t<T, E> empty();

@@ -41,19 +41,17 @@ TEST(promise, reffing) {
 
 class A {
 public:
-  A(int* count) : count_(count) { adjust(1); }
-  A(const A& that) : count_(that.count_) { adjust(1); }
+  A(int* count)
+    : count_(count) { (*count_)++; }
+  A(const A& that)
+    : count_(that.count_) { (*count_)++; }
   A &operator=(const A& that) {
-    adjust(-1);
+    (*count_)--;
     count_ = that.count_;
-    adjust(1);
+    (*count_)++;
     return *this;
   }
-  ~A() { adjust(-1); }
-  void adjust(size_t delta) {
-    if (count_ != NULL)
-      (*count_) += delta;
-  }
+  ~A() { (*count_)--; }
 private:
   int *count_;
 };

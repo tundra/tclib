@@ -20,13 +20,25 @@ E &promise_state_t<T, E>::get_error() {
 
 template <typename T, typename E>
 void promise_state_t<T, E>::set_value(const T &value) {
-  // This should really be an assignment but it's tricky to do without running
-  // afoul of strict aliasing. This looks pretty awful but works.
+  // This is tricky but if you think about it long enough it turns out to do
+  // exactly what you want. What you want is to not have to construct the
+  // initial value and error; it's pointless work and requires them to have
+  // no-arg constructors for no particularly good reason. Instead we keep blank
+  // memory and initialize it when the promise is fulfilled. You could in
+  // principle use an assignment for that here -- cast the memory to T and then
+  // assign the value -- but that may cause operator= to be called where the
+  // thing being assigned has not been initialized (because it's just blank
+  // memory at this point). So instead we call the copy constructor on the
+  // memory, using placement new. That requires no assumptions about the
+  // contents of the memory, and it conveniently gives us back a pointer of the
+  // right type which we keep for later use; strict aliasing makes it really
+  // tricky to get this otherwise.
   pointers_.as_value = new (memory_.as_value) T(value);
 }
 
 template <typename T, typename E>
 void promise_state_t<T, E>::set_error(const E &error) {
+  // See the massive comment in set_value.
   pointers_.as_error = new (memory_.as_error) E(error);
 }
 
@@ -42,6 +54,9 @@ promise_state_t<T, E>::promise_state_t()
 
 template <typename T, typename E>
 promise_state_t<T, E>::~promise_state_t() {
+  // Because of the initialization trickery we'll only know dynamically whether
+  // the value or error have been initialized. Hence we need to call the
+  // destructor explicitly.
   if (state_ == psSucceeded) {
     get_value().~T();
   } else if (state_ == psFailed) {
