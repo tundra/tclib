@@ -4,6 +4,7 @@
 library_files = [
   "alloc.c",
   "crash.c",
+  "duration.c",
   "log.c",
   "strbuf.c",
   "string.c",

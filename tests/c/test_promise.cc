@@ -155,14 +155,14 @@ TEST(promise, then_failure) {
 }
 
 static void *run_sync_fulfiller(promise_t<int> p) {
-  p.fulfill(10);
+  ASSERT_TRUE(p.fulfill(10));
   return NULL;
 }
 
 static void *run_sync_waiter(NativeSemaphore *about_to_wait,
     NativeSemaphore *has_waited, sync_promise_t<int> p) {
   about_to_wait->release();
-  p.wait();
+  ASSERT_TRUE(p.wait());
   has_waited->release();
   ASSERT_EQ(10, p.peek_value(0));
   return NULL;
@@ -177,9 +177,8 @@ TEST(promise, sync_wait) {
   NativeThread waiter(new_callback(run_sync_waiter, &about_to_wait, &has_waited, p));
   ASSERT_TRUE(waiter.start());
   ASSERT_TRUE(about_to_wait.acquire());
-  // TODO: acquire with a timeout to give it some time to wait rather than
-  // immediately.
-  ASSERT_FALSE(has_waited.try_acquire());
+  // Wait for a short time to give the waiter time to actually wait.
+  ASSERT_FALSE(has_waited.acquire(duration_seconds(0.01)));
   NativeThread fulfiller(new_callback(run_sync_fulfiller, promise_t<int>(p)));
   ASSERT_TRUE(fulfiller.start());
   ASSERT_TRUE(has_waited.acquire());

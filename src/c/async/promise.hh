@@ -4,9 +4,9 @@
 #ifndef _TCLIB_PROMISE_HH
 #define _TCLIB_PROMISE_HH
 
-#include "stdc.h"
 #include "callback.hh"
 #include "std/stdvector.hh"
+#include "stdc.h"
 #include "sync/mutex.hh"
 
 namespace tclib {
@@ -185,7 +185,7 @@ public:
   sync_promise_state_t() { mutex_.initialize(); }
   virtual bool lock() { return mutex_.lock(); }
   virtual bool unlock() { return mutex_.unlock(); }
-  void wait();
+  bool wait(duration_t timeout);
 private:
   template <typename I>
   static void release_waiter(NativeSemaphore *sema, I ignore);
@@ -206,7 +206,7 @@ public:
 
   // Blocks this thread until this promise has been fulfilled. Once this returns
   // you can use the peek_ methods to get the value/error.
-  void wait() { return state()->wait(); }
+  bool wait(duration_t timeout = duration_unlimited()) { return state()->wait(timeout); }
 
 private:
   sync_promise_state_t<T, E> *state() { return static_cast<sync_promise_state_t<T, E>*>(promise_t<T, E>::state()); }

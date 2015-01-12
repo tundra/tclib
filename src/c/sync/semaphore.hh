@@ -31,9 +31,9 @@ public:
   // Initialize this semaphore, returning true on success.
   bool initialize();
 
-  // Attempt to acquire a permit from this semaphore, blocking until one if
-  // available if necessary.
-  bool acquire();
+  // Attempt to acquire a permit from this semaphore, blocking up to the given
+  // duration if necessary.
+  bool acquire(duration_t timeout = duration_unlimited());
 
   // Attempt to acquire a permit from this semaphore but will not wait if no
   // permits are available.

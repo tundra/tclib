@@ -98,3 +98,9 @@ TEST(semaphore, waiters) {
   ASSERT_TRUE(all_joined.acquire());
   join_monitor.join();
 }
+
+TEST(semaphore, timed_wait) {
+  NativeSemaphore sema(0);
+  ASSERT_TRUE(sema.initialize());
+  ASSERT_FALSE(sema.acquire(duration_millis(100)));
+}

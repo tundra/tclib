@@ -23,11 +23,27 @@ bool NativeSemaphore::platform_dispose() {
   return result == 0;
 }
 
-bool NativeSemaphore::acquire() {
-  int result = sem_wait(&sema_);
+bool NativeSemaphore::acquire(duration_t timeout) {
+  int result;
+  if (duration_is_unlimited(timeout)) {
+    result = sem_wait(&sema_);
+  } else {
+    // First grab the current time.
+    struct timespec spec;
+    if (clock_gettime(CLOCK_REALTIME, &spec) == -1)
+      return false;
+    uint64_t sec = spec.tv_sec;
+    uint64_t nsec = spec.tv_nsec;
+    duration_add_to_timespec(timeout, &sec, &nsec);
+    spec.tv_sec = sec;
+    spec.tv_nsec = nsec;
+    result = sem_timedwait(&sema_, &spec);
+  }
   if (result == 0)
     return true;
-  WARN("Call to sem_wait failed: %i (error: %s)", result, strerror(errno));
+  if (errno != ETIMEDOUT)
+    // Timing out is fine so only warn if it's a different error.
+    WARN("Call to sem_wait failed: %i (error: %s)", result, strerror(errno));
   return false;
 }
 

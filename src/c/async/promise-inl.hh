@@ -191,7 +191,7 @@ void sync_promise_state_t<T, E>::release_waiter(NativeSemaphore *sema, I ignore)
 }
 
 template <typename T, typename E>
-void sync_promise_state_t<T, E>::wait() {
+bool sync_promise_state_t<T, E>::wait(duration_t timeout) {
   lock();
   if (promise_state_t<T, E>::state_ == promise_state_t<T, E>::psEmpty) {
     // If multiple threads end up waiting for this promise this gives each of
@@ -207,9 +207,10 @@ void sync_promise_state_t<T, E>::wait() {
     // hang on to the mutex while we wait for someone else to fulfill the
     // promise.
     unlock();
-    sema.acquire();
+    return sema.acquire(timeout);
   } else {
     unlock();
+    return true;
   }
 }
 
