@@ -5,21 +5,39 @@
 #define _TCLIB_PROMISE_INL_HH
 
 #include "async/promise.hh"
+#include "sync/semaphore.hh"
 
 namespace tclib {
 
 template <typename T, typename E>
-const T &promise_state_t<T, E>::get_value() {
+promise_state_t<T, E>::Locker::Locker(promise_state_t<T, E> *state)
+  : state_(state) {
+  state_->lock();
+}
+
+template <typename T, typename E>
+promise_state_t<T, E>::Locker::~Locker() {
+  state_->unlock();
+}
+
+template <typename T, typename E>
+const T &promise_state_t<T, E>::unsafe_get_value() {
   return *pointers_.as_value;
 }
 
 template <typename T, typename E>
-const E &promise_state_t<T, E>::get_error() {
+const E &promise_state_t<T, E>::unsafe_get_error() {
   return *pointers_.as_error;
 }
 
 template <typename T, typename E>
-void promise_state_t<T, E>::set_value(const T &value) {
+bool promise_state_t<T, E>::is_empty() {
+  Locker lock(this);
+  return state_ == psEmpty;
+}
+
+template <typename T, typename E>
+void promise_state_t<T, E>::unsafe_set_value(const T &value) {
   // This is tricky but if you think about it long enough it turns out to do
   // exactly what you want. What you want is to not have to construct the
   // initial value and error; it's pointless work and requires them to have
@@ -37,15 +55,15 @@ void promise_state_t<T, E>::set_value(const T &value) {
 }
 
 template <typename T, typename E>
-void promise_state_t<T, E>::set_error(const E &error) {
+void promise_state_t<T, E>::unsafe_set_error(const E &error) {
   // See the massive comment in set_value.
   pointers_.as_error = new (memory_.as_error) E(error);
 }
 
 template <typename T, typename E>
 promise_state_t<T, E>::promise_state_t()
-  : refcount_(0)
-  , state_(psEmpty) {
+  : state_(psEmpty)
+  , refcount_(0) {
   // These two overlap so really there is some redundancy here but the compiler
   // can probably figure it out, if not it doesn't matter.
   memset(memory_.as_value, 0, sizeof(T));
@@ -58,18 +76,23 @@ promise_state_t<T, E>::~promise_state_t() {
   // the value or error have been initialized. Hence we need to call the
   // destructor explicitly.
   if (state_ == psSucceeded) {
-    get_value().~T();
+    unsafe_get_value().~T();
   } else if (state_ == psFailed) {
-    get_error().~E();
+    unsafe_get_error().~E();
   }
 }
 
 template <typename T, typename E>
 bool promise_state_t<T, E>::fulfill(const T &value) {
-  if (state_ != psEmpty)
-    return false;
-  state_ = psSucceeded;
-  set_value(value);
+  {
+    Locker lock(this);
+    if (state_ != psEmpty)
+      return false;
+    state_ = psSucceeded;
+    unsafe_set_value(value);
+  }
+  // At this point any new on_success added will be executed immediately so we
+  // have the vector for ourselves.
   for (size_t i = 0; i < on_successes_.size(); i++)
     (on_successes_[i])(value);
   on_successes_.clear();
@@ -78,10 +101,15 @@ bool promise_state_t<T, E>::fulfill(const T &value) {
 
 template <typename T, typename E>
 bool promise_state_t<T, E>::fail(const E &error) {
-  if (state_ != psEmpty)
-    return false;
-  state_ = psFailed;
-  set_error(error);
+  {
+    Locker lock(this);
+    if (state_ != psEmpty)
+      return false;
+    state_ = psFailed;
+    unsafe_set_error(error);
+  }
+  // At this point any new on_failure added will be executed immediately so we
+  // have the vector for ourselves.
   for (size_t i = 0; i < on_failures_.size(); i++)
     (on_failures_[i])(error);
   on_failures_.clear();
@@ -89,31 +117,39 @@ bool promise_state_t<T, E>::fail(const E &error) {
 }
 
 template <typename T, typename E>
-const T &promise_state_t<T, E>::get_value(const T &if_unfulfilled) {
-  return (state_ == psSucceeded) ? get_value() : if_unfulfilled;
+const T &promise_state_t<T, E>::peek_value(const T &if_unfulfilled) {
+  Locker lock(this);
+  return (state_ == psSucceeded) ? unsafe_get_value() : if_unfulfilled;
 }
 
 template <typename T, typename E>
-const E &promise_state_t<T, E>::get_error(const E &if_unfulfilled) {
-  return (state_ == psFailed) ? get_error() : if_unfulfilled;
+const E &promise_state_t<T, E>::peek_error(const E &if_unfulfilled) {
+  Locker lock(this);
+  return (state_ == psFailed) ? unsafe_get_error() : if_unfulfilled;
 }
 
 template <typename T, typename E>
 void promise_state_t<T, E>::on_success(SuccessAction action) {
-  if (state_ == psEmpty) {
-    on_successes_.push_back(action);
-  } else if (state_ == psSucceeded) {
-    action(get_value());
+  {
+    Locker lock(this);
+    if (state_ == psEmpty) {
+      on_successes_.push_back(action);
+      return;
+    }
   }
+  action(unsafe_get_value());
 }
 
 template <typename T, typename E>
 void promise_state_t<T, E>::on_failure(FailureAction action) {
-  if (state_ == psEmpty) {
-    on_failures_.push_back(action);
-  } else if (state_ == psFailed) {
-    action(get_error());
+  {
+    Locker lock(this);
+    if (state_ == psEmpty) {
+      on_failures_.push_back(action);
+      return;
+    }
   }
+  action(unsafe_get_error());
 }
 
 template <typename T, typename E>
@@ -141,6 +177,40 @@ promise_t<T2, E> promise_t<T, E>::then(callback_t<T2(T)> mapper) {
 template <typename T, typename E>
 promise_t<T, E> promise_t<T, E>::empty() {
   return promise_t<T, E>(new promise_state_t<T, E>());
+}
+
+template <typename T, typename E>
+sync_promise_t<T, E> sync_promise_t<T, E>::empty() {
+  return sync_promise_t<T, E>(new sync_promise_state_t<T, E>());
+}
+
+template <typename T, typename E>
+template <typename I>
+void sync_promise_state_t<T, E>::release_waiter(NativeSemaphore *sema, I ignore) {
+  sema->release();
+}
+
+template <typename T, typename E>
+void sync_promise_state_t<T, E>::wait() {
+  lock();
+  if (promise_state_t<T, E>::state_ == promise_state_t<T, E>::psEmpty) {
+    // If multiple threads end up waiting for this promise this gives each of
+    // them their own semaphore which they strictly don't need, they could just
+    // all wait on the same condition variable say. But this is simple and it's
+    // not obvious that the multi-waiter case is one we need to be concerned
+    // about.
+    NativeSemaphore sema(0);
+    sema.initialize();
+    promise_state_t<T, E>::on_successes_.push_back(new_callback(release_waiter<T>, &sema));
+    promise_state_t<T, E>::on_failures_.push_back(new_callback(release_waiter<E>, &sema));
+    // This is the reason for using lock/unlock directly. Obviously we can't
+    // hang on to the mutex while we wait for someone else to fulfill the
+    // promise.
+    unlock();
+    sema.acquire();
+  } else {
+    unlock();
+  }
 }
 
 } // namespace tclib

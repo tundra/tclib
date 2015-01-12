@@ -7,6 +7,7 @@
 #include "stdc.h"
 #include "callback.hh"
 #include "std/stdvector.hh"
+#include "sync/mutex.hh"
 
 namespace tclib {
 
@@ -16,34 +17,48 @@ public:
   typedef callback_t<void(T)> SuccessAction;
   typedef callback_t<void(E)> FailureAction;
   promise_state_t();
-  ~promise_state_t();
+  virtual ~promise_state_t();
   bool fulfill(const T &value);
   bool fail(const E &value);
-  bool is_empty() { return state_ == psEmpty; }
-  const T &get_value(const T &if_unfulfilled);
-  const E &get_error(const E &if_unfulfilled);
+  bool is_empty();
+  const T &peek_value(const T &if_unfulfilled);
+  const E &peek_error(const E &if_unfulfilled);
   void on_success(SuccessAction action);
   void on_failure(FailureAction action);
   void ref();
   void deref();
-private:
+  // Even though basic promises aren't thread safe the code still deals with
+  // locking -- the locking ops are just noops.
+  virtual bool lock() { return true; }
+  virtual bool unlock() { return true; }
+protected:
   typedef enum {
     psEmpty,
     psSucceeded,
     psFailed
   } state_t;
-  size_t refcount_;
+
+  class Locker {
+  public:
+    Locker(promise_state_t<T, E> *state);
+    ~Locker();
+  private:
+    promise_state_t<T, E> *state_;
+  };
+
   state_t state_;
-  std::vector<SuccessAction> on_successes_;
-  std::vector<FailureAction> on_failures_;
   // These will return the raw value or error; only call them after the
   // promise has been fulfilled.
-  const T &get_value();
-  const E &get_error();
+  const T &unsafe_get_value();
+  const E &unsafe_get_error();
+  std::vector<SuccessAction> on_successes_;
+  std::vector<FailureAction> on_failures_;
+private:
+  size_t refcount_;
   // These must be used to set the value or error. If you try to set them by
   // assigning to one of the get_* methods you're going to have a bad time.
-  void set_value(const T &value);
-  void set_error(const E &error);
+  void unsafe_set_value(const T &value);
+  void unsafe_set_error(const E &error);
   // The way values and errors are stored is a little intricate. Because of
   // strict aliasing you can't just cast your way from the blocks of memory to
   // the values, but -- the process of initializing the memory produces a
@@ -76,39 +91,42 @@ void promise_state_t<T, E>::deref() {
 // to explicitly keep track of ownership of that component the heap state is
 // allocated implicitly and refcounted so the code that passes around promises
 // don't have to worry about ownership, which would be unmanageable.
+//
+// A plain promise is not thread safe; use a sync promise if you need to share
+// promises across threads.
 template <typename T, typename E = void*>
 class promise_t {
 public:
-  ~promise_t() { state_->deref(); }
+  ~promise_t() { state()->deref(); }
 
   // Fulfills this promise, causing the value to be set and any actions to be
   // performed, but only if this promise is currently empty. Returns true iff
   // that was the case.
   bool fulfill(const T &value) {
-    return state_->fulfill(value);
+    return state()->fulfill(value);
   }
 
   // Fails this promise, causing the error to be set and any failure actions to
   // be performed, but only if this promise is currently empty. Returns true iff
   // that was the case.
   bool fail(const E &error) {
-    return state_->fail(error);
+    return state()->fail(error);
   }
 
   // Returns true iff this promise hasn't been resolved yet.
-  bool is_empty() { return state_->is_empty(); }
+  bool is_empty() { return state()->is_empty(); }
 
   // Returns the value this promise resolved to or, if it hasn't been resolved
   // yet, the given default value.
-  const T &get_value(const T &otherwise) { return state_->get_value(otherwise); }
+  const T &peek_value(const T &otherwise) { return state()->peek_value(otherwise); }
 
   // Returns the error this promise failed to or, if it hasn't been resolved
   // yet, the given default value.
-  const E &get_error(const E &otherwise) { return state_->get_error(otherwise); }
+  const E &peek_error(const E &otherwise) { return state()->peek_error(otherwise); }
 
   // Copy constructor that makes sure to ref the state so it doesn't get
   // disposed when 'that' is deleted.
-  promise_t(const promise_t<T, E> &that) : state_(that.state_) { state_->ref(); }
+  promise_t(const promise_t<T, E> &that) : state_(that.state_) { state()->ref(); }
 
   // Assignment operator, also needs to ensure that states are reffed and
   // dereffed appropriately.
@@ -125,13 +143,13 @@ public:
   // resolved. If this promise has already been resolved the action is invoked
   // with the value immediately.
   void on_success(typename promise_state_t<T, E>::SuccessAction action) {
-    state_->on_success(action);
+    state()->on_success(action);
   }
 
   // Adds a callback to be invoked when (if) this promise fails. If this promise has already been resolved the action is invoked
   // with the value immediately.
   void on_failure(typename promise_state_t<T, E>::FailureAction action) {
-    state_->on_failure(action);
+    state()->on_failure(action);
   }
 
   // Returns a new promise that resolves when this one does in the same way,
@@ -144,15 +162,56 @@ public:
   // Returns a fresh empty promise.
   static promise_t<T, E> empty();
 
-private:
+protected:
+  promise_t<T, E>(promise_state_t<T, E> *state) : state_(state) { state_->ref(); }
+
   template <typename T2>
   static void map_and_fulfill(promise_t<T2, E> dest, callback_t<T2(T)> mapper,
       T value);
   template <typename T2>
   static void pass_on_failure(promise_t<T2, E> dest, E error);
 
-  promise_t<T, E>(promise_state_t<T, E> *state) : state_(state) { state->ref(); }
+  promise_state_t<T, E> *state() { return state_; }
+
+private:
   promise_state_t<T, E> *state_;
+};
+
+class NativeSemaphore;
+
+template <typename T, typename E = void*>
+class sync_promise_state_t : public promise_state_t<T, E> {
+public:
+  sync_promise_state_t() { mutex_.initialize(); }
+  virtual bool lock() { return mutex_.lock(); }
+  virtual bool unlock() { return mutex_.unlock(); }
+  void wait();
+private:
+  template <typename I>
+  static void release_waiter(NativeSemaphore *sema, I ignore);
+  typedef typename promise_state_t<T, E>::Locker Locker;
+  NativeMutex mutex_;
+};
+
+// A sync promise is like a promise but safe to share between threads. Also, you
+// can wait for a sync promise to resolve.
+//
+// Converting a sync promise to a plain one is fine, it will retain its thread
+// safety properties.
+template <typename T, typename E = void*>
+class sync_promise_t : public promise_t<T, E> {
+public:
+  // Returns a fresh empty promise.
+  static sync_promise_t<T, E> empty();
+
+  // Blocks this thread until this promise has been fulfilled. Once this returns
+  // you can use the peek_ methods to get the value/error.
+  void wait() { return state()->wait(); }
+
+private:
+  sync_promise_state_t<T, E> *state() { return static_cast<sync_promise_state_t<T, E>*>(promise_t<T, E>::state()); }
+
+  sync_promise_t<T, E>(sync_promise_state_t<T, E> *state) : promise_t<T, E>(state) { }
 };
 
 } // namespace tclib

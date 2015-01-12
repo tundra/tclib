@@ -1,29 +1,50 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "test/unittest.hh"
 #include "async/promise-inl.hh"
+#include "sync/thread.hh"
+#include "test/unittest.hh"
 
 using namespace tclib;
 
 TEST(promise, simple) {
   promise_t<int> p = promise_t<int>::empty();
   ASSERT_TRUE(p.is_empty());
-  ASSERT_EQ(0, p.get_value(0));
-  ASSERT_EQ(5, p.get_value(5));
+  ASSERT_EQ(0, p.peek_value(0));
+  ASSERT_EQ(5, p.peek_value(5));
   p.fulfill(10);
   ASSERT_FALSE(p.is_empty());
-  ASSERT_EQ(10, p.get_value(0));
+  ASSERT_EQ(10, p.peek_value(0));
+}
+
+TEST(promise, simple_sync) {
+  sync_promise_t<int> p = sync_promise_t<int>::empty();
+  ASSERT_TRUE(p.is_empty());
+  ASSERT_EQ(0, p.peek_value(0));
+  ASSERT_EQ(5, p.peek_value(5));
+  p.fulfill(10);
+  ASSERT_FALSE(p.is_empty());
+  ASSERT_EQ(10, p.peek_value(0));
 }
 
 TEST(promise, simple_error) {
   promise_t<void*, int> p = promise_t<void*, int>::empty();
   ASSERT_TRUE(p.is_empty());
-  ASSERT_EQ(0, p.get_error(0));
-  ASSERT_EQ(5, p.get_error(5));
+  ASSERT_EQ(0, p.peek_error(0));
+  ASSERT_EQ(5, p.peek_error(5));
   p.fail(10);
   ASSERT_FALSE(p.is_empty());
-  ASSERT_EQ(10, p.get_error(0));
+  ASSERT_EQ(10, p.peek_error(0));
+}
+
+TEST(promise, simple_error_sync) {
+  sync_promise_t<void*, int> p = sync_promise_t<void*, int>::empty();
+  ASSERT_TRUE(p.is_empty());
+  ASSERT_EQ(0, p.peek_error(0));
+  ASSERT_EQ(5, p.peek_error(5));
+  p.fail(10);
+  ASSERT_FALSE(p.is_empty());
+  ASSERT_EQ(10, p.peek_error(0));
 }
 
 TEST(promise, reffing) {
@@ -116,10 +137,10 @@ TEST(promise, then_success) {
   promise_t<int> d = c.then<int>(new_callback(shift_plus_n, 6));
   promise_t<bool> is_d_even = d.then<bool>(is_even);
   a.fulfill(8);
-  ASSERT_EQ(8456, d.get_value(0));
-  ASSERT_EQ(845, c.get_value(0));
-  ASSERT_EQ(84, b.get_value(0));
-  ASSERT_EQ(true, is_d_even.get_value(false));
+  ASSERT_EQ(8456, d.peek_value(0));
+  ASSERT_EQ(845, c.peek_value(0));
+  ASSERT_EQ(84, b.peek_value(0));
+  ASSERT_EQ(true, is_d_even.peek_value(false));
 }
 
 TEST(promise, then_failure) {
@@ -128,7 +149,40 @@ TEST(promise, then_failure) {
   promise_t<int, int> c = b.then<int>(new_callback(shift_plus_n, 8));
   promise_t<int, int> d = c.then<int>(new_callback(shift_plus_n, 9));
   a.fail(100);
-  ASSERT_EQ(100, d.get_error(0));
-  ASSERT_EQ(100, c.get_error(0));
-  ASSERT_EQ(100, b.get_error(0));
+  ASSERT_EQ(100, d.peek_error(0));
+  ASSERT_EQ(100, c.peek_error(0));
+  ASSERT_EQ(100, b.peek_error(0));
+}
+
+static void *run_sync_fulfiller(promise_t<int> p) {
+  p.fulfill(10);
+  return NULL;
+}
+
+static void *run_sync_waiter(NativeSemaphore *about_to_wait,
+    NativeSemaphore *has_waited, sync_promise_t<int> p) {
+  about_to_wait->release();
+  p.wait();
+  has_waited->release();
+  ASSERT_EQ(10, p.peek_value(0));
+  return NULL;
+}
+
+TEST(promise, sync_wait) {
+  sync_promise_t<int> p = sync_promise_t<int>::empty();
+  NativeSemaphore about_to_wait(0);
+  ASSERT_TRUE(about_to_wait.initialize());
+  NativeSemaphore has_waited(0);
+  ASSERT_TRUE(has_waited.initialize());
+  NativeThread waiter(new_callback(run_sync_waiter, &about_to_wait, &has_waited, p));
+  ASSERT_TRUE(waiter.start());
+  ASSERT_TRUE(about_to_wait.acquire());
+  // TODO: acquire with a timeout to give it some time to wait rather than
+  // immediately.
+  ASSERT_FALSE(has_waited.try_acquire());
+  NativeThread fulfiller(new_callback(run_sync_fulfiller, promise_t<int>(p)));
+  ASSERT_TRUE(fulfiller.start());
+  ASSERT_TRUE(has_waited.acquire());
+  fulfiller.join();
+  waiter.join();
 }
