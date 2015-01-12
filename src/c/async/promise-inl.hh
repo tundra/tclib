@@ -88,11 +88,13 @@ bool promise_state_t<T, E>::fulfill(const T &value) {
     Locker lock(this);
     if (state_ != psEmpty)
       return false;
-    state_ = psSucceeded;
+    // Set the value before the state such that it is safe to assume the value
+    // is set when the state is non-empty. This is used by peek_value.
     unsafe_set_value(value);
+    state_ = psSucceeded;
   }
   // At this point any new on_success added will be executed immediately so we
-  // have the vector for ourselves.
+  // have the vector to ourselves.
   for (size_t i = 0; i < on_successes_.size(); i++)
     (on_successes_[i])(value);
   on_successes_.clear();
@@ -105,11 +107,12 @@ bool promise_state_t<T, E>::fail(const E &error) {
     Locker lock(this);
     if (state_ != psEmpty)
       return false;
-    state_ = psFailed;
+    // See fulfill for why we set the error first.
     unsafe_set_error(error);
+    state_ = psFailed;
   }
   // At this point any new on_failure added will be executed immediately so we
-  // have the vector for ourselves.
+  // have the vector to ourselves.
   for (size_t i = 0; i < on_failures_.size(); i++)
     (on_failures_[i])(error);
   on_failures_.clear();
@@ -118,13 +121,14 @@ bool promise_state_t<T, E>::fail(const E &error) {
 
 template <typename T, typename E>
 const T &promise_state_t<T, E>::peek_value(const T &if_unfulfilled) {
-  Locker lock(this);
+  // Because the value is set before state_ is changed we know that it's safe
+  // to read the value in the success case even without taking the mutex.
   return (state_ == psSucceeded) ? unsafe_get_value() : if_unfulfilled;
 }
 
 template <typename T, typename E>
 const E &promise_state_t<T, E>::peek_error(const E &if_unfulfilled) {
-  Locker lock(this);
+  // See peek_value for why this doesn't need to lock.
   return (state_ == psFailed) ? unsafe_get_error() : if_unfulfilled;
 }
 
@@ -137,7 +141,9 @@ void promise_state_t<T, E>::on_success(SuccessAction action) {
       return;
     }
   }
-  action(unsafe_get_value());
+  // We know the promise has been fulfilled here so no need to lock.
+  if (state_ == psSucceeded)
+    action(unsafe_get_value());
 }
 
 template <typename T, typename E>
@@ -149,7 +155,9 @@ void promise_state_t<T, E>::on_failure(FailureAction action) {
       return;
     }
   }
-  action(unsafe_get_error());
+  // We know the promise has been fulfilled here so no need to lock.
+  if (state_ == psFailed)
+    action(unsafe_get_error());
 }
 
 template <typename T, typename E>

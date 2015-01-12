@@ -39,5 +39,5 @@ inline double duration_to_seconds(duration_t duration) {
 }
 
 // Adds the given duration to a pair of sec/nsec which is what you need to add
-// a duration to a posix timespec.
+// a duration to a posix timespec. For unlimited durations this does nothing.
 void duration_add_to_timespec(duration_t duration, uint64_t *sec, uint64_t *nsec);

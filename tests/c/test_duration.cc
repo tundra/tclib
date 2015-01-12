@@ -26,4 +26,7 @@ TEST(duration, string_simple) {
   duration_add_to_timespec(duration_millis(987), &secs, &nanos);
   ASSERT_EQ(202, secs);
   ASSERT_EQ(237000000, nanos);
+  duration_add_to_timespec(duration_unlimited(), &secs, &nanos);
+  ASSERT_EQ(202, secs);
+  ASSERT_EQ(237000000, nanos);
 }

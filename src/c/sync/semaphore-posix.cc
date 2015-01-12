@@ -28,16 +28,19 @@ bool NativeSemaphore::acquire(duration_t timeout) {
   if (duration_is_unlimited(timeout)) {
     result = sem_wait(&sema_);
   } else {
-    // First grab the current time.
-    struct timespec spec;
-    if (clock_gettime(CLOCK_REALTIME, &spec) == -1)
+    // Grab the current time.
+    struct timespec current;
+    if (clock_gettime(CLOCK_REALTIME, &current) == -1)
       return false;
-    uint64_t sec = spec.tv_sec;
-    uint64_t nsec = spec.tv_nsec;
+    // Increment it by the timeout duration.
+    uint64_t sec = current.tv_sec;
+    uint64_t nsec = current.tv_nsec;
     duration_add_to_timespec(timeout, &sec, &nsec);
-    spec.tv_sec = sec;
-    spec.tv_nsec = nsec;
-    result = sem_timedwait(&sema_, &spec);
+    struct timespec deadline;
+    deadline.tv_sec = sec;
+    deadline.tv_nsec = nsec;
+    // Wait with the calculated time as the deadline.
+    result = sem_timedwait(&sema_, &deadline);
   }
   if (result == 0)
     return true;

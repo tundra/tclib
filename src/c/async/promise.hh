@@ -190,6 +190,10 @@ private:
   template <typename I>
   static void release_waiter(NativeSemaphore *sema, I ignore);
   typedef typename promise_state_t<T, E>::Locker Locker;
+
+  // The mutex that guards all the state of this promise. Only ever do a known
+  // constant amount of work in code guarded by this and definitely don't hold
+  // it and invoke a user-supplied callback.
   NativeMutex mutex_;
 };
 
