@@ -102,8 +102,7 @@ private:
 template <typename R,
           typename A0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
-          typename A2 = abstract_binder_t::no_arg_t,
-          typename A3 = abstract_binder_t::no_arg_t>
+          typename A2 = abstract_binder_t::no_arg_t>
 class binder_t : public abstract_binder_t {
 public:
   binder_t(alloc_mode_t mode) : abstract_binder_t(mode) { }
@@ -122,12 +121,11 @@ public:
 template <typename R,
           typename A0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
-          typename A2 = abstract_binder_t::no_arg_t,
-          typename A3 = abstract_binder_t::no_arg_t>
-class function_binder_0_t : public binder_t<R, A0, A1, A2, A3> {
+          typename A2 = abstract_binder_t::no_arg_t>
+class function_binder_0_t : public binder_t<R, A0, A1, A2> {
 public:
   function_binder_0_t(abstract_binder_t::alloc_mode_t mode)
-    : binder_t<R, A0, A1, A2, A3>(mode) { }
+    : binder_t<R, A0, A1, A2>(mode) { }
 
   virtual R call(opaque_invoker_t invoker) {
     return (invoker.open<R(*)()>())();
@@ -147,13 +145,13 @@ public:
 
   // For each choice of template parameters, returns the same shared binder
   // instance.
-  static function_binder_0_t<R, A0, A1, A2, A3> *shared_instance() {
+  static function_binder_0_t<R, A0, A1, A2> *shared_instance() {
     // This is not strictly thread safe but the worst that can happen if there
     // is a race condition during initialization should be leaking shared
     // instances which is unfortunate but should be benign.
-    static function_binder_0_t<R, A0, A1, A2, A3> *instance = NULL;
+    static function_binder_0_t<R, A0, A1, A2> *instance = NULL;
     if (instance == NULL)
-      instance = new function_binder_0_t<R, A0, A1, A2, A3>(abstract_binder_t::amShared);
+      instance = new function_binder_0_t<R, A0, A1, A2>(abstract_binder_t::amShared);
     return instance;
   }
 };
@@ -161,12 +159,11 @@ public:
 template <typename R,
           typename A0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
-          typename A2 = abstract_binder_t::no_arg_t,
-          typename A3 = abstract_binder_t::no_arg_t>
-class method_binder_0_t : public binder_t<R, A0*, A1, A2, A3> {
+          typename A2 = abstract_binder_t::no_arg_t>
+class method_binder_0_t : public binder_t<R, A0*, A1, A2> {
 public:
   method_binder_0_t(abstract_binder_t::alloc_mode_t mode)
-    : binder_t<R, A0*, A1, A2, A3>(mode) { }
+    : binder_t<R, A0*, A1, A2>(mode) { }
 
   virtual R call(opaque_invoker_t invoker) {
     return R();
@@ -187,12 +184,12 @@ public:
 
   // For each choice of template parameters, returns the same shared binder
   // instance.
-  static method_binder_0_t<R, A0, A1, A2, A3> *shared_instance() {
+  static method_binder_0_t<R, A0, A1, A2> *shared_instance() {
     // See function_binder_0_t::shared_instance for the issues around
     // concurrency.
-    static method_binder_0_t<R, A0, A1, A2, A3> *instance = NULL;
+    static method_binder_0_t<R, A0, A1, A2> *instance = NULL;
     if (instance == NULL)
-      instance = new method_binder_0_t<R, A0, A1, A2, A3>(abstract_binder_t::amShared);
+      instance = new method_binder_0_t<R, A0, A1, A2>(abstract_binder_t::amShared);
     return instance;
   }
 
@@ -342,12 +339,11 @@ template <typename R,
           typename B1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t,
           typename A3 = abstract_binder_t::no_arg_t,
-          typename A4 = abstract_binder_t::no_arg_t,
-          typename A5 = abstract_binder_t::no_arg_t>
-class method_binder_2_t : public binder_t<R, A2, A3, A4, A5> {
+          typename A4 = abstract_binder_t::no_arg_t>
+class method_binder_2_t : public binder_t<R, A2, A3, A4> {
 public:
   method_binder_2_t(B0 *b0, B1 b1)
-    : binder_t<R, A2, A3, A4, A5>(abstract_binder_t::amAlloced)
+    : binder_t<R, A2, A3, A4>(abstract_binder_t::amAlloced)
     , b0_(b0)
     , b1_(b1) { }
 
@@ -556,6 +552,11 @@ callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, A0), B0 b0, B1 b1) {
   return callback_t<R(A0)>(invoker, new function_binder_2_t<R, B0, B1, A0>(b0, b1));
 }
 
+template <typename R, typename A0, typename B0, typename B1, typename B2>
+callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, B2, A0), B0 b0, B1 b1, B2 b2) {
+  return callback_t<R(A0)>(invoker, new function_binder_3_t<R, B0, B1, B2, A0>(b0, b1, b2));
+}
+
 template <typename R, typename A0>
 callback_t<R(A0*)> new_callback(R (A0::*invoker)(void)) {
   return callback_t<R(A0*)>(invoker, method_binder_0_t<R, A0>::shared_instance());
@@ -566,14 +567,14 @@ callback_t<R(A0)> new_callback(R (B0::*invoker)(A0), B0 *b0) {
   return callback_t<R(A0)>(invoker, new method_binder_1_t<R, B0, A0>(b0));
 }
 
-template <typename R, typename A0, typename A1>
-callback_t<R(A0*, A1)> new_callback(R (A0::*invoker)(A1)) {
-  return callback_t<R(A0*, A1)>(invoker, method_binder_0_t<R, A0, A1>::shared_instance());
-}
-
 template <typename R, typename A0, typename B0, typename B1>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(B1, A0), B0 *b0, B1 b1) {
   return callback_t<R(A0)>(invoker, new method_binder_2_t<R, B0, B1, A0>(b0, b1));
+}
+
+template <typename R, typename A0, typename B0, typename B1, typename B2>
+callback_t<R(A0)> new_callback(R (B0::*invoker)(B1, B2, A0), B0 *b0, B1 b1, B2 b2) {
+  return callback_t<R(A0)>(invoker, new method_binder_3_t<R, B0, B1, B2, A0>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1>
@@ -604,6 +605,36 @@ callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, A0, A1), B0 b0) {
   return callback_t<R(A0, A1)>(invoker, new function_binder_1_t<R, B0, A0, A1>(b0));
 }
 
+template <typename R, typename A0, typename A1, typename B0, typename B1>
+callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, B1, A0, A1), B0 b0, B1 b1) {
+  return callback_t<R(A0, A1)>(invoker, new function_binder_2_t<R, B0, B1, A0, A1>(b0, b1));
+}
+
+template <typename R, typename A0, typename A1, typename B0, typename B1, typename B2>
+callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, B1, B2, A0, A1), B0 b0, B1 b1, B2 b2) {
+  return callback_t<R(A0, A1)>(invoker, new function_binder_3_t<R, B0, B1, B2, A0, A1>(b0, b1, b2));
+}
+
+template <typename R, typename A0, typename A1>
+callback_t<R(A0*, A1)> new_callback(R (A0::*invoker)(A1)) {
+  return callback_t<R(A0*, A1)>(invoker, method_binder_0_t<R, A0, A1>::shared_instance());
+}
+
+template <typename R, typename A0, typename A1, typename B0>
+callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(A0, A1), B0* b0) {
+  return callback_t<R(A0, A1)>(invoker, new method_binder_1_t<R, B0, A0, A1>(b0));
+}
+
+template <typename R, typename A0, typename A1, typename B0, typename B1>
+callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(B1, A0, A1), B0* b0, B1 b1) {
+  return callback_t<R(A0, A1)>(invoker, new method_binder_2_t<R, B0, B1, A0, A1>(b0, b1));
+}
+
+template <typename R, typename A0, typename A1, typename B0, typename B1, typename B2>
+callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(B1, B2, A0, A1), B0* b0, B1 b1, B2 b2) {
+  return callback_t<R(A0, A1)>(invoker, new method_binder_3_t<R, B0, B1, B2, A0, A1>(b0, b1, b2));
+}
+
 template <typename R, typename A0, typename A1, typename A2>
 class callback_t<R(A0, A1, A2)> : public abstract_callback_t {
 public:
@@ -632,6 +663,16 @@ callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, A0, A1, A2), B0 b0) {
   return callback_t<R(A0, A1, A2)>(invoker, new function_binder_1_t<R, B0, A0, A1, A2>(b0));
 }
 
+template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1>
+callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, B1, A0, A1, A2), B0 b0, B1 b1) {
+  return callback_t<R(A0, A1, A2)>(invoker, new function_binder_2_t<R, B0, B1, A0, A1, A2>(b0, b1));
+}
+
+template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1, typename B2>
+callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, B1, B2, A0, A1, A2), B0 b0, B1 b1, B2 b2) {
+  return callback_t<R(A0, A1, A2)>(invoker, new function_binder_3_t<R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
+}
+
 template <typename R, typename A0, typename A1, typename A2>
 callback_t<R(A0*, A1, A2)> new_callback(R (A0::*invoker)(A1, A2)) {
   return callback_t<R(A0*, A1, A2)>(invoker, method_binder_0_t<R, A0, A1, A2>::shared_instance());
@@ -640,6 +681,16 @@ callback_t<R(A0*, A1, A2)> new_callback(R (A0::*invoker)(A1, A2)) {
 template <typename R, typename A0, typename A1, typename A2, typename B0>
 callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(A0, A1, A2), B0 *b0) {
   return callback_t<R(A0, A1, A2)>(invoker, new method_binder_1_t<R, B0, A0, A1, A2>(b0));
+}
+
+template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1>
+callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(B1, A0, A1, A2), B0 *b0, B1 b1) {
+  return callback_t<R(A0, A1, A2)>(invoker, new method_binder_2_t<R, B0, B1, A0, A1, A2>(b0, b1));
+}
+
+template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1, typename B2>
+callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(B1, B2, A0, A1, A2), B0 *b0, B1 b1, B2 b2) {
+  return callback_t<R(A0, A1, A2)>(invoker, new method_binder_3_t<R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
 }
 
 } // namespace tclib

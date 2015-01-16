@@ -161,17 +161,30 @@ int f1(int a) { return a; }
 int f2(int a, int b) { return 10 * f1(a) + b; }
 int f3(int a, int b, int c) { return 10 * f2(a, b) + c; }
 int f4(int a, int b, int c, int d) { return 10 * f3(a, b, c) + d; }
+int f5(int a, int b, int c, int d, int e) { return 10 * f4(a, b, c, d) + e; }
+int f6(int a, int b, int c, int d, int e, int f) { return 10 * f5(a, b, c, d, e) + f; }
 
 class M {
 public:
   int m0() { return 200; }
   int m1(int a) { return a; }
-  int m2(int a, int b) { return m1(a) + 10 * b; }
-  int m3(int a, int b, int c) { return m2(a, b) + 10 * c; }
+  int m2(int a, int b) { return m1(a + 10 * b); }
+  int m3(int a, int b, int c) { return m2(a, b + 10 * c); }
+  int m4(int a, int b, int c, int d) { return m3(a, b, c + 10 * d); }
+  int m5(int a, int b, int c, int d, int e) { return m4(a, b, c, d + 10 * e); }
 };
 
 TEST(callback, matrix) {
+  // Test the product of all bound and unbound argument counts. We support up to
+  // 3 unbound arguments and up to 2 bound ones, with functions and methods.
+  // That means a total of 23 different callback constructors which should all
+  // appear exactly once here (that is, 4 unbound times 3 bound time 2 types,
+  // minus 0-unbound/0-bound for methods because they need at least one
+  // argument).
+
   M m;
+
+  // Unbound: 0
   callback_t<int(void)> if0 = new_callback(f0);
   ASSERT_EQ(100, if0());
   callback_t<int(void)> if1 = new_callback(f1, 1);
@@ -187,32 +200,57 @@ TEST(callback, matrix) {
   callback_t<int(void)> im2 = new_callback(&M::m2, &m, 2, 3);
   ASSERT_EQ(32, im2());
 
+  // Unbound: 1
   callback_t<int(int)> iif1 = new_callback(f1);
   ASSERT_EQ(4, iif1(4));
   callback_t<int(int)> iif2 = new_callback(f2, 5);
   ASSERT_EQ(56, iif2(6));
   callback_t<int(int)> iif3 = new_callback(f3, 7, 8);
   ASSERT_EQ(789, iif3(9));
+  callback_t<int(int)> iif4 = new_callback(f4, 10, 11, 12);
+  ASSERT_EQ(11233, iif4(13));
   callback_t<int(M*)> imm0 = new_callback(&M::m0);
   ASSERT_EQ(200, imm0(&m));
   callback_t<int(int)> iim1 = new_callback(&M::m1, &m);
   ASSERT_EQ(4, iim1(4));
   callback_t<int(int)> iim2 = new_callback(&M::m2, &m, 5);
   ASSERT_EQ(65, iim2(6));
+  callback_t<int(int)> iim3 = new_callback(&M::m3, &m, 7, 8);
+  ASSERT_EQ(95, iim2(9));
 
+  // Unbound: 2
   callback_t<int(int, int)> iiif2 = new_callback(f2);
   ASSERT_EQ(78, iiif2(7, 8));
   callback_t<int(int, int)> iiif3 = new_callback(f3, 9);
-  ASSERT_EQ(111, iiif2(10, 11));
+  ASSERT_EQ(1011, iiif3(10, 11));
+  callback_t<int(int, int)> iiif4 = new_callback(f4, 12, 13);
+  ASSERT_EQ(13455, iiif4(14, 15));
+  callback_t<int(int, int)> iiif5 = new_callback(f5, 16, 17, 18);
+  ASSERT_EQ(179010, iiif5(19, 20));
   callback_t<int(M*, int)> imim1 = new_callback(&M::m1);
   ASSERT_EQ(9, imim1(&m, 9));
+  callback_t<int(int, int)> iiim2 = new_callback(&M::m2, &m);
+  ASSERT_EQ(120, iiim2(10, 11));
+  callback_t<int(int, int)> iiim3 = new_callback(&M::m3, &m, 12);
+  ASSERT_EQ(1542, iiim3(13, 14));
+  callback_t<int(int, int)> iiim4 = new_callback(&M::m4, &m, 15, 16);
+  ASSERT_EQ(19875, iiim4(17, 18));
 
+  // Unbound: 3
   callback_t<int(int, int, int)> iiiif3 = new_callback(f3);
   ASSERT_EQ(1344, iiiif3(12, 13, 14));
   callback_t<int(int, int, int)> iiiif4 = new_callback(f4, 15);
   ASSERT_EQ(16788, iiiif4(16, 17, 18));
+  callback_t<int(int, int, int)> iiiif5 = new_callback(f5, 19, 20);
+  ASSERT_EQ(212343, iiiif5(21, 22, 23));
+  callback_t<int(int, int, int)> iiiif6 = new_callback(f6, 24, 25, 26);
+  ASSERT_EQ(2679009, iiiif6(27, 28, 29));
   callback_t<int(M*, int, int)> iiiim2 = new_callback(&M::m2);
   ASSERT_EQ(175, iiiim2(&m, 15, 16));
   callback_t<int(int, int, int)> iiiim3 = new_callback(&M::m3, &m);
-  ASSERT_EQ(387, iiiim3(17, 18, 19));
+  ASSERT_EQ(2097, iiiim3(17, 18, 19));
+  callback_t<int(int, int, int)> iiiim4 = new_callback(&M::m4, &m, 20);
+  ASSERT_EQ(25430, iiiim4(21, 22, 23));
+  callback_t<int(int, int, int)> iiiim5 = new_callback(&M::m5, &m, 24, 25);
+  ASSERT_EQ(309874, iiiim5(26, 27, 28));
 }
