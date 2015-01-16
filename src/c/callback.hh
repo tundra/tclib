@@ -12,6 +12,7 @@
 // everything in the same file.
 
 #include "stdc.h"
+#include "refcount.hh"
 
 namespace tclib {
 
@@ -64,7 +65,7 @@ private:
 // used even if you don't know what kind of binder you're dealing with. Binders
 // are ref counted and shared between callbacks so the main purpose of this code
 // is to keep track of that.
-class abstract_binder_t {
+class abstract_binder_t : public refcount_shared_t {
 public:
   class no_arg_t {
   private:
@@ -79,31 +80,18 @@ public:
   } alloc_mode_t;
 
   abstract_binder_t(alloc_mode_t mode)
-    : mode_(mode)
-    , refcount_(0) { }
+    : mode_(mode) { }
 
-  // Subtypes have nontrivial destructors.
-  virtual ~abstract_binder_t() { }
-
-  // Increment refcount.
-  void ref() {
-    refcount_++;
-  }
-
-  // Decremet refcount, possibly deleting the binder.
-  void deref() {
-    if (--refcount_ == 0) {
-      if (mode_ == amAlloced)
-        // To make refcounting as cheap as possible we do it on shared instances
-        // as well and then only distinguish the types when the count reaches
-        // 0, which it may do any number of times for shared binders.
-        delete this;
-    }
+  virtual void dispose() {
+    if (mode_ == amAlloced)
+      // To make refcounting as cheap as possible we do it on shared instances
+      // as well and then only distinguish the types when the count reaches
+      // 0, which it may do any number of times for shared binders.
+      delete this;
   }
 
 private:
   alloc_mode_t mode_;
-  size_t refcount_;
 };
 
 // Abstract type that implements binding of function parameters. These are not
@@ -425,38 +413,23 @@ private:
 // keep track of the types involved and allow the same binder to be passed
 // around and disposed as appropriate, without the client having to keep track
 // of it explicitly.
-class abstract_callback_t {
+class abstract_callback_t : public refcount_reference_t<abstract_binder_t> {
 public:
   // Initializes an empty callback.
-  abstract_callback_t() : binder_(NULL) { }
+  abstract_callback_t() : refcount_reference_t() { }
 
   // Copy constructor that makes sure to ref the binder so it doesn't get
   // disposed when 'that' is deleted.
   abstract_callback_t(const abstract_callback_t &that)
-    : invoker_(that.invoker_)
-    , binder_(that.binder_) {
-    if (binder_)
-      binder_->ref();
-  }
+    : refcount_reference_t(that)
+    , invoker_(that.invoker_) { }
 
   // Assignment operator, also needs to ensure that binders are reffed and
   // dereffed appropriately.
   abstract_callback_t &operator=(const abstract_callback_t &that) {
+    refcount_reference_t::operator=(that);
     invoker_ = that.invoker_;
-    if (binder_ != that.binder_) {
-      if (binder_)
-        binder_->deref();
-      binder_ = that.binder_;
-      if (binder_)
-        binder_->ref();
-    }
     return *this;
-  }
-
-  // Deref the binder on disposal.
-  ~abstract_callback_t() {
-    if (binder_)
-      binder_->deref();
   }
 
   // Has this callback been set to an actual value?
@@ -468,15 +441,14 @@ protected:
   // Binders are born zero-reffed so this way the number of refs and derefs
   // always matches: ref on construction, deref on disposal.
   abstract_callback_t(opaque_invoker_t invoker, abstract_binder_t *binder)
-    : invoker_(invoker)
-    , binder_(binder) {
-    if (binder)
-      binder->ref();
-  }
+    : refcount_reference_t(binder)
+    , invoker_(invoker) { }
+
+  // Alternative name for the shared state.
+  abstract_binder_t *binder() { return refcount_shared(); }
 
   // The binder to call to invoke this callback.
   opaque_invoker_t invoker_;
-  abstract_binder_t *binder_;
 };
 
 // A generic callback. The actual implementation is in the specializations.
@@ -511,7 +483,7 @@ public:
     : abstract_callback_t(invoker, function_binder_0_t<R>::shared_instance()) { }
 
   R operator()() {
-    return (static_cast<my_binder_t*>(binder_))->call(invoker_);
+    return (static_cast<my_binder_t*>(binder()))->call(invoker_);
   }
 };
 
@@ -565,7 +537,7 @@ public:
     : abstract_callback_t(invoker, function_binder_0_t<R, A0>::shared_instance()) { }
 
   R operator()(A0 a0) {
-    return (static_cast<my_binder_t*>(binder_))->call(invoker_, a0);
+    return (static_cast<my_binder_t*>(binder()))->call(invoker_, a0);
   }
 };
 
@@ -618,7 +590,7 @@ public:
     : abstract_callback_t(invoker, function_binder_0_t<R, A0, A1>::shared_instance()) { }
 
   R operator()(A0 a0, A1 a1) {
-    return (static_cast<my_binder_t*>(binder_))->call(invoker_, a0, a1);
+    return (static_cast<my_binder_t*>(binder()))->call(invoker_, a0, a1);
   }
 };
 
@@ -646,7 +618,7 @@ public:
     : abstract_callback_t(invoker, function_binder_0_t<R, A0, A1, A2>::shared_instance()) { }
 
   R operator()(A0 a0, A1 a1, A2 a2) {
-    return (static_cast<my_binder_t*>(binder_))->call(invoker_, a0, a1, a2);
+    return (static_cast<my_binder_t*>(binder()))->call(invoker_, a0, a1, a2);
   }
 };
 

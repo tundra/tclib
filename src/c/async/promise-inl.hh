@@ -62,8 +62,7 @@ void promise_state_t<T, E>::unsafe_set_error(const E &error) {
 
 template <typename T, typename E>
 promise_state_t<T, E>::promise_state_t()
-  : state_(psEmpty)
-  , refcount_(0) {
+  : state_(psEmpty) {
   // These two overlap so really there is some redundancy here but the compiler
   // can probably figure it out, if not it doesn't matter.
   memset(memory_.as_value, 0, sizeof(T));

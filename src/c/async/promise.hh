@@ -5,6 +5,7 @@
 #define _TCLIB_PROMISE_HH
 
 #include "callback.hh"
+#include "refcount.hh"
 #include "std/stdvector.hh"
 #include "stdc.h"
 #include "sync/mutex.hh"
@@ -12,7 +13,7 @@
 namespace tclib {
 
 template <typename T, typename E = void*>
-class promise_state_t {
+class promise_state_t : public refcount_shared_t {
 public:
   typedef callback_t<void(T)> SuccessAction;
   typedef callback_t<void(E)> FailureAction;
@@ -25,8 +26,6 @@ public:
   const E &peek_error(const E &if_unfulfilled);
   void on_success(SuccessAction action);
   void on_failure(FailureAction action);
-  void ref();
-  void deref();
   // Even though basic promises aren't thread safe the code still deals with
   // locking -- the locking ops are just noops.
   virtual bool lock() { return true; }
@@ -54,7 +53,6 @@ protected:
   std::vector<SuccessAction> on_successes_;
   std::vector<FailureAction> on_failures_;
 private:
-  size_t refcount_;
   // These must be used to set the value or error. If you try to set them by
   // assigning to one of the get_* methods you're going to have a bad time.
   void unsafe_set_value(const T &value);
@@ -74,17 +72,6 @@ private:
   } pointers_;
 };
 
-template <typename T, typename E>
-void promise_state_t<T, E>::ref() {
-  refcount_++;
-}
-
-template <typename T, typename E>
-void promise_state_t<T, E>::deref() {
-  if (--refcount_ == 0)
-    delete this;
-}
-
 // The result of an operation that may or may not have completed.
 //
 // There is always a heap allocated component to a promise but to avoid having
@@ -95,9 +82,10 @@ void promise_state_t<T, E>::deref() {
 // A plain promise is not thread safe; use a sync promise if you need to share
 // promises across threads.
 template <typename T, typename E = void*>
-class promise_t {
+class promise_t : public refcount_reference_t< promise_state_t<T, E> > {
 public:
-  ~promise_t() { state()->deref(); }
+  // This is so long we need a shorthand.
+  typedef refcount_reference_t< promise_state_t<T, E> > super_t;
 
   // Fulfills this promise, causing the value to be set and any actions to be
   // performed, but only if this promise is currently empty. Returns true iff
@@ -124,21 +112,6 @@ public:
   // yet, the given default value.
   const E &peek_error(const E &otherwise) { return state()->peek_error(otherwise); }
 
-  // Copy constructor that makes sure to ref the state so it doesn't get
-  // disposed when 'that' is deleted.
-  promise_t(const promise_t<T, E> &that) : state_(that.state_) { state()->ref(); }
-
-  // Assignment operator, also needs to ensure that states are reffed and
-  // dereffed appropriately.
-  promise_t<T, E> &operator=(const promise_t<T, E> &that) {
-    // These may point to the same state but as long as we ref before dereffing
-    // we just end up back where we started in that case.
-    that.state_->ref();
-    state_->deref();
-    state_ = that.state_;
-    return *this;
-  }
-
   // Adds a callback to be invoked when (if) this promise is successfully
   // resolved. If this promise has already been resolved the action is invoked
   // with the value immediately.
@@ -163,7 +136,7 @@ public:
   static promise_t<T, E> empty();
 
 protected:
-  promise_t<T, E>(promise_state_t<T, E> *state) : state_(state) { state_->ref(); }
+  promise_t<T, E>(promise_state_t<T, E> *state) : super_t(state) { }
 
   template <typename T2>
   static void map_and_fulfill(promise_t<T2, E> dest, callback_t<T2(T)> mapper,
@@ -171,10 +144,7 @@ protected:
   template <typename T2>
   static void pass_on_failure(promise_t<T2, E> dest, E error);
 
-  promise_state_t<T, E> *state() { return state_; }
-
-private:
-  promise_state_t<T, E> *state_;
+  promise_state_t<T, E> *state() { return super_t::refcount_shared(); }
 };
 
 class NativeSemaphore;
