@@ -83,6 +83,11 @@ protected:
   // Returns the shared reference.
   T *refcount_shared() { return shared_; }
 
+  // Sets the shared reference directly. Note that this will not ref the value,
+  // if that's the right thing to do you need to do that manually before or
+  // after.
+  void set_refcount_shared(T *value) { shared_ = value; }
+
 private:
   void ref_shared() {
     if (shared_)
