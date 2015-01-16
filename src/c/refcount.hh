@@ -61,7 +61,7 @@ public:
   // dereffed appropriately.
   refcount_reference_t<T> &operator=(const refcount_reference_t<T> &that) {
     if (shared_ != that.shared_) {
-      ref_shared();
+      deref_shared();
       shared_ = that.shared_;
       ref_shared();
     }
