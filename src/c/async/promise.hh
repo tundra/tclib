@@ -21,7 +21,9 @@ public:
   virtual ~promise_state_t();
   bool fulfill(const T &value);
   bool fail(const E &value);
-  bool is_empty();
+  bool is_resolved();
+  bool has_succeeded();
+  bool has_failed();
   const T &peek_value(const T &if_unfulfilled);
   const E &peek_error(const E &if_unfulfilled);
   void on_success(SuccessAction action);
@@ -81,6 +83,13 @@ private:
 //
 // A plain promise is not thread safe; use a sync promise if you need to share
 // promises across threads.
+//
+// The terminology used around promises is as follows. A promise starts out
+// unresolved and, once its value has been set, is said to have become resolved.
+// Resolving it successfully is called fulfilling, and the outcome of the
+// successful fulfillment is called the promise's value. Resolving it
+// unsuccessfully is called failing, and the outcome of the failure is called
+// an error.
 template <typename T, typename E = void*>
 class promise_t : public refcount_reference_t< promise_state_t<T, E> > {
 public:
@@ -101,8 +110,14 @@ public:
     return state()->fail(error);
   }
 
-  // Returns true iff this promise hasn't been resolved yet.
-  bool is_empty() { return state()->is_empty(); }
+  // Returns true iff this promise has been resolved.
+  bool is_resolved() { return state()->is_resolved(); }
+
+  // Returns true iff this promise has been resolved successfully.
+  bool has_succeeded() { return state()->has_succeeded(); }
+
+  // Returns true iff this promise has been resolved with a failure.
+  bool has_failed() { return state()->has_failed(); }
 
   // Returns the value this promise resolved to or, if it hasn't been resolved
   // yet, the given default value.

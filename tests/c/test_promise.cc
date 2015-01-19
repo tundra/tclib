@@ -9,41 +9,54 @@ using namespace tclib;
 
 TEST(promise, simple) {
   promise_t<int> p = promise_t<int>::empty();
-  ASSERT_TRUE(p.is_empty());
+  ASSERT_FALSE(p.is_resolved());
+  ASSERT_FALSE(p.has_succeeded());
+  ASSERT_FALSE(p.has_failed());
   ASSERT_EQ(0, p.peek_value(0));
   ASSERT_EQ(5, p.peek_value(5));
   p.fulfill(10);
-  ASSERT_FALSE(p.is_empty());
+  ASSERT_TRUE(p.is_resolved());
+  ASSERT_TRUE(p.has_succeeded());
+  ASSERT_FALSE(p.has_failed());
   ASSERT_EQ(10, p.peek_value(0));
+  ASSERT_EQ(0, p.peek_error(0));
 }
 
 TEST(promise, simple_sync) {
   sync_promise_t<int> p = sync_promise_t<int>::empty();
-  ASSERT_TRUE(p.is_empty());
+  ASSERT_FALSE(p.is_resolved());
+  ASSERT_FALSE(p.has_succeeded());
+  ASSERT_FALSE(p.has_failed());
   ASSERT_EQ(0, p.peek_value(0));
   ASSERT_EQ(5, p.peek_value(5));
   p.fulfill(10);
-  ASSERT_FALSE(p.is_empty());
+  ASSERT_TRUE(p.is_resolved());
+  ASSERT_TRUE(p.has_succeeded());
+  ASSERT_FALSE(p.has_failed());
   ASSERT_EQ(10, p.peek_value(0));
+  ASSERT_EQ(0, p.peek_error(0));
 }
 
 TEST(promise, simple_error) {
   promise_t<void*, int> p = promise_t<void*, int>::empty();
-  ASSERT_TRUE(p.is_empty());
+  ASSERT_FALSE(p.is_resolved());
   ASSERT_EQ(0, p.peek_error(0));
   ASSERT_EQ(5, p.peek_error(5));
   p.fail(10);
-  ASSERT_FALSE(p.is_empty());
+  ASSERT_TRUE(p.is_resolved());
+  ASSERT_TRUE(p.has_failed());
+  ASSERT_FALSE(p.has_succeeded());
   ASSERT_EQ(10, p.peek_error(0));
+  ASSERT_EQ(0, p.peek_value(0));
 }
 
 TEST(promise, simple_error_sync) {
   sync_promise_t<void*, int> p = sync_promise_t<void*, int>::empty();
-  ASSERT_TRUE(p.is_empty());
+  ASSERT_FALSE(p.is_resolved());
   ASSERT_EQ(0, p.peek_error(0));
   ASSERT_EQ(5, p.peek_error(5));
   p.fail(10);
-  ASSERT_FALSE(p.is_empty());
+  ASSERT_TRUE(p.is_resolved());
   ASSERT_EQ(10, p.peek_error(0));
 }
 
@@ -138,6 +151,8 @@ TEST(promise, then_success) {
   promise_t<bool> is_d_even = d.then<bool>(is_even);
   a.fulfill(8);
   ASSERT_EQ(8456, d.peek_value(0));
+  ASSERT_TRUE(d.has_succeeded());
+  ASSERT_FALSE(d.has_failed());
   ASSERT_EQ(845, c.peek_value(0));
   ASSERT_EQ(84, b.peek_value(0));
   ASSERT_EQ(true, is_d_even.peek_value(false));
@@ -150,6 +165,8 @@ TEST(promise, then_failure) {
   promise_t<int, int> d = c.then<int>(new_callback(shift_plus_n, 9));
   a.fail(100);
   ASSERT_EQ(100, d.peek_error(0));
+  ASSERT_TRUE(d.has_failed());
+  ASSERT_FALSE(d.has_succeeded());
   ASSERT_EQ(100, c.peek_error(0));
   ASSERT_EQ(100, b.peek_error(0));
 }

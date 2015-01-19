@@ -31,9 +31,21 @@ const E &promise_state_t<T, E>::unsafe_get_error() {
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::is_empty() {
+bool promise_state_t<T, E>::is_resolved() {
   Locker lock(this);
-  return state_ == psEmpty;
+  return state_ != psEmpty;
+}
+
+template <typename T, typename E>
+bool promise_state_t<T, E>::has_succeeded() {
+  Locker lock(this);
+  return state_ == psSucceeded;
+}
+
+template <typename T, typename E>
+bool promise_state_t<T, E>::has_failed() {
+  Locker lock(this);
+  return state_ == psFailed;
 }
 
 template <typename T, typename E>
