@@ -518,6 +518,27 @@ callback_t<R(void)> new_callback(R (B0::*invoker)(B1, B2), B0 *b0, B1 b1, B2 b2)
   return callback_t<R(void)>(invoker, new method_binder_3_t<R, B0, B1, B2>(b0, b1, b2));
 }
 
+template <typename T>
+static void destructor_trampoline(T *that) {
+  that->~T();
+}
+
+// Returns a callback that, given an instance of type T, invokes that instance's
+// destructor. Note that this doesn't delete the instance, it just calls the
+// destructor.
+template <typename T>
+callback_t<void(T*)> new_destructor_callback() {
+  return callback_t<void(T*)>(destructor_trampoline<T>, function_binder_0_t<void, T*>::shared_instance());
+}
+
+// Returns a callback that, when invoked, invokes the given instance's
+// destructor. Note that this doesn't delete the instance, it just calls the
+// destructor.
+template <typename T>
+callback_t<void(void)> new_destructor_callback(T *t) {
+  return callback_t<void(void)>(destructor_trampoline<T>, new function_binder_1_t<void, T*>(t));
+}
+
 template <typename R, typename A0>
 class callback_t<R(A0)> : public abstract_callback_t {
 public:

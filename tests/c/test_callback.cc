@@ -166,12 +166,15 @@ int f6(int a, int b, int c, int d, int e, int f) { return 10 * f5(a, b, c, d, e)
 
 class M {
 public:
+  M() : destruct_count(0) { }
+  ~M() { destruct_count++; }
   int m0() { return 200; }
   int m1(int a) { return a; }
   int m2(int a, int b) { return m1(a + 10 * b); }
   int m3(int a, int b, int c) { return m2(a, b + 10 * c); }
   int m4(int a, int b, int c, int d) { return m3(a, b, c + 10 * d); }
   int m5(int a, int b, int c, int d, int e) { return m4(a, b, c, d + 10 * e); }
+  int destruct_count;
 };
 
 TEST(callback, matrix) {
@@ -253,4 +256,14 @@ TEST(callback, matrix) {
   ASSERT_EQ(25430, iiiim4(21, 22, 23));
   callback_t<int(int, int, int)> iiiim5 = new_callback(&M::m5, &m, 24, 25);
   ASSERT_EQ(309874, iiiim5(26, 27, 28));
+
+  // Destructor
+  callback_t<void(M*)> dm0 = new_destructor_callback<M>();
+  ASSERT_EQ(0, m.destruct_count);
+  dm0(&m);
+  ASSERT_EQ(1, m.destruct_count);
+  callback_t<void(void)> dm1 = new_destructor_callback(&m);
+  ASSERT_EQ(1, m.destruct_count);
+  dm1();
+  ASSERT_EQ(2, m.destruct_count);
 }
