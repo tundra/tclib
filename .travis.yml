@@ -12,6 +12,7 @@ matrix:
       compiler: clang
       script: mkmk init --config tclib.mkmk --debug --valgrind --noisy && ./build.sh all run-tests
       install: source ./tools/enter-devenv.sh && sudo apt-get update && sudo apt-get install valgrind
+      cache: apt
     # Test everything using an optimized clang build.
     - language: c
       compiler: clang
