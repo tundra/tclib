@@ -297,10 +297,11 @@ static void *pass_callback_around(ThreadSafetyTestState *state) {
 // safety is basically nondeterministic this test is likely to be flaky in the
 // negative case. But in the positive case, where callbacks are safe, it should
 // pass consistently. I wrote this test before callbacks were thread safe and
-// it failed >75% of the time on my machine.
+// it failed >75% of the time on my machine and on travis. I've never seen it
+// fail on valgrind, before or after.
 TEST(callback_cpp, thread_safety) {
   ThreadSafetyTestState state;
-  state.callback = new_callback(f1, 0);
+  state.callback = new_callback(f1, 0).thread_safe_clone();
   ASSERT_TRUE(state.waiters.initialize());
   ASSERT_TRUE(state.kick_off.initialize());
   static const size_t kThreadCount = 8;

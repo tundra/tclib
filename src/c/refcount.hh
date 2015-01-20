@@ -22,12 +22,18 @@ public:
 
   // Increment refcount.
   void ref() {
+    lock_refcount();
     refcount_++;
+    unlock_refcount();
   }
 
   // Decremet refcount, possibly disposing this object.
   void deref() {
-    if (--refcount_ == 0)
+    size_t new_value;
+    lock_refcount();
+    new_value = (--refcount_);
+    unlock_refcount();
+    if (new_value == 0)
       dispose();
   }
 
@@ -41,6 +47,10 @@ public:
   size_t refcount() {
     return refcount_;
   }
+
+protected:
+  virtual void lock_refcount() { }
+  virtual void unlock_refcount() { }
 
 private:
   size_t refcount_;
