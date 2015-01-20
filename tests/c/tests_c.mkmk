@@ -13,6 +13,7 @@ test_file_names = [
   "test_promise.cc",
   "test_semaphore.cc",
   "test_stdc.cc",
+  "test_stdhashmap.cc",
   "test_string.cc",
   "test_thread.cc",
   "test_tinymt.cc",

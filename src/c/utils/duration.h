@@ -38,6 +38,11 @@ inline double duration_to_seconds(duration_t duration) {
   return duration.millis / 1000.0;
 }
 
+// Returns the number of milliseconds of this duration.
+inline uint64_t duration_to_millis(duration_t duration) {
+  return duration.millis;
+}
+
 // Adds the given duration to a pair of sec/nsec which is what you need to add
 // a duration to a posix timespec. For unlimited durations this does nothing.
 void duration_add_to_timespec(duration_t duration, uint64_t *sec, uint64_t *nsec);

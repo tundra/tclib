@@ -4,10 +4,12 @@
 #include "stdc.h"
 
 #ifdef IS_MSVC
+#  define _HAS_EXCEPTIONS 0
 #  pragma warning(push, 0)
 #    include <hash_map>
 #  pragma warning(pop)
 #  define platform_hash_map std::hash_map
+#  define platform_hash std::hash
 #else
 // I'm pretty sure this is not how you want to do this but a cursory google
 // search didn't give a good answer to what you're really supposed to do it and

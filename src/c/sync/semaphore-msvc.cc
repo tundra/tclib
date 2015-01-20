@@ -27,8 +27,11 @@ bool NativeSemaphore::platform_dispose() {
   return true;
 }
 
-bool NativeSemaphore::acquire() {
-  dword_t result = WaitForSingleObject(sema_, INFINITE);
+bool NativeSemaphore::acquire(duration_t timeout) {
+  dword_t millis = duration_is_unlimited(timeout)
+    ? INFINITE
+    : duration_to_millis(timeout);
+  dword_t result = WaitForSingleObject(sema_, millis);
   if (result == WAIT_OBJECT_0)
     return true;
   if (result == WAIT_FAILED)
