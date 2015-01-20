@@ -36,6 +36,12 @@ public:
     delete this;
   }
 
+  // The raw refcount. This is visible for testing, you typically don't want to
+  // ever use this for production code.
+  size_t refcount() {
+    return refcount_;
+  }
+
 private:
   size_t refcount_;
 };

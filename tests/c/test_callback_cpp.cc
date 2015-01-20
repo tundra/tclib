@@ -3,6 +3,8 @@
 
 #include "test/unittest.hh"
 #include "callback.hh"
+#include "sync/thread.hh"
+#include "sync/semaphore.hh"
 
 using namespace tclib;
 
@@ -266,4 +268,51 @@ TEST(callback_cpp, matrix) {
   ASSERT_EQ(1, m.destruct_count);
   dm1();
   ASSERT_EQ(2, m.destruct_count);
+}
+
+class ThreadSafetyTestState {
+public:
+  NativeSemaphore waiters;
+  NativeSemaphore kick_off;
+  callback_t<int(void)> callback;
+};
+
+// Copy and destruct the given callback 2^depth (-ish) times.
+static void pass_deep(callback_t<int(void)> callback, int depth) {
+  if (depth == 0)
+    return;
+  pass_deep(callback, depth - 1);
+  pass_deep(callback, depth - 1);
+}
+
+static void *pass_callback_around(ThreadSafetyTestState *state) {
+  state->waiters.release();
+  state->kick_off.acquire();
+  callback_t<int(void)> callback = state->callback;
+  pass_deep(callback, 8);
+  return NULL;
+}
+
+// This test attempts to detect whether callbacks are thread safe. Since thread
+// safety is basically nondeterministic this test is likely to be flaky in the
+// negative case. But in the positive case, where callbacks are safe, it should
+// pass consistently. I wrote this test before callbacks were thread safe and
+// it failed >75% of the time on my machine.
+TEST(callback_cpp, thread_safety) {
+  ThreadSafetyTestState state;
+  state.callback = new_callback(f1, 0);
+  ASSERT_TRUE(state.waiters.initialize());
+  ASSERT_TRUE(state.kick_off.initialize());
+  static const size_t kThreadCount = 8;
+  NativeThread threads[kThreadCount];
+  for (size_t i = 0; i < kThreadCount; i++) {
+    threads[i].set_callback(tclib::new_callback(pass_callback_around, &state));
+    ASSERT_TRUE(threads[i].start());
+    ASSERT_TRUE(state.waiters.acquire());
+  }
+  for (size_t i = 0; i < kThreadCount; i++)
+    state.kick_off.release();
+  for (size_t i = 0; i < kThreadCount; i++)
+    threads[i].join();
+  ASSERT_EQ(1, state.callback.binder()->refcount());
 }

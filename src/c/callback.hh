@@ -433,15 +433,16 @@ public:
     return invoker_.is_empty();
   }
 
+  // Alternative name for the shared state. This is visible for testing, there's
+  // no need to ever use this directly.
+  abstract_binder_t *binder() { return refcount_shared(); }
+
 protected:
   // Binders are born zero-reffed so this way the number of refs and derefs
   // always matches: ref on construction, deref on disposal.
   abstract_callback_t(opaque_invoker_t invoker, abstract_binder_t *binder)
     : refcount_reference_t(binder)
     , invoker_(invoker) { }
-
-  // Alternative name for the shared state.
-  abstract_binder_t *binder() { return refcount_shared(); }
 
   // The binder to call to invoke this callback.
   opaque_invoker_t invoker_;
