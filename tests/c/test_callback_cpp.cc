@@ -8,7 +8,7 @@ using namespace tclib;
 
 class A { };
 
-TEST(callback, sizes) {
+TEST(callback_cpp, sizes) {
   typedef void (A::*void_method_t)(void);
   ASSERT_TRUE(sizeof(void_method_t) <= (opaque_invoker_t::kMaxSize));
   typedef A (A::*return_class_method_t)(void);
@@ -40,7 +40,7 @@ int add_n_to_local_tick(int *ticks, int n) {
   return 29;
 }
 
-TEST(callback, functions) {
+TEST(callback_cpp, functions) {
   global_ticks = 0;
   callback_t<int(void)> cb0 = new_callback(add_global_tick);
   ASSERT_FALSE(cb0.is_empty());
@@ -116,7 +116,7 @@ int Testy::add_n(int n) {
   return 49;
 }
 
-TEST(callback, methods) {
+TEST(callback_cpp, methods) {
   callback_t<int(Testy*)> c0 = new_callback(&Testy::add_one);
   callback_t<int(Testy*)> c0e = empty_callback();
   ASSERT_TRUE(c0e.is_empty());
@@ -142,7 +142,7 @@ TEST(callback, methods) {
   ASSERT_EQ(17, testy.ticks_);
 }
 
-TEST(callback, empty) {
+TEST(callback_cpp, empty) {
   callback_t<int(void*)> e = empty_callback();
   ASSERT_TRUE(e.is_empty());
 }
@@ -151,7 +151,7 @@ int return_one() {
   return 1;
 }
 
-TEST(callback, link_one) {
+TEST(callback_cpp, link_one) {
   callback_t<int(void)> callback = return_one;
   ASSERT_EQ(1, callback());
 }
@@ -177,7 +177,7 @@ public:
   int destruct_count;
 };
 
-TEST(callback, matrix) {
+TEST(callback_cpp, matrix) {
   // Test the product of all bound and unbound argument counts. We support up to
   // 3 unbound arguments and up to 2 bound ones, with functions and methods.
   // That means a total of 23 different callback constructors which should all

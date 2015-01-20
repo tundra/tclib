@@ -9,6 +9,7 @@ library_files = [
   "strbuf.c",
   "string.c",
   "tinymt.c",
+  "../callback.cc"
 ]
 
 library = get_group("library")

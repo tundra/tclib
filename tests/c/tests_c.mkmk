@@ -4,7 +4,8 @@
 import re
 
 test_file_names = [
-  "test_callback.cc",
+  "test_callback_c.cc",
+  "test_callback_cpp.cc",
   "test_callback_link.cc",
   "test_duration.cc",
   "test_file.cc",
