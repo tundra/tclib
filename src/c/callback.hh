@@ -144,11 +144,11 @@ public:
     guard_.initialize();
   }
 
-  virtual void lock_refcount() {
+  virtual void acquire_refcount() {
     guard_.lock();
   }
 
-  virtual void unlock_refcount() {
+  virtual void release_refcount() {
     guard_.unlock();
   }
 
