@@ -31,6 +31,11 @@ int always_inline foo() {
   return 10;
 }
 
+always_inline int bar() {
+  return 11;
+}
+
 TEST(stdc, always_inlines) {
   ASSERT_EQ(10, foo());
+  ASSERT_EQ(11, bar());
 }
