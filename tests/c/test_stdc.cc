@@ -26,3 +26,11 @@ TEST(stdc, pointer_size) {
   ASSERT_EQ(IF_32_BIT(4, 8), sizeof(void*));
   ASSERT_EQ(IF_64_BIT(8, 4), sizeof(void*));
 }
+
+int always_inline foo() {
+  return 10;
+}
+
+TEST(stdc, always_inlines) {
+  ASSERT_EQ(10, foo());
+}

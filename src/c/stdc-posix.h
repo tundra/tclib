@@ -16,3 +16,11 @@
 #else
 #  error "Can't determine the pointer size."
 #endif
+
+// You might reasonably want this to be ALWAYS_INLINE but that just gets soooo
+// shouty and it looks bad mixed with other lower-case modifiers.
+#ifdef IS_GCC
+#  define always_inline __attribute__((always_inline)) inline
+#else
+#  define always_inline inline
+#endif

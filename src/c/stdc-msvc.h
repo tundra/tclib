@@ -16,3 +16,6 @@ typedef unsigned __int64 uint64_t;
 
 // Windows doesn't have va_copy but this appears to work.
 #define va_copy(d,s) ((d) = (s))
+
+// See stdc-posix.h for why this is lower case.
+#define always_inline __forceinline
