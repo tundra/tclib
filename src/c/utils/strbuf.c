@@ -108,7 +108,7 @@ void string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
           // Ideally the string's length would be given somehow but alas that's
           // not really possibly through var args.
           const char *c_str = va_arg(argp, const char *);
-          string_buffer_append(buf, new_c_string(c_str));
+          string_buffer_append(buf, new_c_string(c_str ? c_str : "(NULL)"));
           break;
         }
         case 'i':
