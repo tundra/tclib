@@ -79,6 +79,19 @@ TEST(string, string_buffer_simple) {
   string_buffer_dispose(&buf);
 }
 
+TEST(string, string_buffer_format) {
+  string_buffer_t buf;
+  string_buffer_init(&buf);
+
+  string_buffer_printf(&buf, "[S %s] ", NULL);
+  string_buffer_printf(&buf, "[P %%]");
+  utf8_t str = string_buffer_flush(&buf);
+  utf8_t expected = new_c_string("[S (NULL)] [P %]");
+  ASSERT_STREQ(expected, str);
+
+  string_buffer_dispose(&buf);
+}
+
 TEST(string, string_buffer_concat) {
   string_buffer_t buf;
   string_buffer_init(&buf);
