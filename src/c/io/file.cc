@@ -95,7 +95,7 @@ size_t io_stream_printf(io_stream_t *file, const char *fmt, ...) {
 class StdioFileSystem : public FileSystem {
 public:
   StdioFileSystem();
-  virtual StdioOpenFile *open(const char *path, open_file_mode_t mode);
+  virtual StdioOpenFile *open(utf8_t path, open_file_mode_t mode);
   virtual StdioOpenFile *std_in() { return &stdin_; }
   virtual StdioOpenFile *std_out() { return &stdout_; }
   virtual StdioOpenFile *std_err() { return &stderr_; }
@@ -110,7 +110,7 @@ StdioFileSystem::StdioFileSystem()
   , stdout_(stdout)
   , stderr_(stderr) { }
 
-StdioOpenFile *StdioFileSystem::open(const char *path, open_file_mode_t mode) {
+StdioOpenFile *StdioFileSystem::open(utf8_t path, open_file_mode_t mode) {
   const char *mode_str = NULL;
   switch (mode) {
     case OPEN_FILE_MODE_READ:
@@ -125,7 +125,7 @@ StdioOpenFile *StdioFileSystem::open(const char *path, open_file_mode_t mode) {
       mode_str = "r+";
       break;
   }
-  FILE *file = ::fopen(path, mode_str);
+  FILE *file = ::fopen(path.chars, mode_str);
   return (file == NULL) ? NULL : new StdioOpenFile(file);
 }
 
@@ -140,7 +140,7 @@ file_system_t *file_system_native() {
   return FileSystem::native();
 }
 
-io_stream_t *file_system_open(file_system_t *fs, const char *path,
+io_stream_t *file_system_open(file_system_t *fs, utf8_t path,
     open_file_mode_t mode) {
   return static_cast<FileSystem*>(fs)->open(path, mode);
 }

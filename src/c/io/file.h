@@ -6,6 +6,7 @@
 
 #include "stdc.h"
 #include <stdarg.h>
+#include "utils/string.h"
 
 typedef enum {
   OPEN_FILE_MODE_READ,
@@ -41,7 +42,7 @@ bool io_stream_flush(io_stream_t *file);
 
 // Attempts to open the file with the given name. If opening succeeds returns
 // an open file, if it fails returns NULL.
-io_stream_t *file_system_open(file_system_t *fs, const char *path, open_file_mode_t mode);
+io_stream_t *file_system_open(file_system_t *fs, utf8_t path, open_file_mode_t mode);
 
 // Returns the native file system.
 file_system_t *file_system_native();

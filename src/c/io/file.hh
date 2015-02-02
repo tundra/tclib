@@ -49,7 +49,7 @@ class FileSystem : public file_system_t {
 public:
   // Attempts to open the file with the given name. If opening succeeds returns
   // an open file, if it fails returns NULL.
-  virtual IoStream *open(const char *path, open_file_mode_t mode) = 0;
+  virtual IoStream *open(utf8_t path, open_file_mode_t mode) = 0;
 
   // Returns a handle for standard input. The result should be statically
   // allocated so you don't need to dispose it after use.
