@@ -218,6 +218,14 @@ bool ByteInStream::at_eof() {
   return cursor_ == size_;
 }
 
+in_stream_t *byte_in_stream_open(byte_t *data, size_t size) {
+  return new ByteInStream(data, size);
+}
+
+void byte_in_stream_dispose(in_stream_t *stream) {
+  delete static_cast<ByteInStream*>(stream);
+}
+
 ByteOutStream::ByteOutStream() { }
 
 size_t ByteOutStream::write_bytes(void *raw_src, size_t size) {

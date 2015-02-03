@@ -6,7 +6,7 @@
 
 using namespace tclib;
 
-TEST(file, byte_in_stream) {
+TEST(file, byte_in_stream_cpp) {
   byte_t data[12] = {11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
   ByteInStream in(data, 12);
   byte_t buf[4] = {0, 0, 0, 0};
@@ -46,6 +46,49 @@ TEST(file, byte_in_stream) {
   ASSERT_EQ(0, buf[1]);
   ASSERT_EQ(3, buf[2]);
   ASSERT_EQ(2, buf[3]);
+}
+
+TEST(file, byte_in_stream_c) {
+  byte_t data[12] = {11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+  in_stream_t *in = byte_in_stream_open(data, 12);
+  byte_t buf[4] = {0, 0, 0, 0};
+  ASSERT_FALSE(in_stream_at_eof(in));
+  ASSERT_EQ(1, in_stream_read_bytes(in, buf, 1));
+  ASSERT_EQ(11, buf[0]);
+  ASSERT_EQ(0, buf[1]);
+  ASSERT_EQ(0, buf[2]);
+  ASSERT_EQ(0, buf[3]);
+  ASSERT_FALSE(in_stream_at_eof(in));
+  ASSERT_EQ(2, in_stream_read_bytes(in, buf, 2));
+  ASSERT_EQ(10, buf[0]);
+  ASSERT_EQ(9, buf[1]);
+  ASSERT_EQ(0, buf[2]);
+  ASSERT_EQ(0, buf[3]);
+  ASSERT_FALSE(in_stream_at_eof(in));
+  ASSERT_EQ(3, in_stream_read_bytes(in, buf, 3));
+  ASSERT_EQ(8, buf[0]);
+  ASSERT_EQ(7, buf[1]);
+  ASSERT_EQ(6, buf[2]);
+  ASSERT_EQ(0, buf[3]);
+  ASSERT_FALSE(in_stream_at_eof(in));
+  ASSERT_EQ(4, in_stream_read_bytes(in, buf, 4));
+  ASSERT_EQ(5, buf[0]);
+  ASSERT_EQ(4, buf[1]);
+  ASSERT_EQ(3, buf[2]);
+  ASSERT_EQ(2, buf[3]);
+  ASSERT_FALSE(in_stream_at_eof(in));
+  ASSERT_EQ(2, in_stream_read_bytes(in, buf, 4));
+  ASSERT_EQ(1, buf[0]);
+  ASSERT_EQ(0, buf[1]);
+  ASSERT_EQ(3, buf[2]);
+  ASSERT_EQ(2, buf[3]);
+  ASSERT_TRUE(in_stream_at_eof(in));
+  ASSERT_EQ(0, in_stream_read_bytes(in, buf, 4));
+  ASSERT_EQ(1, buf[0]);
+  ASSERT_EQ(0, buf[1]);
+  ASSERT_EQ(3, buf[2]);
+  ASSERT_EQ(2, buf[3]);
+  byte_in_stream_dispose(in);
 }
 
 TEST(file, byte_out_stream) {
