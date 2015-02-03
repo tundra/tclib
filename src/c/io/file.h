@@ -19,7 +19,8 @@ typedef enum {
 // the OS's file system but not necessarily.
 typedef struct file_system_t file_system_t;
 
-// Handle for an open file.
+// Handle for an open file. This is for internal bookkeeping, it has no external
+// use.
 typedef struct file_handle_t file_handle_t;
 
 // A collection of handles returned when opening a file.

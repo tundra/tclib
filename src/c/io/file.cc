@@ -12,7 +12,7 @@ using namespace tclib;
 
 namespace tclib {
 
-// Handle for an open file.
+// Handle for an open file. This is for bookkeeping more than anything.
 class FileHandle : public InStream, public OutStream, public file_handle_t {
 public:
   virtual ~FileHandle() { }
