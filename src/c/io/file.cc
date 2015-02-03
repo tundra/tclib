@@ -201,8 +201,8 @@ out_stream_t *file_system_stderr(file_system_t *fs) {
   return static_cast<FileSystem*>(fs)->std_err();
 }
 
-ByteInStream::ByteInStream(byte_t *data, size_t size)
-  : data_(data)
+ByteInStream::ByteInStream(const void *data, size_t size)
+  : data_(static_cast<const byte_t*>(data))
   , size_(size)
   , cursor_(0) { }
 
@@ -218,7 +218,7 @@ bool ByteInStream::at_eof() {
   return cursor_ == size_;
 }
 
-in_stream_t *byte_in_stream_open(byte_t *data, size_t size) {
+in_stream_t *byte_in_stream_open(const void *data, size_t size) {
   return new ByteInStream(data, size);
 }
 

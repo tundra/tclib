@@ -31,7 +31,7 @@ size_t out_stream_vprintf(out_stream_t *file, const char *fmt, va_list argp);
 bool out_stream_flush(out_stream_t *stream);
 
 // Returns an in stream that returns bytes from the given block.
-in_stream_t *byte_in_stream_open(byte_t *data, size_t size);
+in_stream_t *byte_in_stream_open(const void *data, size_t size);
 
 // Disposes the given byte input stream.
 void byte_in_stream_dispose(in_stream_t *stream);

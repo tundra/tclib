@@ -50,12 +50,12 @@ public:
 // An io stream that reads data from a block of bytes and ignores writes.
 class ByteInStream : public InStream {
 public:
-  ByteInStream(byte_t *data, size_t size);
+  ByteInStream(const void *data, size_t size);
   virtual size_t read_bytes(void *dest, size_t size);
   virtual bool at_eof();
 
 private:
-  byte_t *data_;
+  const byte_t *data_;
   size_t size_;
   size_t cursor_;
 };
