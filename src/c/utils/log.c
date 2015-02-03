@@ -66,18 +66,18 @@ static log_o *global_log = NULL;
 // The default abort handler which prints the message to stderr and aborts
 // execution.
 static void default_log(log_o *log, log_entry_t *entry) {
-  io_stream_t *dest = file_system_stderr(file_system_native());
+  out_stream_t *dest = file_system_stderr(file_system_native());
   if (entry->file == NULL) {
     // This is typically used for testing where including the filename and line
     // makes the output unpredictable.
-    io_stream_printf(dest, "%s: %s\n",
+    out_stream_printf(dest, "%s: %s\n",
         get_log_level_name(entry->level), entry->message.chars);
   } else {
-    io_stream_printf(dest, "%s:%i: %s: %s [%s%s]\n", entry->file, entry->line,
+    out_stream_printf(dest, "%s:%i: %s: %s [%s%s]\n", entry->file, entry->line,
         get_log_level_name(entry->level), entry->message.chars,
         get_log_level_char(entry->level), entry->timestamp.chars);
   }
-  io_stream_flush(dest);
+  out_stream_flush(dest);
 }
 
 VTABLE(default_log_o, log_o) { default_log };

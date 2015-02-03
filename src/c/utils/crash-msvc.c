@@ -10,7 +10,7 @@ void initialize_crash_handler() {
 }
 
 // Print a stack trace if the platform supports it.
-void print_stack_trace(io_stream_t *out, int signum) {
+void print_stack_trace(out_stream_t *out, int signum) {
   handle_t process = GetCurrentProcess();
   if (!SymRefreshModuleList(process)) {
     io_stream_printf(out, "Error refreshing module list: %i", GetLastError());

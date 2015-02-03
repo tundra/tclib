@@ -12,16 +12,16 @@ void initialize_crash_handler() {
   // nothing to initialize
 }
 
-void print_stack_trace(io_stream_t *out, int signum) {
-  io_stream_printf(out, "# Received condition %i\n", signum);
+void print_stack_trace(out_stream_t *out, int signum) {
+  out_stream_printf(out, "# Received condition %i\n", signum);
   void *raw_frames[kMaxStackSize];
   size_t size = backtrace(raw_frames, kMaxStackSize);
   char **frames = backtrace_symbols(raw_frames, size);
   for (size_t i = 0; i < size; i++) {
-    io_stream_printf(out, "# - %s\n", frames[i]);
+    out_stream_printf(out, "# - %s\n", frames[i]);
   }
   free(frames);
-  io_stream_flush(out);
+  out_stream_flush(out);
 }
 
 void propagate_condition(int signum) {
