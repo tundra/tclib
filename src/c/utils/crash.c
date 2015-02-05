@@ -5,6 +5,7 @@
 #include "log.h"
 #include "ook-inl.h"
 #include "strbuf.h"
+#include "string-inl.h"
 
 #ifdef IS_GCC
 #include "crash-posix.c"
@@ -25,7 +26,10 @@ static abort_o *global_abort = NULL;
 // The default abort handler which prints the message to stderr and aborts
 // execution.
 static void default_abort(abort_o *self, abort_message_t *message) {
-  log_message(llError, message->file, message->line, "%s", message->text);
+  log_entry_t entry;
+  log_entry_init(&entry, lsStderr, lbContinue, message->file, message->line,
+      llFatal, new_c_string(message->text), new_c_string(""));
+  log_entry(&entry);
   abort();
 }
 

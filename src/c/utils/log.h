@@ -22,13 +22,20 @@ typedef enum {
   lsStderr
 } log_stream_t;
 
+// What's the behavior after a message has been reported: keep going or abort?
+typedef enum {
+  lbAbort,
+  lbContinue
+} log_behavior_t;
+
 // Call the given callback for each log level, log level character, log level
 // value, and destination log stream. The more serious the error the higher the
 // value will be.
-#define ENUM_LOG_LEVELS(F)                                                     \
-  F(Info,    I, 1, lsStdout)                                                   \
-  F(Warning, W, 2, lsStderr)                                                   \
-  F(Error,   E, 3, lsStderr)
+#define ENUM_LOG_LEVELS(C)                                                     \
+  C(Info,    I, 1, lsStdout, lbContinue)                                       \
+  C(Warning, W, 2, lsStderr, lbContinue)                                       \
+  C(Error,   E, 3, lsStderr, lbContinue)                                       \
+  C(Fatal,   F, 4, lsStderr, lbAbort)
 
 // Special log topics that can be turned on and off statically and dynamically.
 // These are useful if you want to instrument particular areas of the code but
@@ -63,7 +70,7 @@ bool set_topic_logging_enabled(bool value);
 // Log levels, used to select which logging statements to emit.
 typedef enum {
   __llFirst__ = -1
-#define __DECLARE_LOG_LEVEL__(Name, C, V, S) , ll##Name = V
+#define __DECLARE_LOG_LEVEL__(Name, C, V, S, B) , ll##Name = V
   ENUM_LOG_LEVELS(__DECLARE_LOG_LEVEL__)
 #undef __DECLARE_LOG_LEVEL__
 } log_level_t;
@@ -79,6 +86,7 @@ void vlog_message(log_level_t level, const char *file, int line, const char *fmt
 // The data that makes up an entry in the log.
 typedef struct {
   log_stream_t destination;
+  log_behavior_t behavior;
   const char *file;
   int line;
   log_level_t level;
@@ -87,8 +95,12 @@ typedef struct {
 } log_entry_t;
 
 // Sets all the required fields in a log entry struct.
-void log_entry_init(log_entry_t *entry, log_stream_t destination, const char *file,
-    int line, log_level_t level, utf8_t message, utf8_t timestamp);
+void log_entry_init(log_entry_t *entry, log_stream_t destination,
+    log_behavior_t behavior, const char *file, int line, log_level_t level,
+    utf8_t message, utf8_t timestamp);
+
+// Logs a message that has already been processed into an entry.
+void log_entry(log_entry_t *entry);
 
 INTERFACE(log_o);
 
@@ -114,6 +126,11 @@ log_o *set_global_log(log_o *log);
 #define WARN(...) do {                                                         \
   if (LOG_LEVEL_AT_LEAST(llWarning))                                           \
     log_message(llWarning, __FILE__, __LINE__, __VA_ARGS__);                   \
+} while (false)
+
+// Emits an error and aborts execution.
+#define FATAL(...) do {                                                        \
+  log_message(llFatal, __FILE__, __LINE__, __VA_ARGS__);                       \
 } while (false)
 
 // Emits an error if the static log level is at least error, otherwise does

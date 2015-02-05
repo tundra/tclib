@@ -20,7 +20,7 @@ bool set_topic_logging_enabled(bool value) {
 // Returns the initial for the given log level.
 static const char *get_log_level_char(log_level_t level) {
   switch (level) {
-#define __LEVEL_CASE__(Name, C, V, S) case ll##Name: return #C;
+#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return #C;
     ENUM_LOG_LEVELS(__LEVEL_CASE__)
 #undef __LEVEL_CASE__
     default:
@@ -31,7 +31,7 @@ static const char *get_log_level_char(log_level_t level) {
 // Returns the full name of the given log level.
 static const char *get_log_level_name(log_level_t level) {
   switch (level) {
-#define __LEVEL_CASE__(Name, C, V, S) case ll##Name: return #Name;
+#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return #Name;
     ENUM_LOG_LEVELS(__LEVEL_CASE__)
 #undef __LEVEL_CASE__
     default:
@@ -42,11 +42,22 @@ static const char *get_log_level_name(log_level_t level) {
 // Returns the destination stream of the given log level.
 static log_stream_t get_log_level_destination(log_level_t level) {
   switch (level) {
-#define __LEVEL_CASE__(Name, C, V, S) case ll##Name: return S;
+#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return S;
     ENUM_LOG_LEVELS(__LEVEL_CASE__)
 #undef __LEVEL_CASE__
     default:
       return lsStderr;
+  }
+}
+
+// Returns the destination stream of the given log level.
+static log_behavior_t get_log_level_behavior(log_level_t level) {
+  switch (level) {
+#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return B;
+    ENUM_LOG_LEVELS(__LEVEL_CASE__)
+#undef __LEVEL_CASE__
+    default:
+      return lbContinue;
   }
 }
 
@@ -63,10 +74,12 @@ IMPLEMENTATION(default_log_o, log_o);
 static log_o kDefaultLog;
 static log_o *global_log = NULL;
 
-// The default abort handler which prints the message to stderr and aborts
+// The default abort handler which prints the message to stdout/err and aborts
 // execution.
 static void default_log(log_o *log, log_entry_t *entry) {
-  out_stream_t *dest = file_system_stderr(file_system_native());
+  out_stream_t *dest = (entry->destination == lsStderr)
+      ? file_system_stderr(file_system_native())
+      : file_system_stdout(file_system_native());
   if (entry->file == NULL) {
     // This is typically used for testing where including the filename and line
     // makes the output unpredictable.
@@ -78,6 +91,11 @@ static void default_log(log_o *log, log_entry_t *entry) {
         get_log_level_char(entry->level), entry->timestamp.chars);
   }
   out_stream_flush(dest);
+  if (entry->behavior == lbAbort) {
+    abort_message_t message;
+    abort_message_init(&message, entry->file, entry->line, 0, entry->message.chars);
+    abort_call(get_global_abort(), &message);
+  }
 }
 
 VTABLE(default_log_o, log_o) { default_log };
@@ -98,16 +116,16 @@ log_o *set_global_log(log_o *value) {
 }
 
 void log_entry_init(log_entry_t *entry, log_stream_t destination,
-    const char *file, int line, log_level_t level, utf8_t message,
-    utf8_t timestamp) {
+    log_behavior_t behavior, const char *file, int line, log_level_t level,
+    utf8_t message, utf8_t timestamp) {
   entry->destination = destination;
+  entry->behavior = behavior;
   entry->file = file;
   entry->line = line;
   entry->level = level;
   entry->message = message;
   entry->timestamp = timestamp;
 }
-
 
 void vlog_message(log_level_t level, const char *file, int line, const char *fmt,
     va_list argp) {
@@ -126,11 +144,16 @@ void vlog_message(log_level_t level, const char *file, int line, const char *fmt
   size_t timestamp_chars = strftime(timestamp, 128, "%d%m%H%M%S", &local_time);
   utf8_t timestamp_str = new_string(timestamp, timestamp_chars);
   log_stream_t destination = get_log_level_destination(level);
+  log_behavior_t behavior = get_log_level_behavior(level);
   // Print the result.
   log_entry_t entry;
-  log_entry_init(&entry, destination, file, line, level, message_str,
+  log_entry_init(&entry, destination, behavior, file, line, level, message_str,
       timestamp_str);
-  log_o *log = get_global_log();
-  METHOD(log, log)(log, &entry);
+  log_entry(&entry);
   string_buffer_dispose(&buf);
+}
+
+void log_entry(log_entry_t *entry) {
+  log_o *log = get_global_log();
+  METHOD(log, log)(log, entry);
 }
