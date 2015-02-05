@@ -26,6 +26,10 @@ static abort_o *global_abort = NULL;
 // The default abort handler which prints the message to stderr and aborts
 // execution.
 static void default_abort(abort_o *self, abort_message_t *message) {
+  // There's no reason to go through the whole log formatting process since
+  // there's formatted text in the message. Also, there's a circularity here:
+  // logging fatal can abort and aborting will log fatal. We break the cycle by
+  // using lbContinue here explicitly but it's still a little uncomfortable.
   log_entry_t entry;
   log_entry_init(&entry, lsStderr, lbContinue, message->file, message->line,
       llFatal, new_c_string(message->text), new_c_string(""));
