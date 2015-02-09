@@ -19,16 +19,18 @@
 
 #include "c/stdc.h"
 
+#include "utils/opaque.h"
+
 // void*(void)
 typedef struct voidp_callback_t voidp_callback_t;
-voidp_callback_t *voidp_callback_0(void *(invoker)(void));
-void *voidp_callback_call(voidp_callback_t *callback);
+voidp_callback_t *voidp_callback_0(opaque_t (invoker)(void));
+opaque_t voidp_callback_call(voidp_callback_t *callback);
 
 // void*(void*)
 typedef struct voidp_callback_voidp_t voidp_callback_voidp_t;
-voidp_callback_voidp_t *voidp_callback_voidp_0(void *(invoker)(void*));
-voidp_callback_t *voidp_callback_voidp_1(void *(invoker)(void*), void *b0);
-void *voidp_callback_voidp_call(voidp_callback_voidp_t *callback, void *a0);
+voidp_callback_voidp_t *voidp_callback_voidp_0(opaque_t (invoker)(opaque_t));
+voidp_callback_t *voidp_callback_voidp_1(opaque_t (invoker)(opaque_t), opaque_t b0);
+opaque_t voidp_callback_voidp_call(voidp_callback_voidp_t *callback, opaque_t a0);
 
 // Deletes the given callback. This function works on all callbacks, regardless
 // of their concrete type.
