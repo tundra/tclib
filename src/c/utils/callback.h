@@ -17,7 +17,7 @@
 // that the constructor is named for the function they bind, not the type they
 // return (because those aren't unique).
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 // void*(void)
 typedef struct voidp_callback_t voidp_callback_t;

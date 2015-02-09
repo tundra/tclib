@@ -4,9 +4,9 @@
 #ifndef _TCLIB_THREAD_HH
 #define _TCLIB_THREAD_HH
 
-#include "callback.hh"
-#include "stdc.h"
-#include "sync.h"
+#include "c/stdc.h"
+#include "sync/sync.h"
+#include "utils/callback.hh"
 
 namespace tclib {
 

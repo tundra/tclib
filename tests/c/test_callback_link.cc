@@ -7,7 +7,7 @@
 // considered to pass as long as the test binary links.
 
 #include "test/unittest.hh"
-#include "callback.hh"
+#include "utils/callback.hh"
 
 using namespace tclib;
 

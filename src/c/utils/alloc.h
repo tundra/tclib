@@ -4,7 +4,7 @@
 #ifndef _TCLIB_ALLOC_H
 #define _TCLIB_ALLOC_H
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 // A block of memory as returned from an allocator. Bundling the length with the
 // memory allows us to check how much memory is live at any given time.

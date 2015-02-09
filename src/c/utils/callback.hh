@@ -11,9 +11,9 @@
 // arg counts that introducing a new source is more of a problem than having
 // everything in the same file.
 
-#include "stdc.h"
-#include "refcount.hh"
+#include "c/stdc.h"
 #include "sync/mutex.hh"
+#include "utils/refcount.hh"
 
 namespace tclib {
 

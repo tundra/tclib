@@ -4,13 +4,13 @@
 #ifndef _TCLIB_STREAM_HH
 #define _TCLIB_STREAM_HH
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 BEGIN_C_INCLUDES
-#include "stream.h"
+#include "io/stream.h"
 END_C_INCLUDES
 
-#include "std/stdvector.hh"
+#include "c/stdvector.hh"
 
 struct in_stream_t { };
 struct out_stream_t { };

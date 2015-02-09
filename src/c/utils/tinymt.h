@@ -5,7 +5,7 @@
 /// http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/TINYMT/index.html. Rewritten
 /// from scratch but heavily influenced by TinyMT-src from that same source.
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 // Static Mersenne twister parameters. Unlike the seed these have to be
 // generated carefully for the twister to have the right properties. Typically

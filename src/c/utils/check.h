@@ -7,8 +7,8 @@
 #ifndef _CHECK
 #define _CHECK
 
-#include "crash.h"
-#include "stdc.h"
+#include "c/stdc.h"
+#include "utils/crash.h"
 
 // Define the IF_CHECKS_ENABLED macro appropriately. There is a choice here
 // between whether to completely remove check-related code when checks are

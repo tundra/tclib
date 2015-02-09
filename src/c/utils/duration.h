@@ -3,7 +3,7 @@
 
 /// A few abstractions for working with time.
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 // A period of time, possibly unlimited.
 typedef struct {

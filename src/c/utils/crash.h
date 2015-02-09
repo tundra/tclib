@@ -8,8 +8,8 @@
 #ifndef _CRASH
 #define _CRASH
 
-#include "stdc.h"
-#include "ook.h"
+#include "c/stdc.h"
+#include "utils/ook.h"
 
 // Data used to construct the message displayed when the runtime aborts.
 typedef struct {

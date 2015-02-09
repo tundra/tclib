@@ -4,7 +4,7 @@
 #ifndef _TCLIB_STREAM_H
 #define _TCLIB_STREAM_H
 
-#include "stdc.h"
+#include "c/stdc.h"
 #include <stdarg.h>
 #include "utils/string.h"
 

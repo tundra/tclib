@@ -4,10 +4,10 @@
 #ifndef _TCLIB_MUTEX_HH
 #define _TCLIB_MUTEX_HH
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 BEGIN_C_INCLUDES
-#include "sync.h"
+#include "sync/sync.h"
 END_C_INCLUDES
 
 namespace tclib {

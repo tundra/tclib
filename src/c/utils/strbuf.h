@@ -4,10 +4,10 @@
 #ifndef _TCLIB_STRBUF_H
 #define _TCLIB_STRBUF_H
 
-#include "alloc.h"
-#include "ook.h"
-#include "string.h"
-#include "stdc-inl.h"
+#include "c/stdc-inl.h"
+#include "utils/alloc.h"
+#include "utils/ook.h"
+#include "utils/string.h"
 
 
 // Buffer for building a string incrementally.

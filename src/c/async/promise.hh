@@ -4,11 +4,11 @@
 #ifndef _TCLIB_PROMISE_HH
 #define _TCLIB_PROMISE_HH
 
-#include "callback.hh"
-#include "refcount.hh"
-#include "std/stdvector.hh"
-#include "stdc.h"
+#include "c/stdc.h"
+#include "c/stdvector.hh"
 #include "sync/mutex.hh"
+#include "utils/callback.hh"
+#include "utils/refcount.hh"
 
 namespace tclib {
 

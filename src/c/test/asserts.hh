@@ -7,7 +7,7 @@
 #ifndef _ASSERTS
 #define _ASSERTS
 
-#include "../stdc.h"
+#include "../c/stdc.h"
 
 // Aborts exception, signalling an error. The test library doesn't implement
 // this, any code that uses this has to provide their own implementation that

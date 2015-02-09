@@ -4,7 +4,7 @@
 #include "test/unittest.hh"
 
 BEGIN_C_INCLUDES
-#include "callback.h"
+#include "utils/callback.h"
 END_C_INCLUDES
 
 static int p0 = 0;

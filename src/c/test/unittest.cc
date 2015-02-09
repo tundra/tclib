@@ -4,8 +4,8 @@
 #include "unittest.hh"
 
 BEGIN_C_INCLUDES
-#include "../realtime.h"
 #include "utils/crash.h"
+#include "test/realtime.h"
 END_C_INCLUDES
 
 #ifdef IS_GCC
@@ -14,8 +14,6 @@ extern char *strdup(const char*);
 
 IMPLEMENTATION(silent_log_o, log_o);
 
-// The default abort handler which prints the message to stderr and aborts
-// execution.
 static void ignore_log(log_o *log, log_entry_t *entry) {
   // ignore
 }

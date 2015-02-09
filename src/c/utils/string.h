@@ -1,11 +1,11 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "check.h"
-#include "stdc.h"
-
 #ifndef _TCLIB_STRING_H
 #define _TCLIB_STRING_H
+
+#include "c/stdc.h"
+#include "utils/check.h"
 
 // A C string with a length.
 typedef struct {

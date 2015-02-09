@@ -1,8 +1,8 @@
 //- Copyright 2015 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#include "c/stdhashmap.hh"
 #include "test/unittest.hh"
-#include "std/stdhashmap.hh"
 
 TEST(stdhashmap, realsimple) {
   platform_hash_map<int, int> mymap;

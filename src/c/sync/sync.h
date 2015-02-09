@@ -6,7 +6,7 @@
 #ifndef _TCLIB_SYNC_H
 #define _TCLIB_SYNC_H
 
-#include "stdc.h"
+#include "c/stdc.h"
 #include "utils/duration.h"
 
 #ifdef IS_GCC

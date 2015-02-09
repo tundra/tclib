@@ -7,9 +7,9 @@
 #ifndef _LOG
 #define _LOG
 
-#include "ook.h"
-#include "stdc.h"
-#include "string.h"
+#include "c/stdc.h"
+#include "utils/ook.h"
+#include "utils/string.h"
 
 #include <stdarg.h>
 

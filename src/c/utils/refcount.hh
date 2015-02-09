@@ -10,7 +10,7 @@
 // are responsible for counting and dereffing the shared data. Once the last
 // reference goes away the shared data is disposed appropriately.
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 namespace tclib {
 

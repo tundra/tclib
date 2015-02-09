@@ -1,13 +1,13 @@
 //- Copyright 2015 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 BEGIN_C_INCLUDES
-#include "callback.h"
+#include "utils/callback.h"
 END_C_INCLUDES
 
-#include "callback.hh"
+#include "utils/callback.hh"
 using namespace tclib;
 
 // Given a callback, creates a heap-allocated clone and casts it to the given C

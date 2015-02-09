@@ -4,7 +4,7 @@
 #ifndef _REALTIME
 #define _REALTIME
 
-#include "stdc.h"
+#include "c/stdc.h"
 
 // Returns the current time in seconds. "Since when" is a reasonable question.
 // Depends.

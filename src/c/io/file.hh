@@ -4,11 +4,11 @@
 #ifndef _TCLIB_FILE_HH
 #define _TCLIB_FILE_HH
 
-#include "stdc.h"
-#include "stream.hh"
+#include "c/stdc.h"
+#include "io/stream.hh"
 
 BEGIN_C_INCLUDES
-#include "file.h"
+#include "io/file.h"
 END_C_INCLUDES
 
 struct file_system_t { };
