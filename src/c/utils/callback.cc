@@ -23,23 +23,23 @@ callback_t<T> &uncloak(C *cloaked) {
   return *reinterpret_cast<callback_t<T>*>(cloaked);
 }
 
-voidp_callback_t *voidp_callback_0(opaque_t (invoker)(void)) {
-  return clone_and_cloak<voidp_callback_t>(new_callback(invoker));
+nullary_callback_t *new_nullary_callback_0(opaque_t (invoker)(void)) {
+  return clone_and_cloak<nullary_callback_t>(new_callback(invoker));
 }
 
-voidp_callback_t *voidp_callback_voidp_1(opaque_t (invoker)(opaque_t), opaque_t b0) {
-  return clone_and_cloak<voidp_callback_t>(new_callback(invoker, b0));
+nullary_callback_t *new_nullary_callback_1(opaque_t (invoker)(opaque_t), opaque_t b0) {
+  return clone_and_cloak<nullary_callback_t>(new_callback(invoker, b0));
 }
 
-opaque_t voidp_callback_call(voidp_callback_t *callback) {
+opaque_t nullary_callback_call(nullary_callback_t *callback) {
   return (uncloak<opaque_t(void)>(callback))();
 }
 
-voidp_callback_voidp_t *voidp_callback_voidp_0(opaque_t (invoker)(opaque_t)) {
-  return clone_and_cloak<voidp_callback_voidp_t>(new_callback(invoker));
+unary_callback_t *new_unary_callback_0(opaque_t (invoker)(opaque_t)) {
+  return clone_and_cloak<unary_callback_t>(new_callback(invoker));
 }
 
-opaque_t voidp_callback_voidp_call(voidp_callback_voidp_t *callback, opaque_t a0) {
+opaque_t unary_callback_call(unary_callback_t *callback, opaque_t a0) {
   return (uncloak<opaque_t(opaque_t)>(callback))(a0);
 }
 

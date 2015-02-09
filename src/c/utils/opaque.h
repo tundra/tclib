@@ -54,6 +54,12 @@ static always_inline uint64_t o2u(opaque_t opaque) {
   return opaque.as_uint64;
 }
 
+// Returns a null opaque value, that is, a value whose pointer value is NULL and
+// uint64 value is 0. Can be used to explicitly indicate no-value.
+static always_inline opaque_t opaque_null() {
+  return u2o(0);
+}
+
 // Are the two given opaques identical.
 static always_inline bool opaque_same(opaque_t a, opaque_t b) {
   return a.as_uint64 == b.as_uint64;

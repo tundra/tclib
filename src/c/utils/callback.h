@@ -7,30 +7,31 @@
 // C bindings for the C++ callbacks.
 //
 // The C++ callbacks rely heavily on templates and so there's more work in
-// creating the C version. The naming conventions are as follows: a callback's
-// type is named after the return type, then "callback", then each of the
-// arguments, then "_t". So voidp_callback_voidp_int_t is a callback that takes
-// a voidp (that is, void*) and an int as arguments and returns voidp*. The
-// constructors use the same convention but also include a number that indicates
-// how many bound arguments there are. So new_voidp_callback_voidp_1 takes a
-// void*(void*) and 1 bound argument, which will be a void*. Note that his means
-// that the constructor is named for the function they bind, not the type they
-// return (because those aren't unique).
+// creating the C version. To avoid a combinatorical explosion of bound/unbound
+// arguments plus argument types I've tried to stick with the generic opaque
+// type and rely on casting instead.
+//
+// The naming convention is as follows. The types are named for how many
+// arguments they expect: nullary take no arguments, unary take one, etc. The
+// constructors are named after how many arguments they bind so, for instance,
+// new_binary_callback_3 would take a 5-argument function, bind 3 of the
+// arguments (the "_3"), and yield a result that expects 2 additional arguments
+// (the "binary").
 
 #include "c/stdc.h"
 
 #include "utils/opaque.h"
 
-// void*(void)
-typedef struct voidp_callback_t voidp_callback_t;
-voidp_callback_t *voidp_callback_0(opaque_t (invoker)(void));
-opaque_t voidp_callback_call(voidp_callback_t *callback);
+// opaque_t(void)
+typedef struct nullary_callback_t nullary_callback_t;
+nullary_callback_t *new_nullary_callback_0(opaque_t (invoker)(void));
+nullary_callback_t *new_nullary_callback_1(opaque_t (invoker)(opaque_t), opaque_t b0);
+opaque_t nullary_callback_call(nullary_callback_t *callback);
 
-// void*(void*)
-typedef struct voidp_callback_voidp_t voidp_callback_voidp_t;
-voidp_callback_voidp_t *voidp_callback_voidp_0(opaque_t (invoker)(opaque_t));
-voidp_callback_t *voidp_callback_voidp_1(opaque_t (invoker)(opaque_t), opaque_t b0);
-opaque_t voidp_callback_voidp_call(voidp_callback_voidp_t *callback, opaque_t a0);
+// opaque_t(opaque_t)
+typedef struct unary_callback_t unary_callback_t;
+unary_callback_t *new_unary_callback_0(opaque_t (invoker)(opaque_t));
+opaque_t unary_callback_call(unary_callback_t *callback, opaque_t a0);
 
 // Deletes the given callback. This function works on all callbacks, regardless
 // of their concrete type.
