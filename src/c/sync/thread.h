@@ -21,7 +21,9 @@ void dispose_native_thread(native_thread_t *thread);
 bool native_thread_start(native_thread_t *thread);
 
 // Waits for the given thread to finish, then returns the result returned from
-// the thread's callback.
+// the thread's callback. Or, technically what gets returned is the pointer
+// value of the returned opaque, you can't reliably return anything wider than
+// a pointer.
 void *native_thread_join(native_thread_t *thread);
 
 // Returns the id of the calling thread.
