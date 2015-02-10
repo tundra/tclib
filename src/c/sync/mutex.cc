@@ -1,10 +1,11 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "mutex.hh"
+#include "sync/mutex.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/log.h"
+#include "sync/mutex.h"
 END_C_INCLUDES
 
 #include <new>
@@ -36,4 +37,28 @@ bool NativeMutex::initialize() {
   if (!is_initialized_)
     is_initialized_ = platform_initialize();
   return is_initialized_;
+}
+
+native_mutex_t *new_native_mutex() {
+  return reinterpret_cast<native_mutex_t*>(new NativeMutex());
+}
+
+void native_mutex_dispose(native_mutex_t *mutex) {
+  delete reinterpret_cast<NativeMutex*>(mutex);
+}
+
+bool native_mutex_initialize(native_mutex_t *mutex) {
+  return reinterpret_cast<NativeMutex*>(mutex)->initialize();
+}
+
+bool native_mutex_lock(native_mutex_t *mutex) {
+  return reinterpret_cast<NativeMutex*>(mutex)->lock();
+}
+
+bool native_mutex_try_lock(native_mutex_t *mutex) {
+  return reinterpret_cast<NativeMutex*>(mutex)->try_lock();
+}
+
+bool native_mutex_unlock(native_mutex_t *mutex) {
+  return reinterpret_cast<NativeMutex*>(mutex)->unlock();
 }

@@ -4,14 +4,15 @@
 #ifndef _TCLIB_THREAD_H
 #define _TCLIB_THREAD_H
 
-#include "sync.h"
+#include "sync/sync.h"
+#include "utils/callback.h"
 
 // Opaque thread type.
 typedef struct native_thread_t native_thread_t;
 
 // Creates and returns a new native thread that will run the given callback
-// with the given data when started.
-native_thread_t *new_native_thread(void *(callback)(void*), void *data);
+// when started.
+native_thread_t *new_native_thread(nullary_callback_t *callback);
 
 // Disposes the given native thread.
 void dispose_native_thread(native_thread_t *thread);

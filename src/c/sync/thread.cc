@@ -50,8 +50,13 @@ void NativeThread::set_callback(run_callback_t callback) {
   callback_ = callback;
 }
 
-native_thread_t *new_native_thread(void *(callback)(void*), void *data) {
-  NativeThread *result = new NativeThread(new_callback(callback, data));
+void *thread_start_trampoline(nullary_callback_t *callback) {
+  return o2p(nullary_callback_call(callback));
+}
+
+native_thread_t *new_native_thread(nullary_callback_t *callback) {
+  NativeThread *result = new NativeThread(new_callback(thread_start_trampoline,
+      callback));
   return reinterpret_cast<native_thread_t*>(result);
 }
 

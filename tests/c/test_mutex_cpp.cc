@@ -24,7 +24,7 @@ static void *do_lock(NativeMutex *m0, NativeMutex *m1) {
   return NULL;
 }
 
-TEST(mutex, simple) {
+TEST(mutex_cpp, simple) {
   // Some of the failures cause log messages to be issued, which we don't want
   // to see.
   log_o *noisy_log = silence_global_log();
@@ -62,7 +62,7 @@ TEST(mutex, simple) {
 
 #define kBarrierCount 128
 
-void *run_thread(NativeSemaphore *locked, NativeMutex *mutexes, size_t *order) {
+static void *run_thread(NativeSemaphore *locked, NativeMutex *mutexes, size_t *order) {
   // Lock its own mutex.
   ASSERT_TRUE(mutexes[0].lock());
   // Signal to the main thread that it's done that.
@@ -78,7 +78,7 @@ void *run_thread(NativeSemaphore *locked, NativeMutex *mutexes, size_t *order) {
   return 0;
 }
 
-TEST(mutex, barriers) {
+TEST(mutex_cpp, barriers) {
   NativeSemaphore locked_count(0);
   ASSERT_TRUE(locked_count.initialize());
   // Create a vector of locked mutexes.

@@ -31,6 +31,11 @@ nullary_callback_t *new_nullary_callback_1(opaque_t (invoker)(opaque_t), opaque_
   return clone_and_cloak<nullary_callback_t>(new_callback(invoker, b0));
 }
 
+nullary_callback_t *new_nullary_callback_2(opaque_t (invoker)(opaque_t, opaque_t),
+    opaque_t b0, opaque_t b1) {
+  return clone_and_cloak<nullary_callback_t>(new_callback(invoker, b0, b1));
+}
+
 opaque_t nullary_callback_call(nullary_callback_t *callback) {
   return (uncloak<opaque_t(void)>(callback))();
 }

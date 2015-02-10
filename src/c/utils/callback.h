@@ -26,6 +26,8 @@
 typedef struct nullary_callback_t nullary_callback_t;
 nullary_callback_t *new_nullary_callback_0(opaque_t (invoker)(void));
 nullary_callback_t *new_nullary_callback_1(opaque_t (invoker)(opaque_t), opaque_t b0);
+nullary_callback_t *new_nullary_callback_2(opaque_t (invoker)(opaque_t, opaque_t),
+    opaque_t b0, opaque_t b1);
 opaque_t nullary_callback_call(nullary_callback_t *callback);
 
 // opaque_t(opaque_t)
