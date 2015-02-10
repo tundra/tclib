@@ -18,6 +18,12 @@ static opaque_promise_t *clone_and_cloak(naked_opaque_promise_t promise) {
   return reinterpret_cast<opaque_promise_t*>(result);
 }
 
+// This is a little subtle but by returning the result by value rather than a
+// pointer or a reference the promise will be reffed for the duration of
+// whatever call it will be used in which means that we're safe against the
+// call indirectly causing the promise to be disposed -- it won't be because
+// of that extra ref, and only when the call returns will that count be dereffed
+// and the promise actually deleted.
 static naked_opaque_promise_t uncloak(opaque_promise_t *promise) {
   return *reinterpret_cast<naked_opaque_promise_t*>(promise);
 }

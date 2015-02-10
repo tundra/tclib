@@ -8,6 +8,8 @@
 #include "utils/callback.h"
 #include "utils/opaque.h"
 
+// A promise (basically a promise_t) that resolved or fails to an opaque_t. See
+// opaque_t for details.
 typedef struct opaque_promise_t opaque_promise_t;
 
 // Creates and returns a new empty opaque promise.
