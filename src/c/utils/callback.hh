@@ -15,6 +15,10 @@
 #include "sync/mutex.hh"
 #include "utils/refcount.hh"
 
+BEGIN_C_INCLUDES
+#include "utils/callback.h"
+END_C_INCLUDES
+
 namespace tclib {
 
 // An opaque wrapper around a function or method pointer. Ideally we'd just cast

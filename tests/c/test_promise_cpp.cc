@@ -7,7 +7,7 @@
 
 using namespace tclib;
 
-TEST(promise, simple) {
+TEST(promise_cpp, simple) {
   promise_t<int> p = promise_t<int>::empty();
   ASSERT_FALSE(p.is_resolved());
   ASSERT_FALSE(p.has_succeeded());
@@ -22,7 +22,7 @@ TEST(promise, simple) {
   ASSERT_EQ(0, p.peek_error(0));
 }
 
-TEST(promise, simple_sync) {
+TEST(promise_cpp, simple_sync) {
   sync_promise_t<int> p = sync_promise_t<int>::empty();
   ASSERT_FALSE(p.is_resolved());
   ASSERT_FALSE(p.has_succeeded());
@@ -37,7 +37,7 @@ TEST(promise, simple_sync) {
   ASSERT_EQ(0, p.peek_error(0));
 }
 
-TEST(promise, simple_error) {
+TEST(promise_cpp, simple_error) {
   promise_t<void*, int> p = promise_t<void*, int>::empty();
   ASSERT_FALSE(p.is_resolved());
   ASSERT_EQ(0, p.peek_error(0));
@@ -50,7 +50,7 @@ TEST(promise, simple_error) {
   ASSERT_EQ(0, p.peek_value(0));
 }
 
-TEST(promise, simple_error_sync) {
+TEST(promise_cpp, simple_error_sync) {
   sync_promise_t<void*, int> p = sync_promise_t<void*, int>::empty();
   ASSERT_FALSE(p.is_resolved());
   ASSERT_EQ(0, p.peek_error(0));
@@ -60,7 +60,7 @@ TEST(promise, simple_error_sync) {
   ASSERT_EQ(10, p.peek_error(0));
 }
 
-TEST(promise, reffing) {
+TEST(promise_cpp, reffing) {
   promise_t<int> p1 = promise_t<int>::empty();
   promise_t<int> p2 = p1;
   p1 = p2;
@@ -90,7 +90,7 @@ private:
   int *count_;
 };
 
-TEST(promise, destruct) {
+TEST(promise_cpp, destruct) {
   int count = 0;
   {
     A a(&count);
@@ -111,7 +111,7 @@ static void set_value(int *dest, int value) {
   *dest = value;
 }
 
-TEST(promise, action_on_success) {
+TEST(promise_cpp, action_on_success) {
   int value_out = 0;
   promise_t<int> pi = promise_t<int>::empty();
   pi.on_success(new_callback(set_value, &value_out));
@@ -123,7 +123,7 @@ TEST(promise, action_on_success) {
   ASSERT_EQ(5, value_out);
 }
 
-TEST(promise, action_on_failure) {
+TEST(promise_cpp, action_on_failure) {
   int value_out = 0;
   promise_t<void*, int> pi = promise_t<void*, int>::empty();
   pi.on_failure(new_callback(set_value, &value_out));
@@ -143,7 +143,7 @@ static bool is_even(int value) {
   return (value & 1) == 0;
 }
 
-TEST(promise, then_success) {
+TEST(promise_cpp, then_success) {
   promise_t<int> a = promise_t<int>::empty();
   promise_t<int> b = a.then<int>(new_callback(shift_plus_n, 4));
   promise_t<int> c = b.then<int>(new_callback(shift_plus_n, 5));
@@ -158,7 +158,7 @@ TEST(promise, then_success) {
   ASSERT_EQ(true, is_d_even.peek_value(false));
 }
 
-TEST(promise, then_failure) {
+TEST(promise_cpp, then_failure) {
   promise_t<int, int> a = promise_t<int, int>::empty();
   promise_t<int, int> b = a.then<int>(new_callback(shift_plus_n, 7));
   promise_t<int, int> c = b.then<int>(new_callback(shift_plus_n, 8));
@@ -185,7 +185,7 @@ static void *run_sync_waiter(NativeSemaphore *about_to_wait,
   return NULL;
 }
 
-TEST(promise, sync_wait) {
+TEST(promise_cpp, sync_wait) {
   sync_promise_t<int> p = sync_promise_t<int>::empty();
   NativeSemaphore about_to_wait(0);
   ASSERT_TRUE(about_to_wait.initialize());

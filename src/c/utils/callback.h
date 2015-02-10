@@ -31,6 +31,10 @@ opaque_t nullary_callback_call(nullary_callback_t *callback);
 // opaque_t(opaque_t)
 typedef struct unary_callback_t unary_callback_t;
 unary_callback_t *new_unary_callback_0(opaque_t (invoker)(opaque_t));
+unary_callback_t *new_unary_callback_1(opaque_t (invoker)(opaque_t, opaque_t),
+    opaque_t b0);
+unary_callback_t *new_unary_callback_2(opaque_t (invoker)(opaque_t, opaque_t, opaque_t),
+    opaque_t b0, opaque_t b1);
 opaque_t unary_callback_call(unary_callback_t *callback, opaque_t a0);
 
 // Deletes the given callback. This function works on all callbacks, regardless

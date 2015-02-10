@@ -39,6 +39,16 @@ unary_callback_t *new_unary_callback_0(opaque_t (invoker)(opaque_t)) {
   return clone_and_cloak<unary_callback_t>(new_callback(invoker));
 }
 
+unary_callback_t *new_unary_callback_1(opaque_t (invoker)(opaque_t, opaque_t),
+    opaque_t b0) {
+  return clone_and_cloak<unary_callback_t>(new_callback(invoker, b0));
+}
+
+unary_callback_t *new_unary_callback_2(opaque_t (invoker)(opaque_t, opaque_t, opaque_t),
+    opaque_t b0, opaque_t b1) {
+  return clone_and_cloak<unary_callback_t>(new_callback(invoker, b0, b1));
+}
+
 opaque_t unary_callback_call(unary_callback_t *callback, opaque_t a0) {
   return (uncloak<opaque_t(opaque_t)>(callback))(a0);
 }
