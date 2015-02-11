@@ -123,5 +123,5 @@ bool limited_allocator_uninstall(limited_allocator_t *alloc) {
     WARN("Disposing with %ib of live memory in %i blocks", alloc->live_memory,
         alloc->live_blocks);
   }
-  return had_leaks;
+  return !had_leaks;
 }
