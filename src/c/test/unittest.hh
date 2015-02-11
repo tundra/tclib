@@ -7,6 +7,7 @@
 #define _UNITTEST
 
 #include "asserts.hh"
+#include "io/stream.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/log.h"
@@ -29,18 +30,27 @@ public:
   // Initialize a test info and tie it into the chain.
   TestCaseInfo(const char *suite, const char *name, unit_test_t unit_test);
 
-  // Run all the tests that match the given selector.
-  static void run_tests(unit_test_selector_t *selector);
+  // Run all the tests that match the given selector. Returns the time in
+  // seconds it took to run the tests.
+  static double run_tests(unit_test_selector_t *selector, tclib::OutStream *out);
 
-  // Run this particular test.
-  void run();
+  // Run this particular test, printing progress to the given output stream.
+  // Returns the time in seconds it took to run the test.
+  double run(tclib::OutStream *out);
 
   // Returns true iff this test matches the given selector.
   bool matches(unit_test_selector_t *selector);
 
+  // Flush to the time column and print the given duration.
+  static void print_time(tclib::OutStream *out, size_t current_column,
+      double duration);
+
 private:
   // The head of the chain of registered tests.
   static TestCaseInfo *chain;
+
+  // How far to the right to flush the duration when printing progress.
+  static const size_t kTimeColumn = 36;
 
   // Suite and name; the only significance of the suite is that it gives you a
   // different criterium for which tests to run, there's not setup/teardown etc.

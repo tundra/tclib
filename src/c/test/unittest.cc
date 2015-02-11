@@ -2,6 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "unittest.hh"
+#include "io/file.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/crash.h"
@@ -42,17 +43,23 @@ bool TestCaseInfo::matches(unit_test_selector_t *selector) {
   return strcmp(name, selector->name) == 0;
 }
 
-void TestCaseInfo::run() {
-  static const size_t kTimeColumn = 32;
-  printf("- %s/%s", suite, name);
-  fflush(stdout);
+void TestCaseInfo::print_time(tclib::OutStream *out, size_t current_column,
+    double duration) {
+  for (size_t i = current_column; i < kTimeColumn; i++)
+    out->printf(" ");
+  out->printf("(%.3fs)\n", duration);
+  out->flush();
+}
+
+double TestCaseInfo::run(tclib::OutStream *out) {
+  size_t column = out->printf("- %s/%s", suite, name);
+  out->flush();
   double start = get_current_time_seconds();
   unit_test();
   double end = get_current_time_seconds();
-  for (size_t i = strlen(suite) + strlen(name); i < kTimeColumn; i++)
-    putc(' ', stdout);
-  printf(" (%.3fs)\n", (end - start));
-  fflush(stdout);
+  double duration = end - start;
+  print_time(out, column, duration);
+  return duration;
 }
 
 static void parse_test_selector(const char *str, unit_test_selector_t *selector) {
@@ -92,31 +99,37 @@ TestCaseInfo::TestCaseInfo(const char *suite, const char *name, unit_test_t unit
   }
 }
 
-void TestCaseInfo::run_tests(unit_test_selector_t *selector) {
+double TestCaseInfo::run_tests(unit_test_selector_t *selector, tclib::OutStream *out) {
   TestCaseInfo *current = TestCaseInfo::chain;
+  double duration = 0;
   while (current != NULL) {
     if (current->matches(selector))
-      current->run();
+      duration += current->run(out);
     current = current->next;
   }
+  return duration;
 }
 
 // Run!
 int main(int argc, char *argv[]) {
   install_crash_handler();
+  tclib::OutStream *out = tclib::FileSystem::native()->std_out();
+  double duration;
   if (argc >= 2) {
     // If there are arguments run the relevant test suites.
+    duration = 0;
     for (int i = 1; i < argc; i++) {
       unit_test_selector_t selector;
       parse_test_selector(argv[i], &selector);
-      TestCaseInfo::run_tests(&selector);
+      duration += TestCaseInfo::run_tests(&selector, out);
       dispose_test_selector(&selector);
     }
-    return 0;
   } else {
     // If there are no arguments just run everything.
     unit_test_selector_t selector = {NULL, NULL};
-    TestCaseInfo::run_tests(&selector);
+    duration = TestCaseInfo::run_tests(&selector, out);
   }
+  size_t column = out->printf("  all tests passed");
+  TestCaseInfo::print_time(out, column, duration);
   return 0;
 }
