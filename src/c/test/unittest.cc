@@ -5,8 +5,9 @@
 #include "io/file.hh"
 
 BEGIN_C_INCLUDES
-#include "utils/crash.h"
 #include "test/realtime.h"
+#include "utils/alloc.h"
+#include "utils/crash.h"
 END_C_INCLUDES
 
 #ifdef IS_GCC
@@ -112,6 +113,8 @@ double TestCaseInfo::run_tests(unit_test_selector_t *selector, tclib::OutStream 
 
 // Run!
 int main(int argc, char *argv[]) {
+  limited_allocator_t allocator;
+  limited_allocator_install(&allocator, 10 * 1024 * 1024);
   install_crash_handler();
   tclib::OutStream *out = tclib::FileSystem::native()->std_out();
   double duration;
@@ -131,5 +134,6 @@ int main(int argc, char *argv[]) {
   }
   size_t column = out->printf("  all tests passed");
   TestCaseInfo::print_time(out, column, duration);
+  limited_allocator_uninstall(&allocator);
   return 0;
 }

@@ -60,4 +60,26 @@ allocator_t *allocator_get_default();
 // Sets the default allocator, returning the previous value.
 allocator_t *allocator_set_default(allocator_t *value);
 
+// An allocator that keeps track of the total amount allocated and limits how
+// much allocation it will allow.
+typedef struct {
+  // The default allocator this one is replacing.
+  allocator_t *outer;
+  // How much memory to allow in total.
+  size_t limit;
+  // The total amount of live memory.
+  size_t live_memory;
+  size_t live_blocks;
+  // This, packed into an allocator_t.
+  allocator_t self;
+} limited_allocator_t;
+
+// Initializes the given allocator with the given limit and installs it as the
+// default.
+void limited_allocator_install(limited_allocator_t *alloc, size_t limit);
+
+// Uninstalls the given allocator (which must be the current default) and
+// restores the previous allocator, whatever it was.
+void limited_allocator_uninstall(limited_allocator_t *alloc);
+
 #endif // _TCLIB_ALLOC_H

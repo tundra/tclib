@@ -1,5 +1,9 @@
+//- Copyright 2014 the Neutrino authors (see AUTHORS).
+//- Licensed under the Apache License, Version 2.0 (see LICENSE).
+
 #include "utils/alloc.h"
 #include "utils/check.h"
+#include "utils/log.h"
 
 static const uint8_t kMallocHeapMarker = 0xB0;
 
@@ -73,4 +77,49 @@ allocator_t *allocator_set_default(allocator_t *value) {
   allocator_t *previous = allocator_get_default();
   allocator_default = value;
   return previous;
+}
+
+static void limited_allocator_free(void *raw_data, memory_block_t memory) {
+  if (memory_block_is_empty(memory))
+    return;
+  limited_allocator_t *data = (limited_allocator_t*) raw_data;
+  data->live_memory -= memory.size;
+  data->live_blocks--;
+  allocator_free(data->outer, memory);
+}
+
+static memory_block_t limited_allocator_malloc(void *raw_data, size_t size) {
+  if (size == 0)
+    return memory_block_empty();
+  limited_allocator_t *data = (limited_allocator_t*) raw_data;
+  if (data->live_memory + size > data->limit) {
+    WARN("Tried to allocate more than %i of system memory. At %i, requested %i.",
+        data->limit, data->live_memory, size);
+    return memory_block_empty();
+  }
+  memory_block_t result = allocator_malloc(data->outer, size);
+  if (!memory_block_is_empty(result)) {
+    data->live_memory += result.size;
+    data->live_blocks++;
+  }
+  return result;
+}
+
+void limited_allocator_install(limited_allocator_t *alloc, size_t limit) {
+  alloc->live_memory = 0;
+  alloc->live_blocks = 0;
+  alloc->limit = limit;
+  alloc->self.data = alloc;
+  alloc->self.free = limited_allocator_free;
+  alloc->self.malloc = limited_allocator_malloc;
+  alloc->outer = allocator_set_default(&alloc->self);
+}
+
+void limited_allocator_uninstall(limited_allocator_t *alloc) {
+  CHECK_PTREQ("not current allocator", &alloc->self, allocator_get_default());
+  allocator_set_default(alloc->outer);
+  if (alloc->live_memory > 0 || alloc->live_blocks > 0) {
+    WARN("Disposing with %ib of live memory in %i blocks", alloc->live_memory,
+        alloc->live_blocks);
+  }
 }
