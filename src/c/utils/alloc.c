@@ -115,11 +115,13 @@ void limited_allocator_install(limited_allocator_t *alloc, size_t limit) {
   alloc->outer = allocator_set_default(&alloc->self);
 }
 
-void limited_allocator_uninstall(limited_allocator_t *alloc) {
+bool limited_allocator_uninstall(limited_allocator_t *alloc) {
   CHECK_PTREQ("not current allocator", &alloc->self, allocator_get_default());
   allocator_set_default(alloc->outer);
-  if (alloc->live_memory > 0 || alloc->live_blocks > 0) {
+  bool had_leaks = (alloc->live_memory > 0) || (alloc->live_blocks > 0);
+  if (had_leaks) {
     WARN("Disposing with %ib of live memory in %i blocks", alloc->live_memory,
         alloc->live_blocks);
   }
+  return had_leaks;
 }

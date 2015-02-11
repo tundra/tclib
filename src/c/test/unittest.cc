@@ -134,6 +134,6 @@ int main(int argc, char *argv[]) {
   }
   size_t column = out->printf("  all tests passed");
   TestCaseInfo::print_time(out, column, duration);
-  limited_allocator_uninstall(&allocator);
-  return 0;
+  // Return a successful error code only if there were no allocator leaks.
+  return limited_allocator_uninstall(&allocator) ? 0 : 1;
 }

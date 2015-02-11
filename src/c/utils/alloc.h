@@ -79,7 +79,8 @@ typedef struct {
 void limited_allocator_install(limited_allocator_t *alloc, size_t limit);
 
 // Uninstalls the given allocator (which must be the current default) and
-// restores the previous allocator, whatever it was.
-void limited_allocator_uninstall(limited_allocator_t *alloc);
+// restores the previous allocator, whatever it was. Returns true iff no memory
+// was leaked.
+bool limited_allocator_uninstall(limited_allocator_t *alloc);
 
 #endif // _TCLIB_ALLOC_H
