@@ -6,11 +6,8 @@
 
 #include "c/stdc.h"
 
-BEGIN_C_INCLUDES
-#include "io/stream.h"
-END_C_INCLUDES
-
 #include "c/stdvector.hh"
+#include "io/stream.hh"
 
 struct in_stream_t { };
 struct out_stream_t { };
