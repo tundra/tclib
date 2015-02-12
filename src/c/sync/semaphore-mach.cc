@@ -22,11 +22,25 @@ bool NativeSemaphore::platform_dispose() {
   return true;
 }
 
-bool NativeSemaphore::acquire() {
-  kern_return_t result = semaphore_wait(sema_);
+bool NativeSemaphore::acquire(duration_t timeout) {
+  kern_return_t result;
+  if (duration_is_unlimited(timeout)) {
+    result = semaphore_wait(sema_);
+  } else {
+    // Unlike sem_timedwait on posix, semaphore_timedwait takes the time to
+    // wait, not the deadline, so constructing the timespec is simpler here.
+    uint64_t sec = 0;
+    uint64_t nsec = 0;
+    duration_add_to_timespec(timeout, &sec, &nsec);
+    mach_timespec time;
+    time.tv_sec = sec;
+    time.tv_nsec = nsec;
+    result = semaphore_timedwait(sema_, time);
+  }
   if (result == KERN_SUCCESS)
     return true;
-  WARN("Call to semaphore_wait failed: %i", result);
+  if (result != KERN_OPERATION_TIMED_OUT)
+    WARN("Call to semaphore_wait failed: %i", result);
   return false;
 }
 
