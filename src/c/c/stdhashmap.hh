@@ -17,7 +17,6 @@
 #else
 // I'm pretty sure this is not how you want to do this but a cursory google
 // search didn't give a good answer to what you're really supposed to do it and
-// this works. Yucky though.
 // this works. Yucky though. It would be nicer to use unordered_map but on the
 // default compiler on my ubuntu that requires c++11 and extra compiler flags
 // which this doesn't.
