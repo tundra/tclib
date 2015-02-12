@@ -59,6 +59,6 @@ void opaque_promise_on_failure(opaque_promise_t *promise, unary_callback_t *call
       callback));
 }
 
-void opaque_promise_dispose(opaque_promise_t *raw_promise) {
+void opaque_promise_destroy(opaque_promise_t *raw_promise) {
   delete reinterpret_cast<promise_t<opaque_t>*>(raw_promise);
 }

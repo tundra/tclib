@@ -34,6 +34,6 @@ bool out_stream_flush(out_stream_t *stream);
 in_stream_t *byte_in_stream_open(const void *data, size_t size);
 
 // Disposes the given byte input stream.
-void byte_in_stream_dispose(in_stream_t *stream);
+void byte_in_stream_destroy(in_stream_t *stream);
 
 #endif // _TCLIB_STREAM_H

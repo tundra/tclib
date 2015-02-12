@@ -46,13 +46,13 @@ TEST(mutex_c, simple) {
   ASSERT_TRUE(native_mutex_lock(&m1));
 
   // Try and fail to lock/unlock from a different thread.
-  nullary_callback_t *failer_callback = new_nullary_callback_2(fail_to_unlock,
+  nullary_callback_t *failer_callback = nullary_callback_new_2(fail_to_unlock,
       p2o(&m0), p2o(&m1));
-  native_thread_t *failer = new_native_thread(failer_callback);
+  native_thread_t *failer = native_thread_new(failer_callback);
   ASSERT_TRUE(native_thread_start(failer));
   native_thread_join(failer);
-  dispose_native_thread(failer);
-  callback_dispose(failer_callback);
+  native_thread_destroy(failer);
+  callback_destroy(failer_callback);
 
   // Locking recursively works.
   ASSERT_TRUE(native_mutex_lock(&m1));
@@ -64,13 +64,13 @@ TEST(mutex_c, simple) {
 
   // Unlock completely and let a different thread try locking.
   ASSERT_TRUE(native_mutex_unlock(&m0));
-  nullary_callback_t *succeeder_callback = new_nullary_callback_2(do_lock,
+  nullary_callback_t *succeeder_callback = nullary_callback_new_2(do_lock,
       p2o(&m0), p2o(&m1));
-  native_thread_t *succeeder = new_native_thread(succeeder_callback);
+  native_thread_t *succeeder = native_thread_new(succeeder_callback);
   ASSERT_TRUE(native_thread_start(succeeder));
   native_thread_join(succeeder);
-  dispose_native_thread(succeeder);
-  callback_dispose(succeeder_callback);
+  native_thread_destroy(succeeder);
+  callback_destroy(succeeder_callback);
 
   native_mutex_dispose(&m0);
   native_mutex_dispose(&m1);

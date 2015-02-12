@@ -37,6 +37,6 @@ void opaque_promise_on_success(opaque_promise_t *promise, unary_callback_t *call
 void opaque_promise_on_failure(opaque_promise_t *promise, unary_callback_t *callback);
 
 // Disposes an opaque promise.
-void opaque_promise_dispose(opaque_promise_t *value);
+void opaque_promise_destroy(opaque_promise_t *value);
 
 #endif // _TCLIB_PROMISE_H

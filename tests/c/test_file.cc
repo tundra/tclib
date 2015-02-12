@@ -88,7 +88,7 @@ TEST(file, byte_in_stream_c) {
   ASSERT_EQ(0, buf[1]);
   ASSERT_EQ(3, buf[2]);
   ASSERT_EQ(2, buf[3]);
-  byte_in_stream_dispose(in);
+  byte_in_stream_destroy(in);
 }
 
 TEST(file, byte_out_stream) {

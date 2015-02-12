@@ -21,10 +21,10 @@ TEST(promise_c, simple_success) {
   ASSERT_FALSE(opaque_promise_is_resolved(promise));
   size_t successes = 0;
   size_t failures = 0;
-  unary_callback_t *on_success = new_unary_callback_1(count_and_check, p2o(&successes));
+  unary_callback_t *on_success = unary_callback_new_1(count_and_check, p2o(&successes));
   opaque_promise_on_success(promise, on_success);
   ASSERT_EQ(0, successes);
-  unary_callback_t *on_failure = new_unary_callback_1(count_and_check, p2o(&failures));
+  unary_callback_t *on_failure = unary_callback_new_1(count_and_check, p2o(&failures));
   opaque_promise_on_failure(promise, on_failure);
   ASSERT_EQ(0, failures);
   opaque_promise_fulfill(promise, u2o(kValue));
@@ -37,9 +37,9 @@ TEST(promise_c, simple_success) {
   opaque_promise_on_failure(promise, on_failure);
   ASSERT_EQ(2, successes);
   ASSERT_EQ(0, failures);
-  opaque_promise_dispose(promise);
-  callback_dispose(on_success);
-  callback_dispose(on_failure);
+  opaque_promise_destroy(promise);
+  callback_destroy(on_success);
+  callback_destroy(on_failure);
 }
 
 TEST(promise_c, simple_failure) {
@@ -47,10 +47,10 @@ TEST(promise_c, simple_failure) {
   ASSERT_FALSE(opaque_promise_is_resolved(promise));
   size_t successes = 0;
   size_t failures = 0;
-  unary_callback_t *on_success = new_unary_callback_1(count_and_check, p2o(&successes));
+  unary_callback_t *on_success = unary_callback_new_1(count_and_check, p2o(&successes));
   opaque_promise_on_success(promise, on_success);
   ASSERT_EQ(0, successes);
-  unary_callback_t *on_failure = new_unary_callback_1(count_and_check, p2o(&failures));
+  unary_callback_t *on_failure = unary_callback_new_1(count_and_check, p2o(&failures));
   opaque_promise_on_failure(promise, on_failure);
   ASSERT_EQ(0, failures);
   opaque_promise_fail(promise, u2o(kValue));
@@ -63,7 +63,7 @@ TEST(promise_c, simple_failure) {
   opaque_promise_on_failure(promise, on_failure);
   ASSERT_EQ(0, successes);
   ASSERT_EQ(2, failures);
-  opaque_promise_dispose(promise);
-  callback_dispose(on_success);
-  callback_dispose(on_failure);
+  opaque_promise_destroy(promise);
+  callback_destroy(on_success);
+  callback_destroy(on_failure);
 }

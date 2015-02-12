@@ -14,7 +14,7 @@
 // The naming convention is as follows. The types are named for how many
 // arguments they expect: nullary take no arguments, unary take one, etc. The
 // constructors are named after how many arguments they bind so, for instance,
-// new_binary_callback_3 would take a 5-argument function, bind 3 of the
+// binary_callback_new_3 would take a 5-argument function, bind 3 of the
 // arguments (the "_3"), and yield a result that expects 2 additional arguments
 // (the "binary").
 
@@ -24,23 +24,23 @@
 
 // opaque_t(void)
 typedef struct nullary_callback_t nullary_callback_t;
-nullary_callback_t *new_nullary_callback_0(opaque_t (invoker)(void));
-nullary_callback_t *new_nullary_callback_1(opaque_t (invoker)(opaque_t), opaque_t b0);
-nullary_callback_t *new_nullary_callback_2(opaque_t (invoker)(opaque_t, opaque_t),
+nullary_callback_t *nullary_callback_new_0(opaque_t (invoker)(void));
+nullary_callback_t *nullary_callback_new_1(opaque_t (invoker)(opaque_t), opaque_t b0);
+nullary_callback_t *nullary_callback_new_2(opaque_t (invoker)(opaque_t, opaque_t),
     opaque_t b0, opaque_t b1);
 opaque_t nullary_callback_call(nullary_callback_t *callback);
 
 // opaque_t(opaque_t)
 typedef struct unary_callback_t unary_callback_t;
-unary_callback_t *new_unary_callback_0(opaque_t (invoker)(opaque_t));
-unary_callback_t *new_unary_callback_1(opaque_t (invoker)(opaque_t, opaque_t),
+unary_callback_t *unary_callback_new_0(opaque_t (invoker)(opaque_t));
+unary_callback_t *unary_callback_new_1(opaque_t (invoker)(opaque_t, opaque_t),
     opaque_t b0);
-unary_callback_t *new_unary_callback_2(opaque_t (invoker)(opaque_t, opaque_t, opaque_t),
+unary_callback_t *unary_callback_new_2(opaque_t (invoker)(opaque_t, opaque_t, opaque_t),
     opaque_t b0, opaque_t b1);
 opaque_t unary_callback_call(unary_callback_t *callback, opaque_t a0);
 
 // Deletes the given callback. This function works on all callbacks, regardless
 // of their concrete type.
-void callback_dispose(void *callback);
+void callback_destroy(void *callback);
 
 #endif // _TCLIB_CALLBACK_H

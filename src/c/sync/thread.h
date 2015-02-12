@@ -12,10 +12,10 @@ typedef struct native_thread_t native_thread_t;
 
 // Creates and returns a new native thread that will run the given callback
 // when started.
-native_thread_t *new_native_thread(nullary_callback_t *callback);
+native_thread_t *native_thread_new(nullary_callback_t *callback);
 
-// Disposes the given native thread.
-void dispose_native_thread(native_thread_t *thread);
+// Destroys the given native thread.
+void native_thread_destroy(native_thread_t *thread);
 
 // Starts the given thread running.
 bool native_thread_start(native_thread_t *thread);

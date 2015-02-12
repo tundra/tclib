@@ -75,7 +75,7 @@ static void parse_test_selector(const char *str, unit_test_selector_t *selector)
   }
 }
 
-static void dispose_test_selector(unit_test_selector_t *selector) {
+static void test_selector_dispose(unit_test_selector_t *selector) {
   free(selector->suite);
 }
 
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
       unit_test_selector_t selector;
       parse_test_selector(argv[i], &selector);
       duration += TestCaseInfo::run_tests(&selector, out);
-      dispose_test_selector(&selector);
+      test_selector_dispose(&selector);
     }
   } else {
     // If there are no arguments just run everything.

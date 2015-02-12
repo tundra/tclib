@@ -222,7 +222,7 @@ in_stream_t *byte_in_stream_open(const void *data, size_t size) {
   return new ByteInStream(data, size);
 }
 
-void byte_in_stream_dispose(in_stream_t *stream) {
+void byte_in_stream_destroy(in_stream_t *stream) {
   delete static_cast<ByteInStream*>(stream);
 }
 

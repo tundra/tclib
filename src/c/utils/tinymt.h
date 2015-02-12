@@ -32,7 +32,7 @@ typedef struct {
 } tinymt64_t;
 
 // Initialize the tiny twister state based on the given seed.
-tinymt64_t new_tinymt64(tinymt64_params_t params, uint64_t seed);
+tinymt64_t tinymt64_construct(tinymt64_params_t params, uint64_t seed);
 
 // Returns the default parameters. These are known to produce a decent output.
 tinymt64_params_t tinymt64_params_default();

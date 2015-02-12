@@ -38,15 +38,15 @@ static opaque_t run_call_counter_bridge(opaque_t raw_data) {
 
 TEST(thread, simple_c) {
   CallCounter counter;
-  nullary_callback_t *callback = new_nullary_callback_1(run_call_counter_bridge,
+  nullary_callback_t *callback = nullary_callback_new_1(run_call_counter_bridge,
       p2o(&counter));
-  native_thread_t *thread = new_native_thread(callback);
+  native_thread_t *thread = native_thread_new(callback);
   ASSERT_EQ(0, counter.value);
   ASSERT_TRUE(native_thread_start(thread));
   ASSERT_PTREQ(&counter, native_thread_join(thread));
   ASSERT_EQ(1, counter.value);
-  dispose_native_thread(thread);
-  callback_dispose(callback);
+  native_thread_destroy(thread);
+  callback_destroy(callback);
 }
 
 void *check_thread_not_equal(native_thread_id_t that) {

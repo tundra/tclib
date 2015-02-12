@@ -54,13 +54,13 @@ void *thread_start_trampoline(nullary_callback_t *callback) {
   return o2p(nullary_callback_call(callback));
 }
 
-native_thread_t *new_native_thread(nullary_callback_t *callback) {
+native_thread_t *native_thread_new(nullary_callback_t *callback) {
   NativeThread *result = new NativeThread(new_callback(thread_start_trampoline,
       callback));
   return reinterpret_cast<native_thread_t*>(result);
 }
 
-void dispose_native_thread(native_thread_t *thread) {
+void native_thread_destroy(native_thread_t *thread) {
   delete reinterpret_cast<NativeThread*>(thread);
 }
 

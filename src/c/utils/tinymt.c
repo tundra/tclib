@@ -37,7 +37,7 @@ static void period_certification(tinymt64_t *tinymt) {
   }
 }
 
-tinymt64_t new_tinymt64(tinymt64_params_t params, uint64_t seed) {
+tinymt64_t tinymt64_construct(tinymt64_params_t params, uint64_t seed) {
   tinymt64_t tinymt;
   tinymt.params = params;
   tinymt.state.data[0] = seed ^ (((uint64_t) params.transition_matrix_1) << 32);

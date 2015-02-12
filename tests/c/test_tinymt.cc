@@ -12,7 +12,7 @@ TEST(tinymt, examples) {
   params.transition_matrix_1 = 0xfa051f40;
   params.transition_matrix_2 = 0xffd0fff4;
   params.tempering_matrix = 0x58d02ffeffbfffbc;
-  tinymt64_t mt0 = new_tinymt64(params, 1);
+  tinymt64_t mt0 = tinymt64_construct(params, 1);
   uint64_t o0[30] = {
       15503804787016557143ULL, 17280942441431881838ULL, 2177846447079362065ULL,
       10087979609567186558ULL, 8925138365609588954ULL,  13030236470185662861ULL,

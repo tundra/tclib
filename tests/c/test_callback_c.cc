@@ -24,15 +24,15 @@ static opaque_t f1(opaque_t a0) {
 }
 
 TEST(callback_c, simple) {
-  nullary_callback_t *pcf0 = new_nullary_callback_0(f0);
+  nullary_callback_t *pcf0 = nullary_callback_new_0(f0);
   ASSERT_TRUE(p2o(&p0) == nullary_callback_call(pcf0));
-  callback_dispose(pcf0);
-  nullary_callback_t *pcf1 = new_nullary_callback_1(f1, p2o(&p2));
+  callback_destroy(pcf0);
+  nullary_callback_t *pcf1 = nullary_callback_new_1(f1, p2o(&p2));
   ASSERT_TRUE(p2o(&p2) == nullary_callback_call(pcf1));
-  callback_dispose(pcf1);
+  callback_destroy(pcf1);
 
-  unary_callback_t *pcpf1 = new_unary_callback_0(f1);
+  unary_callback_t *pcpf1 = unary_callback_new_0(f1);
   ASSERT_TRUE(p2o(NULL) == unary_callback_call(pcpf1, p2o(NULL)));
   ASSERT_TRUE(p2o(&p1) == unary_callback_call(pcpf1, p2o(&p1)));
-  callback_dispose(pcpf1);
+  callback_destroy(pcpf1);
 }
