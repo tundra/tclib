@@ -114,7 +114,7 @@ double TestCaseInfo::run_tests(unit_test_selector_t *selector, tclib::OutStream 
 // Run!
 int main(int argc, char *argv[]) {
   limited_allocator_t allocator;
-  limited_allocator_install(&allocator, 10 * 1024 * 1024);
+  limited_allocator_install(&allocator, 100 * 1024 * 1024);
   install_crash_handler();
   tclib::OutStream *out = tclib::FileSystem::native()->std_out();
   double duration;
