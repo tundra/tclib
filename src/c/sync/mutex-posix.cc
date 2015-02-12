@@ -8,7 +8,7 @@ bool NativeMutex::platform_initialize() {
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-  int result = pthread_mutex_init(&mutex_, &attr);
+  int result = pthread_mutex_init(&mutex, &attr);
   if (result == 0)
     return true;
   WARN("Call to pthread_mutex_init failed: %i (error: %s)", result, strerror(result));
@@ -16,7 +16,7 @@ bool NativeMutex::platform_initialize() {
 }
 
 bool NativeMutex::platform_dispose() {
-  int result = pthread_mutex_destroy(&mutex_);
+  int result = pthread_mutex_destroy(&mutex);
   if (result == 0)
     return true;
   WARN("Call to pthread_mutex_destroy failed: %i (error: %s)", result, strerror(result));
@@ -24,7 +24,7 @@ bool NativeMutex::platform_dispose() {
 }
 
 bool NativeMutex::lock() {
-  int result = pthread_mutex_lock(&mutex_);
+  int result = pthread_mutex_lock(&mutex);
   if (result == 0)
     return true;
   WARN("Call to pthread_mutex_lock failed: %i (error: %s)", result, strerror(result));
@@ -32,7 +32,7 @@ bool NativeMutex::lock() {
 }
 
 bool NativeMutex::try_lock() {
-  int result = pthread_mutex_trylock(&mutex_);
+  int result = pthread_mutex_trylock(&mutex);
   if (result == 0)
     return true;
   if (result != EBUSY)
@@ -43,7 +43,7 @@ bool NativeMutex::try_lock() {
 }
 
 bool NativeMutex::unlock() {
-  int result = pthread_mutex_unlock(&mutex_);
+  int result = pthread_mutex_unlock(&mutex);
   if (result == 0)
     return true;
   WARN("Call to pthread_mutex_unlock failed: %i (error: %s)", result, strerror(result));

@@ -8,10 +8,13 @@
 #include "sync/sync.h"
 
 // Opaque mutex type.
-typedef struct native_mutex_t native_mutex_t;
+typedef struct {
+  bool is_initialized;
+  platform_mutex_t mutex;
+} native_mutex_t;
 
 // Create a new uninitialized mutex.
-native_mutex_t *new_native_mutex();
+void native_mutex_construct(native_mutex_t *mutex);
 
 // Dispose the given mutex.
 void native_mutex_dispose(native_mutex_t *mutex);

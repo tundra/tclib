@@ -34,18 +34,20 @@ TEST(mutex_c, simple) {
   // to see.
   log_o *noisy_log = silence_global_log();
 
-  native_mutex_t *m0 = new_native_mutex();
-  ASSERT_TRUE(native_mutex_initialize(m0));
-  native_mutex_t *m1 = new_native_mutex();
-  ASSERT_TRUE(native_mutex_initialize(m1));
-  ASSERT_FALSE(native_mutex_unlock(m0));
-  ASSERT_TRUE(native_mutex_lock(m0));
-  ASSERT_FALSE(native_mutex_unlock(m1));
-  ASSERT_TRUE(native_mutex_lock(m1));
+  native_mutex_t m0;
+  native_mutex_construct(&m0);
+  ASSERT_TRUE(native_mutex_initialize(&m0));
+  native_mutex_t m1;
+  native_mutex_construct(&m1);
+  ASSERT_TRUE(native_mutex_initialize(&m1));
+  ASSERT_FALSE(native_mutex_unlock(&m0));
+  ASSERT_TRUE(native_mutex_lock(&m0));
+  ASSERT_FALSE(native_mutex_unlock(&m1));
+  ASSERT_TRUE(native_mutex_lock(&m1));
 
   // Try and fail to lock/unlock from a different thread.
   nullary_callback_t *failer_callback = new_nullary_callback_2(fail_to_unlock,
-      p2o(m0), p2o(m1));
+      p2o(&m0), p2o(&m1));
   native_thread_t *failer = new_native_thread(failer_callback);
   ASSERT_TRUE(native_thread_start(failer));
   native_thread_join(failer);
@@ -53,24 +55,24 @@ TEST(mutex_c, simple) {
   callback_dispose(failer_callback);
 
   // Locking recursively works.
-  ASSERT_TRUE(native_mutex_lock(m1));
-  ASSERT_TRUE(native_mutex_lock(m1));
-  ASSERT_TRUE(native_mutex_unlock(m1));
-  ASSERT_TRUE(native_mutex_unlock(m1));
-  ASSERT_TRUE(native_mutex_unlock(m1));
-  ASSERT_FALSE(native_mutex_unlock(m1));
+  ASSERT_TRUE(native_mutex_lock(&m1));
+  ASSERT_TRUE(native_mutex_lock(&m1));
+  ASSERT_TRUE(native_mutex_unlock(&m1));
+  ASSERT_TRUE(native_mutex_unlock(&m1));
+  ASSERT_TRUE(native_mutex_unlock(&m1));
+  ASSERT_FALSE(native_mutex_unlock(&m1));
 
   // Unlock completely and let a different thread try locking.
-  ASSERT_TRUE(native_mutex_unlock(m0));
+  ASSERT_TRUE(native_mutex_unlock(&m0));
   nullary_callback_t *succeeder_callback = new_nullary_callback_2(do_lock,
-      p2o(m0), p2o(m1));
+      p2o(&m0), p2o(&m1));
   native_thread_t *succeeder = new_native_thread(succeeder_callback);
   ASSERT_TRUE(native_thread_start(succeeder));
   native_thread_join(succeeder);
   dispose_native_thread(succeeder);
   callback_dispose(succeeder_callback);
 
-  native_mutex_dispose(m0);
-  native_mutex_dispose(m1);
+  native_mutex_dispose(&m0);
+  native_mutex_dispose(&m1);
   set_global_log(noisy_log);
 }

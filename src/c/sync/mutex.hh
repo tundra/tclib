@@ -8,12 +8,13 @@
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
+#include "sync/mutex.h"
 END_C_INCLUDES
 
 namespace tclib {
 
 // An os-native mutex.
-class NativeMutex {
+class NativeMutex : public native_mutex_t {
 public:
   // Create a new uninitialized mutex.
   NativeMutex();
@@ -46,9 +47,6 @@ private:
 
   // Platform-specific destruction.
   bool platform_dispose();
-
-  bool is_initialized_;
-  platform_mutex_t mutex_;
 };
 
 } // namespace tclib

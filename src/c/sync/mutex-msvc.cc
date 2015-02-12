@@ -12,14 +12,14 @@ bool NativeMutex::platform_initialize() {
     WARN("Call to CreateMutex failed: %i", GetLastError());
     return false;
   }
-  mutex_ = result;
+  mutex = result;
   return true;
 }
 
 bool NativeMutex::platform_dispose() {
-  bool result = CloseHandle(mutex_);
+  bool result = CloseHandle(mutex);
   if (result) {
-    mutex_ = INVALID_HANDLE_VALUE;
+    mutex = INVALID_HANDLE_VALUE;
   } else {
     WARN("Call to CloseHandle failed: %i", GetLastError());
   }
@@ -27,7 +27,7 @@ bool NativeMutex::platform_dispose() {
 }
 
 bool NativeMutex::lock() {
-  dword_t result = WaitForSingleObject(mutex_, INFINITE);
+  dword_t result = WaitForSingleObject(mutex, INFINITE);
   if (result == WAIT_OBJECT_0)
     return true;
   if (result == WAIT_FAILED)
@@ -36,7 +36,7 @@ bool NativeMutex::lock() {
 }
 
 bool NativeMutex::try_lock() {
-  dword_t result = WaitForSingleObject(mutex_, 0);
+  dword_t result = WaitForSingleObject(mutex, 0);
   if (result == WAIT_OBJECT_0)
     return true;
   if (result == WAIT_FAILED)
@@ -45,7 +45,7 @@ bool NativeMutex::try_lock() {
 }
 
 bool NativeMutex::unlock() {
-  bool result = ReleaseMutex(mutex_);
+  bool result = ReleaseMutex(mutex);
   if (result)
     return true;
   WARN("Call to ReleaseMutex failed: %i", GetLastError());

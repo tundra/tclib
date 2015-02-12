@@ -20,45 +20,45 @@ using namespace tclib;
 #include "mutex-msvc.cc"
 #endif
 
-NativeMutex::NativeMutex()
-  : is_initialized_(false) {
+NativeMutex::NativeMutex() {
+  is_initialized = false;
   platform_mutex_t init = kPlatformMutexInit;
-  mutex_ = init;
+  mutex = init;
 }
 
 NativeMutex::~NativeMutex() {
-  if (!is_initialized_)
+  if (!is_initialized)
     return;
-  is_initialized_ = false;
+  is_initialized = false;
   platform_dispose();
 }
 
 bool NativeMutex::initialize() {
-  if (!is_initialized_)
-    is_initialized_ = platform_initialize();
-  return is_initialized_;
+  if (!is_initialized)
+    is_initialized = platform_initialize();
+  return is_initialized;
 }
 
-native_mutex_t *new_native_mutex() {
-  return reinterpret_cast<native_mutex_t*>(new NativeMutex());
+void native_mutex_construct(native_mutex_t *mutex) {
+  new (mutex) NativeMutex();
 }
 
 void native_mutex_dispose(native_mutex_t *mutex) {
-  delete reinterpret_cast<NativeMutex*>(mutex);
+  static_cast<NativeMutex*>(mutex)->~NativeMutex();
 }
 
 bool native_mutex_initialize(native_mutex_t *mutex) {
-  return reinterpret_cast<NativeMutex*>(mutex)->initialize();
+  return static_cast<NativeMutex*>(mutex)->initialize();
 }
 
 bool native_mutex_lock(native_mutex_t *mutex) {
-  return reinterpret_cast<NativeMutex*>(mutex)->lock();
+  return static_cast<NativeMutex*>(mutex)->lock();
 }
 
 bool native_mutex_try_lock(native_mutex_t *mutex) {
-  return reinterpret_cast<NativeMutex*>(mutex)->try_lock();
+  return static_cast<NativeMutex*>(mutex)->try_lock();
 }
 
 bool native_mutex_unlock(native_mutex_t *mutex) {
-  return reinterpret_cast<NativeMutex*>(mutex)->unlock();
+  return static_cast<NativeMutex*>(mutex)->unlock();
 }
