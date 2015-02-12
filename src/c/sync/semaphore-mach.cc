@@ -5,8 +5,8 @@
 // api but actually it doesn't, the calls fail.
 
 bool NativeSemaphore::platform_initialize() {
-  kern_return_t result = semaphore_create(mach_task_self(), &sema_,
-      SYNC_POLICY_FIFO, initial_count_);
+  kern_return_t result = semaphore_create(mach_task_self(), &sema,
+      SYNC_POLICY_FIFO, initial_count);
   if (result == KERN_SUCCESS)
     return true;
   WARN("Call to semaphore_create failed: %i", result);
@@ -14,7 +14,7 @@ bool NativeSemaphore::platform_initialize() {
 }
 
 bool NativeSemaphore::platform_dispose() {
-  kern_return_t result = semaphore_destroy(mach_task_self(), sema_);
+  kern_return_t result = semaphore_destroy(mach_task_self(), sema);
   if (result != KERN_SUCCESS) {
     WARN("Call to semaphore_destroy failed: %i", result);
     return false;
@@ -25,7 +25,7 @@ bool NativeSemaphore::platform_dispose() {
 bool NativeSemaphore::acquire(duration_t timeout) {
   kern_return_t result;
   if (duration_is_unlimited(timeout)) {
-    result = semaphore_wait(sema_);
+    result = semaphore_wait(sema);
   } else {
     // Unlike sem_timedwait on posix, semaphore_timedwait takes the time to
     // wait, not the deadline, so constructing the timespec is simpler here.
@@ -35,7 +35,7 @@ bool NativeSemaphore::acquire(duration_t timeout) {
     mach_timespec time;
     time.tv_sec = sec;
     time.tv_nsec = nsec;
-    result = semaphore_timedwait(sema_, time);
+    result = semaphore_timedwait(sema, time);
   }
   if (result == KERN_SUCCESS)
     return true;
@@ -48,7 +48,7 @@ bool NativeSemaphore::try_acquire() {
   mach_timespec time;
   time.tv_sec = 0;
   time.tv_nsec = 0;
-  kern_return_t result = semaphore_timedwait(sema_, time);
+  kern_return_t result = semaphore_timedwait(sema, time);
   if (result == KERN_SUCCESS)
     return true;
   if (result != KERN_OPERATION_TIMED_OUT)
@@ -59,7 +59,7 @@ bool NativeSemaphore::try_acquire() {
 }
 
 bool NativeSemaphore::release() {
-  kern_return_t result = semaphore_signal(sema_);
+  kern_return_t result = semaphore_signal(sema);
   if (result == KERN_SUCCESS)
     return true;
   WARN("Call to semaphore_signal failed: %i", result);

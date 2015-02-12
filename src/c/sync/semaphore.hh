@@ -8,12 +8,13 @@
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
+#include "sync/semaphore.h"
 END_C_INCLUDES
 
 namespace tclib {
 
 // An os-native mutex.
-class NativeSemaphore {
+class NativeSemaphore : public native_semaphore_t {
 public:
   // Create a new uninitialized semaphore with an initial count of 1.
   NativeSemaphore();
@@ -26,7 +27,7 @@ public:
 
   // Sets the initial count to the given value. Only has an effect if called
   // before the semaphore has been initialized.
-  void set_initial_count(uint32_t value);
+  void set_initial_count(uint32_t value) { initial_count = value; }
 
   // Initialize this semaphore, returning true on success.
   bool initialize();
@@ -48,14 +49,6 @@ private:
 
   // Platform-specific destruction.
   bool platform_dispose();
-
-  // The count immediately after initialization.
-  uint32_t initial_count_;
-
-  bool is_initialized_;
-
-  // Platform-specific data.
-  platform_semaphore_t sema_;
 };
 
 } // namespace tclib

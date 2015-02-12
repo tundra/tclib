@@ -9,7 +9,7 @@
 // will always be -1 on errors. It's okay though, errno should be thread safe.
 
 bool NativeSemaphore::platform_initialize() {
-  int result = sem_init(&sema_, false, initial_count_);
+  int result = sem_init(&sema, false, initial_count);
   if (result == 0)
     return true;
   WARN("Call to sem_init failed: %i (error: %s)", result, strerror(errno));
@@ -17,7 +17,7 @@ bool NativeSemaphore::platform_initialize() {
 }
 
 bool NativeSemaphore::platform_dispose() {
-  int result = sem_destroy(&sema_);
+  int result = sem_destroy(&sema);
   if (result != 0)
     WARN("Call to sem_destroy failed: %i (error: %s)", result, strerror(errno));
   return result == 0;
@@ -26,7 +26,7 @@ bool NativeSemaphore::platform_dispose() {
 bool NativeSemaphore::acquire(duration_t timeout) {
   int result;
   if (duration_is_unlimited(timeout)) {
-    result = sem_wait(&sema_);
+    result = sem_wait(&sema);
   } else {
     // Grab the current time.
     struct timespec current;
@@ -40,7 +40,7 @@ bool NativeSemaphore::acquire(duration_t timeout) {
     deadline.tv_sec = sec;
     deadline.tv_nsec = nsec;
     // Wait with the calculated time as the deadline.
-    result = sem_timedwait(&sema_, &deadline);
+    result = sem_timedwait(&sema, &deadline);
   }
   if (result == 0)
     return true;
@@ -51,7 +51,7 @@ bool NativeSemaphore::acquire(duration_t timeout) {
 }
 
 bool NativeSemaphore::try_acquire() {
-  int result = sem_trywait(&sema_);
+  int result = sem_trywait(&sema);
   if (result == 0)
     return true;
   if (errno != EAGAIN)
@@ -62,7 +62,7 @@ bool NativeSemaphore::try_acquire() {
 }
 
 bool NativeSemaphore::release() {
-  int result = sem_post(&sema_);
+  int result = sem_post(&sema);
   if (result == 0)
     return true;
   WARN("Call to sem_post failed: %i (error: %s)", result, strerror(errno));

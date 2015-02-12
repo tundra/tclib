@@ -7,7 +7,7 @@
 
 using namespace tclib;
 
-TEST(semaphore, default_initial) {
+TEST(semaphore_cpp, default_initial) {
   NativeSemaphore sema;
   ASSERT_TRUE(sema.initialize());
   ASSERT_TRUE(sema.acquire());
@@ -22,7 +22,7 @@ TEST(semaphore, default_initial) {
   ASSERT_FALSE(sema.try_acquire());
 }
 
-TEST(semaphore, explicit_initial) {
+TEST(semaphore_cpp, explicit_initial) {
   NativeSemaphore sema(256);
   ASSERT_TRUE(sema.initialize());
   for (size_t i = 0; i < 256; i++)
@@ -56,7 +56,7 @@ static void *run_join_monitor(NativeSemaphore *all_joined, NativeThread *threads
 // thread has acquired a release_count permit it releases a done_count itself.
 // In addition the join_monitor thread waits for all the threads to join and
 // then release the all_joined sema.
-TEST(semaphore, waiters) {
+TEST(semaphore_cpp, waiters) {
   // Initialize semas.
   NativeSemaphore started_count(0);
   NativeSemaphore released_count(0);
@@ -99,7 +99,7 @@ TEST(semaphore, waiters) {
   join_monitor.join();
 }
 
-TEST(semaphore, timed_wait) {
+TEST(semaphore_cpp, timed_wait) {
   NativeSemaphore sema(0);
   ASSERT_TRUE(sema.initialize());
   ASSERT_FALSE(sema.acquire(duration_millis(100)));
