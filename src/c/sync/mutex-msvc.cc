@@ -3,51 +3,35 @@
 
 #include "c/winhdr.h"
 
+static PCRITICAL_SECTION wincrit(NativeMutex *mutex) {
+  // There should be code elsewhere that ensures that the mutex field is large
+  // enough to hold a native critical section.
+  return reinterpret_cast<PCRITICAL_SECTION>(&mutex->mutex);
+}
+
 bool NativeMutex::platform_initialize() {
-  handle_t result = CreateMutex(
-      NULL,  // lpMutexAttributes
-      false, // bInitialOwner
-      NULL); // lpName
-  if (result == NULL) {
-    WARN("Call to CreateMutex failed: %i", GetLastError());
-    return false;
-  }
-  mutex = result;
+  InitializeCriticalSection(wincrit(this));
   return true;
 }
 
 bool NativeMutex::platform_dispose() {
-  bool result = CloseHandle(mutex);
-  if (result) {
-    mutex = INVALID_HANDLE_VALUE;
-  } else {
-    WARN("Call to CloseHandle failed: %i", GetLastError());
-  }
-  return result;
+  DeleteCriticalSection(wincrit(this));
+  return true;
 }
 
 bool NativeMutex::lock() {
-  dword_t result = WaitForSingleObject(mutex, INFINITE);
-  if (result == WAIT_OBJECT_0)
-    return true;
-  if (result == WAIT_FAILED)
-    WARN("Call to WaitForSingleObject failed: %i", GetLastError());
-  return false;
+  HEST("lock");
+  EnterCriticalSection(wincrit(this));
+  return true;
 }
 
 bool NativeMutex::try_lock() {
-  dword_t result = WaitForSingleObject(mutex, 0);
-  if (result == WAIT_OBJECT_0)
-    return true;
-  if (result == WAIT_FAILED)
-    WARN("Call to WaitForSingleObject failed: %i", GetLastError());
-  return false;
+  HEST("try_lock");
+  return TryEnterCriticalSection(wincrit(this));
 }
 
 bool NativeMutex::unlock() {
-  bool result = ReleaseMutex(mutex);
-  if (result)
-    return true;
-  WARN("Call to ReleaseMutex failed: %i", GetLastError());
-  return false;
+  HEST("unlock");
+  LeaveCriticalSection(wincrit(this));
+  return true;
 }

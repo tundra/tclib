@@ -13,3 +13,5 @@ typedef pthread_mutex_t platform_mutex_t;
 #define kPlatformMutexInit PTHREAD_MUTEX_INITIALIZER
 
 typedef sem_t platform_semaphore_t;
+
+typedef pthread_cond_t platform_condition_t;

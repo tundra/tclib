@@ -115,3 +115,15 @@ TEST(mutex_cpp, barriers) {
   for (size_t i = 1; i < kBarrierCount - 1; i++)
     threads[i].join();
 }
+
+#if defined(IS_MSVC)
+#  include "c/winhdr.h"
+#endif
+
+TEST(mutex_cpp, msvc_sizes) {
+#if defined(IS_MSVC)
+  // If this fails it should be easy to fix, just bump up the size of the
+  // platform mutex type.
+  ASSERT_TRUE(sizeof(platform_mutex_t) >= sizeof(CRITICAL_SECTION));
+#endif
+}

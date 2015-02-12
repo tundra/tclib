@@ -22,8 +22,10 @@ using namespace tclib;
 
 NativeMutex::NativeMutex() {
   is_initialized = false;
+#if defined(kPlatformMutexInit)
   platform_mutex_t init = kPlatformMutexInit;
   mutex = init;
+#endif
 }
 
 NativeMutex::~NativeMutex() {
