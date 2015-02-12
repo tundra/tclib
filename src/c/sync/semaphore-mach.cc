@@ -40,7 +40,7 @@ bool NativeSemaphore::acquire(duration_t timeout) {
   if (result == KERN_SUCCESS)
     return true;
   if (result != KERN_OPERATION_TIMED_OUT)
-    WARN("Call to semaphore_wait failed: %i", result);
+    WARN("Waiting for semaphore failed: %i", result);
   return false;
 }
 

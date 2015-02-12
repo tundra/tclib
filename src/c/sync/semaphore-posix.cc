@@ -46,7 +46,7 @@ bool NativeSemaphore::acquire(duration_t timeout) {
     return true;
   if (errno != ETIMEDOUT)
     // Timing out is fine so only warn if it's a different error.
-    WARN("Call to sem_wait failed: %i (error: %s)", result, strerror(errno));
+    WARN("Waiting for semaphore failed: %i (error: %s)", result, strerror(errno));
   return false;
 }
 
