@@ -7,7 +7,7 @@
 #include "c/stdc.h"
 #include "sync/sync.h"
 
-// Opaque mutex type.
+// Opaque condition variable type.
 typedef struct {
   bool is_initialized;
   platform_condition_t cond;
