@@ -35,11 +35,20 @@ public:
   bool try_lock();
 
   // Unlock this mutex. Only the thread that holds this mutex will be allowed
-  // to unlock it; if another thread tries the result will be undefined. Or
-  // actually it will probably be well-defined for each platform (for instance,
-  // on posix it will succeed, on windows it will fail) but across platforms
-  // you shouldn't depend on any particular behavior.
+  // to unlock it. If another thread tries to unlock it there are two possible
+  // behaviors depending on which platform you're on. On some it will be caught
+  // and unlocking will return false, after which the mutex is still in a valid
+  // state. On others the behavior and return value will be undefined and the
+  // mutex may be left broken. If checks_consistency() returns true the first
+  // will be the case, otherwise it will be the second.
   bool unlock();
+
+  // Returns true if unlocking while the mutex isn't held causes unlock to
+  // return false. If this returns false the discipline is implicit and
+  // unlocking inconsistently may leave the mutex permanently broken. Since it's
+  // assumed that locks are used consistently in production code this is for
+  // testing obviously.
+  static bool checks_consistency() { return kPlatformMutexChecksConsistency; }
 
 private:
   // Platform-specific initialization.

@@ -10,9 +10,9 @@ using namespace tclib;
 
 static void *fail_to_unlock(NativeMutex *m0, NativeMutex *m1) {
   ASSERT_FALSE(m0->try_lock());
-  ASSERT_FALSE(m0->unlock());
+  ASSERT_FALSE(NativeMutex::checks_consistency() && m0->unlock());
   ASSERT_FALSE(m1->try_lock());
-  ASSERT_FALSE(m1->unlock());
+  ASSERT_FALSE(NativeMutex::checks_consistency() && m1->unlock());
   return NULL;
 }
 
@@ -33,9 +33,9 @@ TEST(mutex_cpp, simple) {
   ASSERT_TRUE(m0.initialize());
   NativeMutex m1;
   ASSERT_TRUE(m1.initialize());
-  ASSERT_FALSE(m0.unlock());
+  ASSERT_FALSE(NativeMutex::checks_consistency() && m0.unlock());
   ASSERT_TRUE(m0.lock());
-  ASSERT_FALSE(m1.unlock());
+  ASSERT_FALSE(NativeMutex::checks_consistency() && m1.unlock());
   ASSERT_TRUE(m1.lock());
 
   // Try and fail to lock/unlock from a different thread.
@@ -49,7 +49,7 @@ TEST(mutex_cpp, simple) {
   ASSERT_TRUE(m1.unlock());
   ASSERT_TRUE(m1.unlock());
   ASSERT_TRUE(m1.unlock());
-  ASSERT_FALSE(m1.unlock());
+  ASSERT_FALSE(NativeMutex::checks_consistency() && m1.unlock());
 
   // Unlock completely and let a different thread try locking.
   ASSERT_TRUE(m0.unlock());

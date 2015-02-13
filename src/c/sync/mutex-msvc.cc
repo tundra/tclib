@@ -3,35 +3,26 @@
 
 #include "c/winhdr.h"
 
-static PCRITICAL_SECTION wincrit(NativeMutex *mutex) {
-  // There should be code elsewhere that ensures that the mutex field is large
-  // enough to hold a native critical section.
-  return reinterpret_cast<PCRITICAL_SECTION>(&mutex->mutex);
-}
-
 bool NativeMutex::platform_initialize() {
-  InitializeCriticalSection(wincrit(this));
+  InitializeCriticalSection(get_platform_mutex(this));
   return true;
 }
 
 bool NativeMutex::platform_dispose() {
-  DeleteCriticalSection(wincrit(this));
+  DeleteCriticalSection(get_platform_mutex(this));
   return true;
 }
 
 bool NativeMutex::lock() {
-  HEST("lock");
-  EnterCriticalSection(wincrit(this));
+  EnterCriticalSection(get_platform_mutex(this));
   return true;
 }
 
 bool NativeMutex::try_lock() {
-  HEST("try_lock");
-  return TryEnterCriticalSection(wincrit(this));
+  return TryEnterCriticalSection(get_platform_mutex(this));
 }
 
 bool NativeMutex::unlock() {
-  HEST("unlock");
-  LeaveCriticalSection(wincrit(this));
+  LeaveCriticalSection(get_platform_mutex(this));
   return true;
 }

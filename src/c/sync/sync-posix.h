@@ -11,6 +11,7 @@ typedef pthread_t platform_thread_t;
 
 typedef pthread_mutex_t platform_mutex_t;
 #define kPlatformMutexInit PTHREAD_MUTEX_INITIALIZER
+#define kPlatformMutexChecksConsistency true
 
 typedef sem_t platform_semaphore_t;
 

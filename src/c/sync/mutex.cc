@@ -64,3 +64,8 @@ bool native_mutex_try_lock(native_mutex_t *mutex) {
 bool native_mutex_unlock(native_mutex_t *mutex) {
   return static_cast<NativeMutex*>(mutex)->unlock();
 }
+
+bool native_mutex_checks_consistency() {
+  return NativeMutex::checks_consistency();
+}
+

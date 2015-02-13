@@ -14,8 +14,11 @@ typedef int32_t native_thread_id_t;
 #define PLATFORM_THREAD_ENTRY_POINT unsigned long __stdcall entry_point(void *data)
 
 typedef byte_t platform_mutex_t[24];
+#define kPlatformMutexChecksConsistency false
+#define get_platform_mutex(MUTEX) (reinterpret_cast<PCRITICAL_SECTION>(&(MUTEX)->mutex))
 
 typedef void *platform_semaphore_t;
 #define kPlatformSemaphoreInit INVALID_HANDLE_VALUE
 
 typedef byte_t platform_condition_t[8];
+#define get_platform_condition(COND) (reinterpret_cast<PCONDITION_VARIABLE>(&(COND)->cond))

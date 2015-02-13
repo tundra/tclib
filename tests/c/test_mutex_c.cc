@@ -13,9 +13,9 @@ static opaque_t fail_to_unlock(opaque_t opaque_m0, opaque_t opaque_m1) {
   native_mutex_t *m0 = (native_mutex_t*) o2p(opaque_m0);
   native_mutex_t *m1 = (native_mutex_t*) o2p(opaque_m1);
   ASSERT_FALSE(native_mutex_try_lock(m0));
-  ASSERT_FALSE(native_mutex_unlock(m0));
+  ASSERT_FALSE(native_mutex_checks_consistency() && native_mutex_unlock(m0));
   ASSERT_FALSE(native_mutex_try_lock(m1));
-  ASSERT_FALSE(native_mutex_unlock(m1));
+  ASSERT_FALSE(native_mutex_checks_consistency() && native_mutex_unlock(m1));
   return opaque_null();
 }
 
@@ -40,9 +40,9 @@ TEST(mutex_c, simple) {
   native_mutex_t m1;
   native_mutex_construct(&m1);
   ASSERT_TRUE(native_mutex_initialize(&m1));
-  ASSERT_FALSE(native_mutex_unlock(&m0));
+  ASSERT_FALSE(native_mutex_checks_consistency() && native_mutex_unlock(&m0));
   ASSERT_TRUE(native_mutex_lock(&m0));
-  ASSERT_FALSE(native_mutex_unlock(&m1));
+  ASSERT_FALSE(native_mutex_checks_consistency() && native_mutex_unlock(&m1));
   ASSERT_TRUE(native_mutex_lock(&m1));
 
   // Try and fail to lock/unlock from a different thread.
@@ -60,7 +60,7 @@ TEST(mutex_c, simple) {
   ASSERT_TRUE(native_mutex_unlock(&m1));
   ASSERT_TRUE(native_mutex_unlock(&m1));
   ASSERT_TRUE(native_mutex_unlock(&m1));
-  ASSERT_FALSE(native_mutex_unlock(&m1));
+  ASSERT_FALSE(native_mutex_checks_consistency() && native_mutex_unlock(&m1));
 
   // Unlock completely and let a different thread try locking.
   ASSERT_TRUE(native_mutex_unlock(&m0));

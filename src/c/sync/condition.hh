@@ -5,6 +5,7 @@
 #define _TCLIB_CONDITION_HH
 
 #include "c/stdc.h"
+#include "sync/mutex.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/condition.h"
@@ -24,6 +25,18 @@ public:
   // Initialize this condition variable. Returns true iff initialization
   // succeeds.
   bool initialize();
+
+  // Block this condition on the given mutex and release the mutex (which must
+  // be held exactly once by the calling thread) atomically. While blocked the
+  // thread may wake up spuriously without being explicitly woken.
+  bool wait(NativeMutex *mutex);
+
+  // Wake at least one thread that is waiting on this condition, if any are
+  // waiting, but not necessarily all of them.
+  bool wake_one();
+
+  // Wake all threads waiting on this condition.
+  bool wake_all();
 
 private:
   // Platform-specific initialization.

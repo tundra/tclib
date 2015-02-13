@@ -19,3 +19,27 @@ bool NativeCondition::platform_dispose() {
   WARN("Call to pthread_cond_destroy failed: %i (error: %s)", result, strerror(result));
   return false;
 }
+
+bool NativeCondition::wait(NativeMutex *mutex) {
+  int result = pthread_cond_wait(&cond, &mutex->mutex);
+  if (result == 0)
+    return true;
+  WARN("Call to pthread_cond_wait failed: %i (error: %s)", result, strerror(result));
+  return false;
+}
+
+bool NativeCondition::wake_one() {
+  int result = pthread_cond_signal(&cond);
+  if (result == 0)
+    return true;
+  WARN("Call to pthread_cond_signal failed: %i (error: %s)", result, strerror(result));
+  return false;
+}
+
+bool NativeCondition::wake_all() {
+  int result = pthread_cond_broadcast(&cond);
+  if (result == 0)
+    return true;
+  WARN("Call to pthread_cond_broadcast failed: %i (error: %s)", result, strerror(result));
+  return false;
+}
