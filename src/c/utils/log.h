@@ -80,7 +80,7 @@ void log_message(log_level_t level, const char *file, int line, const char *fmt,
     ...);
 
 // Va_list version of log message.
-void vlog_message(log_level_t level, const char *file, int line, const char *fmt,
+bool vlog_message(log_level_t level, const char *file, int line, const char *fmt,
     va_list argp);
 
 // The data that makes up an entry in the log.
@@ -100,12 +100,12 @@ void log_entry_init(log_entry_t *entry, log_stream_t destination,
     utf8_t message, utf8_t timestamp);
 
 // Logs a message that has already been processed into an entry.
-void log_entry(log_entry_t *entry);
+bool log_entry(log_entry_t *entry);
 
 INTERFACE(log_o);
 
 // Type of log functions.
-typedef void (*log_m)(log_o *self, log_entry_t *entry);
+typedef bool (*log_m)(log_o *self, log_entry_t *entry);
 
 struct log_o_vtable_t {
   log_m log;

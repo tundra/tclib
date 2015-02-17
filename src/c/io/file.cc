@@ -1,7 +1,11 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "file.hh"
+#include "io/file.hh"
+
+BEGIN_C_INCLUDES
+#include "utils/strbuf.h"
+END_C_INCLUDES
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -49,9 +53,8 @@ public:
   explicit StdioOpenFile(FILE *file) : file_(file) { }
   virtual ~StdioOpenFile();
   virtual size_t read_bytes(void *dest, size_t size);
-  virtual size_t write_bytes(void *src, size_t size);
+  virtual size_t write_bytes(const void *src, size_t size);
   virtual bool at_eof();
-  virtual size_t vprintf(const char *fmt, va_list argp);
   virtual bool flush();
 private:
   FILE *file_;
@@ -66,7 +69,7 @@ size_t StdioOpenFile::read_bytes(void *dest, size_t size) {
   return fread(dest, 1, size, file_);
 }
 
-size_t StdioOpenFile::write_bytes(void *src, size_t size) {
+size_t StdioOpenFile::write_bytes(const void *src, size_t size) {
   return fwrite(src, 1, size, file_);
 }
 
@@ -74,11 +77,23 @@ bool StdioOpenFile::at_eof() {
   return feof(file_) != 0;
 }
 
-size_t StdioOpenFile::vprintf(const char *fmt, va_list argp) {
+size_t OutStream::vprintf(const char *fmt, va_list argp) {
+  // Delegate formatting to string buffers. This makes the custom format handler
+  // framework available when writing to any output stream, at least by default.
+  // There's some extra overhead in doing it this way but if printing formatted
+  // output ever becomes a bottleneck then probably there is a more serious
+  // design flaw somewhere else that has led to heavy use of printf.
+  string_buffer_t buf;
+  if (!string_buffer_init(&buf))
+    return 0;
   va_list next;
   va_copy(next, argp);
-  size_t result = ::vfprintf(file_, fmt, next);
+  if (!string_buffer_vprintf(&buf, fmt, next))
+    return 0;
   va_end(next);
+  utf8_t str = string_buffer_flush(&buf);
+  size_t result = write_bytes(str.chars, str.size);
+  string_buffer_dispose(&buf);
   return result;
 }
 
@@ -228,15 +243,11 @@ void byte_in_stream_destroy(in_stream_t *stream) {
 
 ByteOutStream::ByteOutStream() { }
 
-size_t ByteOutStream::write_bytes(void *raw_src, size_t size) {
-  byte_t *src = static_cast<byte_t*>(raw_src);
+size_t ByteOutStream::write_bytes(const void *raw_src, size_t size) {
+  const byte_t *src = static_cast<const byte_t*>(raw_src);
   for (size_t i = 0; i < size; i++)
     data_.push_back(src[i]);
   return size;
-}
-
-size_t ByteOutStream::vprintf(const char *fmt, va_list argp) {
-  return 0;
 }
 
 bool ByteOutStream::flush() {

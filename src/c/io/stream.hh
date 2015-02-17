@@ -32,13 +32,13 @@ public:
 
   // Attempt to write 'size' bytes to this stream. Returns the number of bytes
   // actually written.
-  virtual size_t write_bytes(void *src, size_t size) = 0;
+  virtual size_t write_bytes(const void *src, size_t size) = 0;
 
   // Works just like normal printf, it just writes to this file.
   virtual size_t printf(const char *fmt, ...);
 
   // Works just like vprintf, it just writes to this file.
-  virtual size_t vprintf(const char *fmt, va_list argp) = 0;
+  virtual size_t vprintf(const char *fmt, va_list argp);
 
   // Flushes any buffered writes. Returns true if flushing succeeded.
   virtual bool flush() = 0;
@@ -61,8 +61,7 @@ private:
 class ByteOutStream : public OutStream {
 public:
   ByteOutStream();
-  virtual size_t write_bytes(void *src, size_t size);
-  virtual size_t vprintf(const char *fmt, va_list argp);
+  virtual size_t write_bytes(const void *src, size_t size);
   virtual bool flush();
 
   // Returns the number of bytes written to this stream.

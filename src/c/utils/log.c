@@ -2,10 +2,11 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "io/file.h"
-#include "log.h"
-#include "ook.h"
-#include "strbuf.h"
-#include "string-inl.h"
+#include "utils/log.h"
+#include "utils/ook.h"
+#include "utils/strbuf.h"
+#include "utils/string-inl.h"
+#include "utils/trybool.h"
 
 #include <time.h>
 
@@ -76,7 +77,7 @@ static log_o *global_log = NULL;
 
 // The default abort handler which prints the message to stdout/err and aborts
 // execution.
-static void default_log(log_o *log, log_entry_t *entry) {
+static bool default_log(log_o *log, log_entry_t *entry) {
   out_stream_t *dest = (entry->destination == lsStderr)
       ? file_system_stderr(file_system_native())
       : file_system_stdout(file_system_native());
@@ -96,6 +97,7 @@ static void default_log(log_o *log, log_entry_t *entry) {
     abort_message_init(&message, entry->file, entry->line, 0, entry->message.chars);
     abort_call(get_global_abort(), &message);
   }
+  return true;
 }
 
 VTABLE(default_log_o, log_o) { default_log };
@@ -127,12 +129,12 @@ void log_entry_init(log_entry_t *entry, log_stream_t destination,
   entry->timestamp = timestamp;
 }
 
-void vlog_message(log_level_t level, const char *file, int line, const char *fmt,
+bool vlog_message(log_level_t level, const char *file, int line, const char *fmt,
     va_list argp) {
   // Write the error message into a string buffer.
   string_buffer_t buf;
-  string_buffer_init(&buf);
-  string_buffer_vprintf(&buf, fmt, argp);
+  B_TRY(string_buffer_init(&buf));
+  B_TRY(string_buffer_vprintf(&buf, fmt, argp));
   va_end(argp);
   // Flush the string buffer.
   utf8_t message_str = string_buffer_flush(&buf);
@@ -149,11 +151,12 @@ void vlog_message(log_level_t level, const char *file, int line, const char *fmt
   log_entry_t entry;
   log_entry_init(&entry, destination, behavior, file, line, level, message_str,
       timestamp_str);
-  log_entry(&entry);
+  B_TRY(log_entry(&entry));
   string_buffer_dispose(&buf);
+  return true;
 }
 
-void log_entry(log_entry_t *entry) {
+bool log_entry(log_entry_t *entry) {
   log_o *log = get_global_log();
-  METHOD(log, log)(log, entry);
+  return METHOD(log, log)(log, entry);
 }

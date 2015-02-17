@@ -79,17 +79,42 @@ TEST(string, string_buffer_simple) {
   string_buffer_dispose(&buf);
 }
 
-TEST(string, string_buffer_format) {
+void check_format(const char *expected, const char *fmt, ...) {
   string_buffer_t buf;
-  string_buffer_init(&buf);
+  ASSERT_TRUE(string_buffer_init(&buf));
 
-  string_buffer_printf(&buf, "[S %s] ", NULL);
-  string_buffer_printf(&buf, "[P %%]");
-  utf8_t str = string_buffer_flush(&buf);
-  utf8_t expected = new_c_string("[S (NULL)] [P %]");
-  ASSERT_STREQ(expected, str);
+  va_list argp1;
+  va_start(argp1, fmt);
+  char native[1024];
+  vsnprintf(native, 1024, fmt, argp1);
+  va_end(argp1);
+  ASSERT_C_STREQ(expected, native);
+
+  va_list argp0;
+  va_start(argp0, fmt);
+  string_buffer_vprintf(&buf, fmt, argp0);
+  va_end(argp0);
+  ASSERT_C_STREQ(expected, string_buffer_flush(&buf).chars);
 
   string_buffer_dispose(&buf);
+}
+
+TEST(string, string_buffer_format) {
+  check_format("(null)", "%s", NULL);
+  check_format("%", "%%");
+  check_format("3.140", "%.3f", 3.14);
+  check_format("3.1400", "%.4f", 3.14);
+  check_format("3.141593", "%f", 3.1415926);
+  long double ld = 3.1415926;
+  check_format("3.141593", "%Lf", ld);
+  void *ptr = (void*) 1000;
+  check_format("0x3e8", "%p", ptr);
+  check_format("100", "%i", 100);
+  check_format("-1", "%i", -1);
+  check_format("4294967295", "%u", -1);
+  int64_t lli = -1;
+  check_format("-1", "%lli", lli);
+  check_format("18446744073709551615", "%llu", lli);
 }
 
 TEST(string, string_buffer_concat) {
@@ -123,16 +148,20 @@ TEST(string, string_buffer_long) {
   string_buffer_dispose(&buf);
 }
 
-#define CHECK_PRINTF(expected, format, ...) do {                               \
-  string_buffer_t buf;                                                         \
-  string_buffer_init(&buf);                                                    \
-  string_buffer_printf(&buf, format, __VA_ARGS__);                             \
-  string_t found;                                                              \
-  string_buffer_flush(&buf, &found);                                           \
-  string_t str = new_string(expected);                                                \
-  ASSERT_STREQ(&str, &found);                                                  \
-  string_buffer_dispose(&buf);                                                 \
-} while (false)
+void vsnprintf_spec_trampoline(const char *expected, size_t blocks, const char *fmt, ...) {
+  va_list argp;
+  va_start(argp, fmt);
+  char kBuffer[1024];
+  char *ptr = kBuffer;
+  size_t remaining = 1024;
+  for (size_t i = 0; i < blocks; i++) {
+    size_t count = vsnprintf(ptr, remaining, fmt, argp);
+    ptr += count;
+    remaining -= count;
+  }
+  va_end(argp);
+  ASSERT_C_STREQ(expected, kBuffer);
+}
 
 #define CHECK_HINT(HINT, EXPECTED) do {                                        \
   string_hint_t hint = STRING_HINT_INIT(HINT);                                 \
