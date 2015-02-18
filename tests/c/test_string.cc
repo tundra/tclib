@@ -148,21 +148,6 @@ TEST(string, string_buffer_long) {
   string_buffer_dispose(&buf);
 }
 
-void vsnprintf_spec_trampoline(const char *expected, size_t blocks, const char *fmt, ...) {
-  va_list argp;
-  va_start(argp, fmt);
-  char kBuffer[1024];
-  char *ptr = kBuffer;
-  size_t remaining = 1024;
-  for (size_t i = 0; i < blocks; i++) {
-    size_t count = vsnprintf(ptr, remaining, fmt, argp);
-    ptr += count;
-    remaining -= count;
-  }
-  va_end(argp);
-  ASSERT_C_STREQ(expected, kBuffer);
-}
-
 #define CHECK_HINT(HINT, EXPECTED) do {                                        \
   string_hint_t hint = STRING_HINT_INIT(HINT);                                 \
   char hint_str[7];                                                            \
