@@ -206,3 +206,9 @@ void register_format_handler(char c, format_handler_o *handler) {
   if (ref != NULL && *ref == NULL)
     *ref = handler;
 }
+
+void unregister_format_handler(char c) {
+  format_handler_o **ref = get_format_handler_ref(c);
+  if (ref != NULL)
+    *ref = NULL;
+}

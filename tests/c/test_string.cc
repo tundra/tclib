@@ -108,13 +108,43 @@ TEST(string, string_buffer_format) {
   long double ld = 3.1415926;
   check_format("3.141593", "%Lf", ld);
   void *ptr = (void*) 1000;
-  check_format("0x3e8", "%p", ptr);
+  check_format(IF_MSVC("000003E8", "0x3e8"), "%p", ptr);
   check_format("100", "%i", 100);
   check_format("-1", "%i", -1);
   check_format("4294967295", "%u", -1);
   int64_t lli = -1;
   check_format("-1", "%lli", lli);
   check_format("18446744073709551615", "%llu", lli);
+}
+
+typedef struct {
+  format_handler_o super;
+  size_t count;
+} test_format_handler_o;
+
+static void format_test_value(format_handler_o *self, format_request_t *request,
+    va_list_ref_t argp) {
+  test_format_handler_o *handler = (test_format_handler_o*) self;
+  char *value = va_arg(VA_LIST_DEREF(argp), char*);
+  string_buffer_native_printf(request->buf, "[T %s %i %i]", value,
+      handler->count++, request->width);
+}
+
+TEST(string, custom_formatter) {
+  format_handler_o_vtable_t vtable = { format_test_value };
+  test_format_handler_o handler;
+  handler.super.header.vtable = &vtable;
+  handler.count = 0;
+  register_format_handler('t', &handler.super);
+
+  string_buffer_t buf;
+  ASSERT_TRUE(string_buffer_init(&buf));
+  string_buffer_printf(&buf, "[foo %8t %7t %6t bar]", "bah", "hum", "bug");
+  ASSERT_C_STREQ("[foo [T bah 0 8] [T hum 1 7] [T bug 2 6] bar]",
+      string_buffer_flush(&buf).chars);
+  string_buffer_dispose(&buf);
+
+  unregister_format_handler('t');
 }
 
 TEST(string, string_buffer_concat) {

@@ -49,8 +49,9 @@ INTERFACE(format_handler_o);
 typedef struct {
   // The buffer to write the output on.
   string_buffer_t *buf;
-  // Optional integer parameter given to the format character.
-  int32_t int_param;
+  // Optional width parameter given to the format character. If no width was
+  // specified this will be -1.
+  int32_t width;
   // The format character itself.
   char format;
 } format_request_t;
@@ -71,5 +72,8 @@ struct format_handler_o {
 // Registers a string format handler under the given character. The character
 // must be unbound.
 void register_format_handler(char c, format_handler_o *handler);
+
+// Clears the handler registered under the given character.
+void unregister_format_handler(char c);
 
 #endif // _TCLIB_STRBUF_H
