@@ -60,6 +60,11 @@ static always_inline opaque_t opaque_null() {
   return u2o(0);
 }
 
+// Is the given opaque the null value?
+static always_inline bool opaque_is_null(opaque_t opaque) {
+  return o2u(opaque) == 0;
+}
+
 // Are the two given opaques identical.
 static always_inline bool opaque_same(opaque_t a, opaque_t b) {
   return a.as_uint64 == b.as_uint64;

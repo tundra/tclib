@@ -41,3 +41,10 @@ TEST(opaque, comparison) {
   ASSERT_FALSE(opaque_same(u2o(100), p2o(&i0)));
   ASSERT_FALSE(opaque_same(p2o(&i0), u2o(100)));
 }
+
+TEST(opaque, null) {
+  ASSERT_TRUE(opaque_is_null(opaque_null()));
+  ASSERT_FALSE(opaque_is_null(u2o(1)));
+  int ref = 0;
+  ASSERT_FALSE(opaque_is_null(p2o(&ref)));
+}

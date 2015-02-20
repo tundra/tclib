@@ -12,34 +12,34 @@ typedef struct {
 } duration_t;
 
 // Returns a duration that represents the given number of milliseconds.
-inline duration_t duration_millis(uint64_t value) {
+static inline duration_t duration_millis(uint64_t value) {
   duration_t result = {false, value};
   return result;
 }
 
 // Returns a duration that represents the given number of seconds.
-inline duration_t duration_seconds(double value) {
+static inline duration_t duration_seconds(double value) {
   return duration_millis((uint64_t) (value * 1000));
 }
 
 // Returns the unlimited duration.
-inline duration_t duration_unlimited() {
+static inline duration_t duration_unlimited() {
   duration_t result = {true, 0};
   return result;
 }
 
 // Is the given value the unlimited duration?
-inline bool duration_is_unlimited(duration_t duration) {
+static inline bool duration_is_unlimited(duration_t duration) {
   return duration.is_unlimited;
 }
 
 // Returns the number of seconds of this duration.
-inline double duration_to_seconds(duration_t duration) {
+static inline double duration_to_seconds(duration_t duration) {
   return duration.millis / 1000.0;
 }
 
 // Returns the number of milliseconds of this duration.
-inline uint64_t duration_to_millis(duration_t duration) {
+static inline uint64_t duration_to_millis(duration_t duration) {
   return duration.millis;
 }
 
