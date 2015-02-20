@@ -4,7 +4,6 @@
 #include "stdc.h"
 
 #ifdef IS_MSVC
-#  define _HAS_EXCEPTIONS 0
 #  pragma warning(push, 0)
 #    include <vector>
 #  pragma warning(pop)

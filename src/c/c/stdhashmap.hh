@@ -4,7 +4,6 @@
 #include "stdc.h"
 
 #if defined(IS_MSVC)
-#  define _HAS_EXCEPTIONS 0
 #  pragma warning(push, 0)
 #    include <hash_map>
 #  pragma warning(pop)
