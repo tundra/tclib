@@ -2,15 +2,9 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "realtime.h"
+#include "utils/clock.h"
 
-#ifdef IS_GCC
-#  ifdef IS_MACH
-#    include "realtime-mach.c"
-#  else
-#    include "realtime-posix.c"
-#  endif
-#endif
-
-#ifdef IS_MSVC
-#include "realtime-msvc.c"
-#endif
+double get_current_time_seconds() {
+  real_time_clock_t *system_time = real_time_clock_system();
+  return real_time_clock_millis_since_epoch_utc(system_time) / 1000.0;
+}

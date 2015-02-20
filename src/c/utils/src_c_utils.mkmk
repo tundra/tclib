@@ -10,7 +10,8 @@ library_files = [
   "strbuf.c",
   "string.c",
   "tinymt.c",
-  "callback.cc"
+  "callback.cc",
+  "clock.cc",
 ]
 
 library = get_group("library")
@@ -18,4 +19,5 @@ for filename in library_files:
   source = c.get_source_file(filename)
   source.add_include(get_root().get_child('src', 'c'))
   object = source.get_object()
+  object.add_library_requirement(posix="rt")
   library.add_member(object)

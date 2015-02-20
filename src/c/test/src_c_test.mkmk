@@ -11,7 +11,6 @@ for filename in library_files:
   source = c.get_source_file(filename)
   source.add_include(get_root().get_child('src', 'c'))
   object = source.get_object()
-  object.add_library_requirement(posix="rt")
   library.add_member(object)
 
 stderr_fail_files = [
