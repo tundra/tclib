@@ -36,6 +36,14 @@
 #  define IF_GCC(T, E) T
 #endif
 
+#ifndef PRIi64
+#  define PRIi64 "li"
+#endif
+
+#ifndef PRIx64
+#  define PRIx64 "lx"
+#endif
+
 #ifdef IS_MACH
 #  define IF_MACH(T, E) T
 #else

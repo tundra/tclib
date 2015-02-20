@@ -15,11 +15,6 @@ typedef unsigned int uint32_t;
 typedef __int64 int64_t;
 typedef unsigned __int64 uint64_t;
 
-// Format macros to match the ones you get from <inttypes.h> on platforms that
-// have it.
-#define PRIi64 "li"
-#define PRIx64 "lx"
-
 // TODO: Add some logic to set this depending on the environment.
 #define IS_32_BIT 1
 

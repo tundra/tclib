@@ -39,3 +39,10 @@ TEST(stdc, always_inlines) {
   ASSERT_EQ(10, foo());
   ASSERT_EQ(11, bar());
 }
+
+TEST(stdc, format) {
+  char buf[256];
+  int64_t i64 = 100;
+  sprintf(buf, "%" PRIi64, i64);
+  sprintf(buf, "%" PRIx64, i64);
+}
