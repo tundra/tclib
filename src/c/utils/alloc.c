@@ -84,7 +84,7 @@ static void limited_allocator_free(void *raw_data, memory_block_t memory) {
     return;
   limited_allocator_t *data = (limited_allocator_t*) raw_data;
   if (memory.size > data->live_memory)
-    FATAL("Unbalanced free of %ib", memory.size);
+    WARN("Unbalanced free of %ib", memory.size);
   data->live_memory -= memory.size;
   data->live_blocks--;
   allocator_free(data->outer, memory);
