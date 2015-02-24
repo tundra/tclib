@@ -195,12 +195,12 @@ promise_t<T2, E> promise_t<T, E>::then(callback_t<T2(T)> mapper) {
 
 template <typename T, typename E>
 promise_t<T, E> promise_t<T, E>::empty() {
-  return promise_t<T, E>(new promise_state_t<T, E>());
+  return promise_t<T, E>(new (kDefaultAlloc) promise_state_t<T, E>());
 }
 
 template <typename T, typename E>
 sync_promise_t<T, E> sync_promise_t<T, E>::empty() {
-  return sync_promise_t<T, E>(new sync_promise_state_t<T, E>());
+  return sync_promise_t<T, E>(new (kDefaultAlloc) sync_promise_state_t<T, E>());
 }
 
 template <typename T, typename E>

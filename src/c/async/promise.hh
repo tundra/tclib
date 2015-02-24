@@ -54,6 +54,10 @@ protected:
   const E &unsafe_get_error();
   std::vector<SuccessAction> on_successes_;
   std::vector<FailureAction> on_failures_;
+
+protected:
+  virtual size_t instance_size() { return sizeof(*this); }
+
 private:
   // These must be used to set the value or error. If you try to set them by
   // assigning to one of the get_* methods you're going to have a bad time.
@@ -171,6 +175,9 @@ public:
   virtual bool lock() { return mutex_.lock(); }
   virtual bool unlock() { return mutex_.unlock(); }
   bool wait(duration_t timeout);
+protected:
+  virtual size_t instance_size() { return sizeof(*this); }
+
 private:
   template <typename I>
   static void release_waiter(NativeSemaphore *sema, I ignore);

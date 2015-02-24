@@ -2,19 +2,16 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "c/stdc.h"
-
-BEGIN_C_INCLUDES
-#include "utils/callback.h"
-END_C_INCLUDES
-
 #include "utils/callback.hh"
+#include "utils/alloc.hh"
+
 using namespace tclib;
 
 // Given a callback, creates a heap-allocated clone and casts it to the given C
 // type.
 template <typename C, typename T>
 C *clone_and_cloak(const T &callback) {
-  abstract_callback_t *clone = new T(callback);
+  abstract_callback_t *clone = new (kDefaultAlloc) T(callback);
   return reinterpret_cast<C*>(clone);
 }
 
@@ -58,7 +55,13 @@ opaque_t unary_callback_call(unary_callback_t *callback, opaque_t a0) {
   return (uncloak<opaque_t(opaque_t)>(callback))(a0);
 }
 
+unary_callback_t *tclib::unary_callback_from(callback_t<opaque_t(opaque_t)> *callback) {
+  return reinterpret_cast<unary_callback_t*>(callback);
+}
+
 void callback_destroy(void *raw_callback) {
+  // This uses the fact that concrete callback types don't add state in addition
+  // to what is in abstract callback.
   abstract_callback_t *callback = reinterpret_cast<abstract_callback_t*>(raw_callback);
-  delete callback;
+  tclib::default_delete_concrete(callback);
 }

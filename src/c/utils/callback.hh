@@ -92,7 +92,7 @@ public:
       // To make refcounting as cheap as possible we do it on shared instances
       // as well and then only distinguish the types when the count reaches
       // 0, which it may do any number of times for shared binders.
-      delete this;
+      refcount_shared_t::dispose();
   }
 
   // Returns a clone of this binder whose refcounts are guarded by a mutex such
@@ -192,6 +192,10 @@ public:
     return function_binder_0_t<true, R, A0, A1, A2>::shared_instance();
   }
 
+  virtual size_t instance_size() {
+    return sizeof(*this);
+  }
+
   // For each choice of template parameters, returns the same shared binder
   // instance.
   static function_binder_0_t<IsGuarded, R, A0, A1, A2> *shared_instance() {
@@ -200,6 +204,8 @@ public:
     // instances which is unfortunate but should be benign.
     static function_binder_0_t<IsGuarded, R, A0, A1, A2> *instance = NULL;
     if (instance == NULL)
+      // Deliberately allocated using the system allocator since these are
+      // expected to not be deleted.
       instance = new function_binder_0_t<IsGuarded, R, A0, A1, A2>(abstract_binder_t::amShared);
     return instance;
   }
@@ -236,6 +242,10 @@ public:
     return method_binder_0_t<true, R, A0, A1, A2>::shared_instance();
   }
 
+  virtual size_t instance_size() {
+    return sizeof(*this);
+  }
+
   // For each choice of template parameters, returns the same shared binder
   // instance.
   static method_binder_0_t<IsGuarded, R, A0, A1, A2> *shared_instance() {
@@ -243,6 +253,8 @@ public:
     // concurrency.
     static method_binder_0_t<IsGuarded, R, A0, A1, A2> *instance = NULL;
     if (instance == NULL)
+      // Deliberately allocated using the system allocator since these are
+      // expected to not be deleted.
       instance = new method_binder_0_t<IsGuarded, R, A0, A1, A2>(abstract_binder_t::amShared);
     return instance;
   }
@@ -280,7 +292,11 @@ public:
   }
 
   virtual abstract_binder_t *thread_safe_clone() {
-    return new function_binder_1_t<true, R, B0, A1, A2, A3>(b0_);
+    return new (kDefaultAlloc) function_binder_1_t<true, R, B0, A1, A2, A3>(b0_);
+  }
+
+  virtual size_t instance_size() {
+    return sizeof(*this);
   }
 
 private:
@@ -316,7 +332,11 @@ public:
   }
 
   virtual abstract_binder_t *thread_safe_clone() {
-    return new method_binder_1_t<true, R, B0, A1, A2, A3>(b0_);
+    return new (kDefaultAlloc) method_binder_1_t<true, R, B0, A1, A2, A3>(b0_);
+  }
+
+  virtual size_t instance_size() {
+    return sizeof(*this);
   }
 
 private:
@@ -356,7 +376,11 @@ public:
   }
 
   virtual abstract_binder_t *thread_safe_clone() {
-    return new function_binder_2_t<true, R, B0, B1, A2, A3, A4>(b0_, b1_);
+    return new (kDefaultAlloc) function_binder_2_t<true, R, B0, B1, A2, A3, A4>(b0_, b1_);
+  }
+
+  virtual size_t instance_size() {
+    return sizeof(*this);
   }
 
 private:
@@ -399,7 +423,11 @@ public:
   }
 
   virtual abstract_binder_t *thread_safe_clone() {
-    return new function_binder_3_t<true, R, B0, B1, B2, A3, A4, A5>(b0_, b1_, b2_);
+    return new (kDefaultAlloc) function_binder_3_t<true, R, B0, B1, B2, A3, A4, A5>(b0_, b1_, b2_);
+  }
+
+  virtual size_t instance_size() {
+    return sizeof(*this);
   }
 
 private:
@@ -439,7 +467,11 @@ public:
   }
 
   virtual abstract_binder_t *thread_safe_clone() {
-    return new method_binder_2_t<true, R, B0, B1, A2, A3, A4>(b0_, b1_);
+    return new (kDefaultAlloc) method_binder_2_t<true, R, B0, B1, A2, A3, A4>(b0_, b1_);
+  }
+
+  virtual size_t instance_size() {
+    return sizeof(*this);
   }
 
 private:
@@ -480,7 +512,11 @@ public:
   }
 
   virtual abstract_binder_t *thread_safe_clone() {
-    return new method_binder_3_t<true, R, B0, B1, B2, A3, A4, A5>(b0_, b1_, b2_);
+    return new (kDefaultAlloc) method_binder_3_t<true, R, B0, B1, B2, A3, A4, A5>(b0_, b1_, b2_);
+  }
+
+  virtual size_t instance_size() {
+    return sizeof(*this);
   }
 
 private:
@@ -598,32 +634,32 @@ callback_t<R(void)> new_callback(R (*invoker)(void)) {
 
 template <typename R, typename B0>
 callback_t<R(void)> new_callback(R (*invoker)(B0), B0 b0) {
-  return callback_t<R(void)>(invoker, new function_binder_1_t<false, R, B0>(b0));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0>(b0));
 }
 
 template <typename R, typename B0>
 callback_t<R(void)> new_callback(R (B0::*invoker)(void), B0 *b0) {
-  return callback_t<R(void)>(invoker, new method_binder_1_t<false, R, B0>(b0));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0>(b0));
 }
 
 template <typename R, typename B0, typename B1>
 callback_t<R(void)> new_callback(R (*invoker)(B0, B1), B0 b0, B1 b1) {
-  return callback_t<R(void)>(invoker, new function_binder_2_t<false, R, B0, B1>(b0, b1));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1>(b0, b1));
 }
 
 template <typename R, typename B0, typename B1>
 callback_t<R(void)> new_callback(R (B0::*invoker)(B1), B0 *b0, B1 b1) {
-  return callback_t<R(void)>(invoker, new method_binder_2_t<false, R, B0, B1>(b0, b1));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1>(b0, b1));
 }
 
 template <typename R, typename B0, typename B1, typename B2>
 callback_t<R(void)> new_callback(R (*invoker)(B0, B1, B2), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(void)>(invoker, new function_binder_3_t<false, R, B0, B1, B2>(b0, b1, b2));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2>(b0, b1, b2));
 }
 
 template <typename R, typename B0, typename B1, typename B2>
 callback_t<R(void)> new_callback(R (B0::*invoker)(B1, B2), B0 *b0, B1 b1, B2 b2) {
-  return callback_t<R(void)>(invoker, new method_binder_3_t<false, R, B0, B1, B2>(b0, b1, b2));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2>(b0, b1, b2));
 }
 
 template <typename T>
@@ -644,7 +680,7 @@ callback_t<void(T*)> new_destructor_callback() {
 // destructor.
 template <typename T>
 callback_t<void(void)> new_destructor_callback(T *t) {
-  return callback_t<void(void)>(destructor_trampoline<T>, new function_binder_1_t<false, void, T*>(t));
+  return callback_t<void(void)>(destructor_trampoline<T>, new (kDefaultAlloc) function_binder_1_t<false, void, T*>(t));
 }
 
 template <typename R, typename A0>
@@ -675,19 +711,23 @@ callback_t<R(A0)> new_callback(R (*invoker)(A0)) {
   return invoker;
 }
 
+// Converts a C++ style opaque callback to a C one. There is no change in
+// ownership: the result will be valid exactly as long as the argument is.
+unary_callback_t *unary_callback_from(callback_t<opaque_t(opaque_t)> *callback);
+
 template <typename R, typename A0, typename B0>
 callback_t<R(A0)> new_callback(R (*invoker)(B0, A0), B0 b0) {
-  return callback_t<R(A0)>(invoker, new function_binder_1_t<false, R, B0, A0>(b0));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0, A0>(b0));
 }
 
 template <typename R, typename A0, typename B0, typename B1>
 callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, A0), B0 b0, B1 b1) {
-  return callback_t<R(A0)>(invoker, new function_binder_2_t<false, R, B0, B1, A0>(b0, b1));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1, A0>(b0, b1));
 }
 
 template <typename R, typename A0, typename B0, typename B1, typename B2>
 callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, B2, A0), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(A0)>(invoker, new function_binder_3_t<false, R, B0, B1, B2, A0>(b0, b1, b2));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2, A0>(b0, b1, b2));
 }
 
 template <typename R, typename A0>
@@ -697,17 +737,17 @@ callback_t<R(A0*)> new_callback(R (A0::*invoker)(void)) {
 
 template <typename R, typename A0, typename B0>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(A0), B0 *b0) {
-  return callback_t<R(A0)>(invoker, new method_binder_1_t<false, R, B0, A0>(b0));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0, A0>(b0));
 }
 
 template <typename R, typename A0, typename B0, typename B1>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(B1, A0), B0 *b0, B1 b1) {
-  return callback_t<R(A0)>(invoker, new method_binder_2_t<false, R, B0, B1, A0>(b0, b1));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1, A0>(b0, b1));
 }
 
 template <typename R, typename A0, typename B0, typename B1, typename B2>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(B1, B2, A0), B0 *b0, B1 b1, B2 b2) {
-  return callback_t<R(A0)>(invoker, new method_binder_3_t<false, R, B0, B1, B2, A0>(b0, b1, b2));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2, A0>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1>
@@ -739,17 +779,17 @@ callback_t<R(A0, A1)> new_callback(R (*invoker)(A0, A1)) {
 
 template <typename R, typename A0, typename A1, typename B0>
 callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, A0, A1), B0 b0) {
-  return callback_t<R(A0, A1)>(invoker, new function_binder_1_t<false, R, B0, A0, A1>(b0));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0, A0, A1>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1>
 callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, B1, A0, A1), B0 b0, B1 b1) {
-  return callback_t<R(A0, A1)>(invoker, new function_binder_2_t<false, R, B0, B1, A0, A1>(b0, b1));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1, A0, A1>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, B1, B2, A0, A1), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1)>(invoker, new function_binder_3_t<false, R, B0, B1, B2, A0, A1>(b0, b1, b2));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2, A0, A1>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1>
@@ -759,17 +799,17 @@ callback_t<R(A0*, A1)> new_callback(R (A0::*invoker)(A1)) {
 
 template <typename R, typename A0, typename A1, typename B0>
 callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(A0, A1), B0* b0) {
-  return callback_t<R(A0, A1)>(invoker, new method_binder_1_t<false, R, B0, A0, A1>(b0));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0, A0, A1>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1>
 callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(B1, A0, A1), B0* b0, B1 b1) {
-  return callback_t<R(A0, A1)>(invoker, new method_binder_2_t<false, R, B0, B1, A0, A1>(b0, b1));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1, A0, A1>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(B1, B2, A0, A1), B0* b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1)>(invoker, new method_binder_3_t<false, R, B0, B1, B2, A0, A1>(b0, b1, b2));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2, A0, A1>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1, typename A2>
@@ -801,17 +841,17 @@ callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(A0, A1, A2)) {
 
 template <typename R, typename A0, typename A1, typename A2, typename B0>
 callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, A0, A1, A2), B0 b0) {
-  return callback_t<R(A0, A1, A2)>(invoker, new function_binder_1_t<false, R, B0, A0, A1, A2>(b0));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0, A0, A1, A2>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1>
 callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, B1, A0, A1, A2), B0 b0, B1 b1) {
-  return callback_t<R(A0, A1, A2)>(invoker, new function_binder_2_t<false, R, B0, B1, A0, A1, A2>(b0, b1));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1, A0, A1, A2>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, B1, B2, A0, A1, A2), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1, A2)>(invoker, new function_binder_3_t<false, R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1, typename A2>
@@ -821,17 +861,17 @@ callback_t<R(A0*, A1, A2)> new_callback(R (A0::*invoker)(A1, A2)) {
 
 template <typename R, typename A0, typename A1, typename A2, typename B0>
 callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(A0, A1, A2), B0 *b0) {
-  return callback_t<R(A0, A1, A2)>(invoker, new method_binder_1_t<false, R, B0, A0, A1, A2>(b0));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0, A0, A1, A2>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1>
 callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(B1, A0, A1, A2), B0 *b0, B1 b1) {
-  return callback_t<R(A0, A1, A2)>(invoker, new method_binder_2_t<false, R, B0, B1, A0, A1, A2>(b0, b1));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1, A0, A1, A2>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(B1, B2, A0, A1, A2), B0 *b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1, A2)>(invoker, new method_binder_3_t<false, R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
 }
 
 } // namespace tclib

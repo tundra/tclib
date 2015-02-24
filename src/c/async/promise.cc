@@ -14,7 +14,7 @@ using namespace tclib;
 typedef promise_t<opaque_t, opaque_t> naked_opaque_promise_t;
 
 static opaque_promise_t *clone_and_cloak(naked_opaque_promise_t promise) {
-  naked_opaque_promise_t *result = new naked_opaque_promise_t(promise);
+  naked_opaque_promise_t *result = new (kDefaultAlloc) naked_opaque_promise_t(promise);
   return reinterpret_cast<opaque_promise_t*>(result);
 }
 
@@ -60,5 +60,5 @@ void opaque_promise_on_failure(opaque_promise_t *promise, unary_callback_t *call
 }
 
 void opaque_promise_destroy(opaque_promise_t *raw_promise) {
-  delete reinterpret_cast<promise_t<opaque_t>*>(raw_promise);
+  tclib::default_delete_concrete(reinterpret_cast<naked_opaque_promise_t*>(raw_promise));
 }

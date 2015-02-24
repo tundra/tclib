@@ -11,6 +11,7 @@
 // reference goes away the shared data is disposed appropriately.
 
 #include "c/stdc.h"
+#include "utils/alloc.hh"
 
 namespace tclib {
 
@@ -41,7 +42,9 @@ public:
 
   // Dispose this value appropriately.
   virtual void dispose() {
-    delete this;
+    size_t size = instance_size();
+    this->~refcount_shared_t();
+    allocator_default_free(new_memory_block(this, size));
   }
 
   // The raw refcount. This is visible for testing, you typically don't want to
@@ -58,6 +61,9 @@ protected:
   // If acquire_refcount acquired a lock on the refcount, this releases it
   // again.
   virtual void release_refcount() { }
+
+  // Returns the size in bytes of this instance.
+  virtual size_t instance_size() = 0;
 
   // Convenience wrapper for calling acquire/release.
   class WithRefcount {
