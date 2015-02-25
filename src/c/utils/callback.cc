@@ -65,3 +65,10 @@ void callback_destroy(void *raw_callback) {
   abstract_callback_t *callback = reinterpret_cast<abstract_callback_t*>(raw_callback);
   tclib::default_delete_concrete(callback);
 }
+
+void *callback_invisible_clone(void *raw_callback) {
+  abstract_callback_t *callback = reinterpret_cast<abstract_callback_t*>(raw_callback);
+  abstract_callback_t *clone = new abstract_callback_t(*callback);
+  tclib::default_delete_concrete(callback);
+  return clone;
+}

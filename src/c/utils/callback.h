@@ -43,4 +43,8 @@ opaque_t unary_callback_call(unary_callback_t *callback, opaque_t a0);
 // of their concrete type.
 void callback_destroy(void *callback);
 
+// Creates a clone of the given callback that won't set off the internal leak
+// detection. The input callback will be destroyed in the process.
+void *callback_invisible_clone(void *callback);
+
 #endif // _TCLIB_CALLBACK_H
