@@ -13,9 +13,8 @@ TEST(boundbuf, sizes) {
 }
 
 TEST(boundbuf, simple) {
-  uint8_t memory[BOUNDED_BUFFER_SIZE(100)];
-  bounded_buffer_t *buf = (bounded_buffer_t*) memory;
-  bounded_buffer_init(buf, 100);
+  uint8_t buf[BOUNDED_BUFFER_SIZE(100)];
+  bounded_buffer_init(buf, sizeof(buf), 100);
   for (size_t i = 0; i < 100; i++)
     ASSERT_TRUE(bounded_buffer_try_offer(buf, u2o(i)));
   ASSERT_FALSE(bounded_buffer_try_offer(buf, u2o(100)));

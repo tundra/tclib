@@ -4,15 +4,18 @@
 #include "boundbuf.h"
 #include "log.h"
 
-void bounded_buffer_init(bounded_buffer_t *buf, size_t capacity) {
-  memset(buf, 0, BOUNDED_BUFFER_SIZE(capacity));
+void bounded_buffer_init(void *raw_buf, size_t size, size_t capacity) {
+  CHECK_REL("buffer too small", size, >=, BOUNDED_BUFFER_SIZE(capacity));
+  memset(raw_buf, 0, BOUNDED_BUFFER_SIZE(capacity));
+  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
   buf->capacity = capacity;
   buf->occupied_count = 0;
   buf->next_free = 0;
   buf->next_occupied = 0;
 }
 
-bool bounded_buffer_try_offer(bounded_buffer_t *buf, opaque_t value) {
+bool bounded_buffer_try_offer(void *raw_buf, opaque_t value) {
+  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
   if (buf->occupied_count == buf->capacity)
     return false;
   opaque_t *slot = &buf->data[buf->next_free];
@@ -23,7 +26,8 @@ bool bounded_buffer_try_offer(bounded_buffer_t *buf, opaque_t value) {
   return true;
 }
 
-bool bounded_buffer_try_take(bounded_buffer_t *buf, opaque_t *value_out) {
+bool bounded_buffer_try_take(void *raw_buf, opaque_t *value_out) {
+  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
   if (buf->occupied_count == 0)
     return false;
   *value_out = buf->data[buf->next_occupied];
@@ -31,4 +35,9 @@ bool bounded_buffer_try_take(bounded_buffer_t *buf, opaque_t *value_out) {
   buf->next_occupied = (buf->next_occupied + 1) % buf->capacity;
   buf->occupied_count--;
   return true;
+}
+
+bool bounded_buffer_is_empty(void *raw_buf) {
+  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
+  return buf->occupied_count == 0;
 }
