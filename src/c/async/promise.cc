@@ -9,7 +9,6 @@ END_C_INCLUDES
 
 #include "async/promise-inl.hh"
 
-
 using namespace tclib;
 
 typedef promise_t<opaque_t, opaque_t> naked_opaque_promise_t;
