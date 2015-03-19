@@ -15,7 +15,7 @@
 // Passing va_lists by reference works differently depending on platform. On
 // windows passing a pointer to the va_list works, on linux (the ones I've tried
 // at least) you can't get a pointer and need to pass it by value.
-#ifdef IS_MSVC
+#if defined(IS_MSVC) || defined(IS_32_BIT)
 typedef va_list *va_list_ref_t;
 #  define VA_LIST_REF(argp) (&(argp))
 #  define VA_LIST_DEREF(argp_ref) (*(argp_ref))
