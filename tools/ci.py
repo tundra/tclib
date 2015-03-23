@@ -15,6 +15,11 @@ _TRAMPOLINE = "ci.py"
 _FLAGS = "ci.csv"
 
 
+# Would rather use a custom logger here but for some reason when I create one
+# nothing of any kind gets logged. Classic python.
+logging.basicConfig(level=logging.INFO)
+
+
 class Ci(object):
 
   def __init__(self, argv):
@@ -58,6 +63,11 @@ class Ci(object):
       writer = csv.writer(file)
       writer.writerow(["config", options.config])
       writer.writerow(["tools", tools])
+    # Run enter_devenv for good measure. We'll also be doing this when running
+    # the individual steps but begin may be run with broader permissions (for
+    # instance on travis) and may be allowed to do things that the run steps
+    # will then just check have been done.
+    self.sh(self.get_run_enter_devenv(tools))
 
   def get_flags(self):
     flags = {}
@@ -79,21 +89,40 @@ class Ci(object):
   def handle_run(self):
     flags = self.get_flags()
     rest = self.argv[2:]
-    mkmk_run = ["mkmk", "run", "--config", flags["config"]] + rest
+    # On windows the $0 argument to mkmk gets messed up so we pass the command
+    # explicitly. On linux it's fine automatically.
+    self_flag = ["--self", "mkmk"] if self.is_windows() else []
+    run_mkmk = ["mkmk", "run", "--config", flags["config"]] + self_flag + rest
+    run_enter_devenv = self.get_run_enter_devenv(flags['tools'])
     if self.is_windows():
-      self.sh([mkmk_run])
+      # Running both commands in the same call somehow messes up the environment
+      # on windows, making the VC tools unavailable. On the other hand,
+      # enter-devenv is sticky so using two separate calls works.
+      self.sh(run_enter_devenv)
+      self.sh(run_mkmk)
     else:
-      enter_devenv_base = os.path.join(flags['tools'], "enter-devenv")
-      enter_devenv = ["source", self.get_shell_script_name(enter_devenv_base)]
-      self.sh([enter_devenv, mkmk_run], shell="bash")
+      # Sourcing devenv isn't sticky (the changes don't land in the enclosing
+      # shell) so the mkmk run command needs to be fired within the same sub-
+      # shell.
+      self.sh(run_enter_devenv, run_mkmk)
 
-  def sh(self, command_lists, shell=None):
+  def sh(self, *command_lists):
     commands = [" ".join(c) for c in command_lists]
     command = " &&  ".join(commands)
-    if shell is None:
+    logging.info("Running [%s]", command)
+    if self.is_windows():
       subprocess.check_call(command, shell=True)
     else:
-      subprocess.check_call([shell, "-c", command])
+      subprocess.check_call(["bash", "-c", command])
+
+  # Returns the command to run to enter a devenv.
+  def get_run_enter_devenv(self, tools):
+    enter_devenv_base = os.path.join(tools, "enter-devenv")
+    enter_devenv = self.get_shell_script_name(enter_devenv_base)
+    if self.is_windows():
+      return ["call", enter_devenv]
+    else:
+      return ["source", enter_devenv]
 
 
   def main(self):
