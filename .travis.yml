@@ -2,8 +2,8 @@
 # and which are defined though the build matrix.
 language: c
 compiler: gcc
-script: mkmk run --config tclib.mkmk --debug --noisy -- all run-tests
-install: source ./tools/enter-devenv.sh
+script: python ci.py run --debug --noisy -- all run-tests
+install: ./tools/ci.py begin --config tclib.mkmk
 cache: apt
 
 matrix:
