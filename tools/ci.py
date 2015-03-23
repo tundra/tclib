@@ -95,11 +95,7 @@ class Ci(object):
     run_mkmk = ["mkmk", "run", "--config", flags["config"]] + self_flag + rest
     run_enter_devenv = self.get_run_enter_devenv(flags['tools'])
     if self.is_windows():
-      # Running both commands in the same call somehow messes up the environment
-      # on windows, making the VC tools unavailable. On the other hand,
-      # enter-devenv is sticky so using two separate calls works.
-      self.sh(run_enter_devenv)
-      self.sh(run_mkmk)
+      self.sh(run_enter_devenv, run_mkmk)
     else:
       # Sourcing devenv isn't sticky (the changes don't land in the enclosing
       # shell) so the mkmk run command needs to be fired within the same sub-
