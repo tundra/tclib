@@ -11,20 +11,20 @@ matrix:
     # Test a clang build in debug mode under valgrind.
     - language: c
       compiler: clang
-      script: mkmk run --config tclib.mkmk --debug --valgrind --noisy -- all run-tests
-      install: source ./tools/enter-devenv.sh && sudo apt-get update && sudo apt-get install valgrind
+      script: python ci.py run --debug --valgrind --noisy -- all run-tests
+      install: ./tools/ci.py begin --config tclib.mkmk && sudo apt-get update && sudo apt-get install valgrind
     # Test everything using an optimized clang build.
     - language: c
       compiler: clang
-      script: mkmk run --config tclib.mkmk --noisy -- all run-tests
-      install: source ./tools/enter-devenv.sh
+      script: python ci.py run --noisy -- all run-tests
+      install: ./tools/ci.py begin --config tclib.mkmk
     # Test with checks disabled.
     - languate: c
       compiler: clang
-      script: mkmk run --config tclib.mkmk --nochecks --noisy -- all run-tests
-      install: source ./tools/enter-devenv.sh
+      script: python ci.py run --nochecks --noisy -- all run-tests
+      install: ./tools/ci.py begin --config tclib.mkmk
     # Check that the C code compiles using gcc.
     - language: c
       compiler: gcc
-      script: mkmk run --config tclib.mkmk --debug --noisy -- all run-tests
-      install: source ./tools/enter-devenv.sh
+      script: python ci.py run --debug --noisy -- all run-tests
+      install: ./tools/ci.py begin --config tclib.mkmk
