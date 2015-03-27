@@ -34,6 +34,8 @@ class Ci(object):
     commands = sorted(self.get_handlers().keys())
     parser.add_argument('command', choices=commands)
     parser.add_argument('--config', default=None, help='The root configuration')
+    parser.add_argument('--always-clean', default=False, action="store_true",
+      help='Always clean before running')
     return parser
 
   def parse_options(self):
@@ -62,6 +64,7 @@ class Ci(object):
     with open(_FLAGS, "wb") as file:
       writer = csv.writer(file)
       writer.writerow(["config", options.config])
+      writer.writerow(["always_clean", options.always_clean])
       writer.writerow(["tools", tools])
     # Run enter_devenv for good measure. We'll also be doing this when running
     # the individual steps but begin may be run with broader permissions (for
@@ -89,18 +92,27 @@ class Ci(object):
   def handle_run(self):
     flags = self.get_flags()
     rest = self.argv[2:]
-    # On windows the $0 argument to mkmk gets messed up so we pass the command
-    # explicitly. On linux it's fine automatically.
-    self_flag = ["--self", "mkmk"] if self.is_windows() else []
-    run_mkmk = ["mkmk", "run", "--config", flags["config"]] + self_flag + rest
-    run_enter_devenv = self.get_run_enter_devenv(flags['tools'])
-    if self.is_windows():
-      self.sh(run_enter_devenv, run_mkmk)
+    if "--" in rest:
+      index = rest.index("--")
+      init_flags = rest[:index]
+      run_flags = rest[index+1:]
     else:
-      # Sourcing devenv isn't sticky (the changes don't land in the enclosing
-      # shell) so the mkmk run command needs to be fired within the same sub-
-      # shell.
-      self.sh(run_enter_devenv, run_mkmk)
+      init_flags = rest
+      run_flags = []
+    always_clean = flags["always_clean"] == "True"
+    # On windows the $0 argument to mkmk gets messed up so we pass the command
+    # explicitly. On linux it's fine automatically but there's no harm in
+    # passing it anyway, that's one less special case.
+    run_mkmk_init = ["mkmk", "init", "--config", flags["config"], "--self", "mkmk"] + init_flags
+    build_script = "build.bat" if self.is_windows() else "./build.sh"
+    run_clean_opt = [[build_script, "clean"]] if always_clean else []
+    run_build = [build_script] + run_flags
+    commands = (
+      [self.get_run_enter_devenv(flags['tools'])] +
+      [run_mkmk_init] +
+      run_clean_opt +
+      [run_build])
+    self.sh(*commands)
 
   def sh(self, *command_lists):
     commands = [" ".join(c) for c in command_lists]

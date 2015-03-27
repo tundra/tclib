@@ -12,7 +12,6 @@
 #include "stdc-msvc-inl.h"
 #endif
 
-
 // Passing va_lists by reference works differently depending on platform. On
 // windows passing a pointer to the va_list works, on linux (the ones I've tried
 // at least) you can't get a pointer and need to pass it by value.
