@@ -24,9 +24,10 @@ TEST(opaque, simple) {
   ASSERT_EQ(encoded, new_encoded);
 }
 
+static int i0 = 0;
+static int i1 = 0;
+
 TEST(opaque, comparison) {
-  int i0 = 0;
-  int i1 = 0;
   ASSERT_TRUE(opaque_same(p2o(&i0), p2o(&i0)));
   ASSERT_FALSE(opaque_same(p2o(&i0), p2o(&i1)));
   ASSERT_FALSE(opaque_same(p2o(&i1), p2o(&i0)));
