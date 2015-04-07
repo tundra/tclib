@@ -45,7 +45,7 @@ int string_compare(utf8_t a, utf8_t b) {
   size_t a_size = string_size(a);
   size_t b_size = string_size(b);
   if (a_size != b_size)
-    return a_size - b_size;
+    return (a_size < b_size) ? -1 : 1;
   for (size_t i = 0; i < a_size; i++) {
     char a_char = string_byte_at(a, i);
     char b_char = string_byte_at(b, i);
