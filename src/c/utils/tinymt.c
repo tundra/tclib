@@ -10,7 +10,7 @@ static uint64_t tinymt64_temper(const tinymt64_params_t *params,
     tinymt64_state_t *state) {
   uint64_t x = state->data[0] + state->data[1];
   x ^= state->data[0] >> 8;
-  x ^= -((int64_t) (x & 1)) & params->tempering_matrix;
+  x ^= ((uint64_t) (-((int64_t) (x & 1)))) & params->tempering_matrix;
   return x;
 }
 
@@ -25,8 +25,8 @@ static void tinymt64_transition(const tinymt64_t *tinymt, tinymt64_state_t *stat
   x ^= x << 11;
   copy.data[0] = copy.data[1];
   copy.data[1] = x;
-  copy.data[0] ^= -((int64_t)(x & 1)) & tinymt->params.transition_matrix_1;
-  copy.data[1] ^= -((int64_t)(x & 1)) & (((uint64_t) tinymt->params.transition_matrix_2) << 32);
+  copy.data[0] ^= ((uint64_t) -((int64_t)(x & 1))) & tinymt->params.transition_matrix_1;
+  copy.data[1] ^= ((uint64_t) -((int64_t)(x & 1))) & (((uint64_t) tinymt->params.transition_matrix_2) << 32);
   *state_out = copy;
 }
 

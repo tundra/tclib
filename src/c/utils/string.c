@@ -9,7 +9,7 @@ size_t string_size(utf8_t str) {
 
 uint8_t string_byte_at(utf8_t str, size_t index) {
   CHECK_REL("string index out of bounds", index, <, string_size(str));
-  return str.chars[index];
+  return (uint8_t) str.chars[index];
 }
 
 utf8_t string_substring(utf8_t str, int64_t from, int64_t to) {
@@ -17,8 +17,8 @@ utf8_t string_substring(utf8_t str, int64_t from, int64_t to) {
     from = 0;
   size_t size = string_size(str);
   if (to > ((int64_t) size))
-    to = size;
-  return new_string(str.chars + from, to - from);
+    to = (int64_t) size;
+  return new_string(str.chars + from, (size_t) (to - from));
 }
 
 void string_copy_to(utf8_t str, char *dest, size_t count) {
@@ -47,8 +47,8 @@ int string_compare(utf8_t a, utf8_t b) {
   if (a_size != b_size)
     return (a_size < b_size) ? -1 : 1;
   for (size_t i = 0; i < a_size; i++) {
-    char a_char = string_byte_at(a, i);
-    char b_char = string_byte_at(b, i);
+    uint8_t a_char = string_byte_at(a, i);
+    uint8_t b_char = string_byte_at(b, i);
     if (a_char != b_char)
       return a_char - b_char;
   }

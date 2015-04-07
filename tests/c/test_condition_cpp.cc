@@ -70,12 +70,12 @@ TEST(condition_cpp, wake_all) {
   ASSERT_TRUE(shared.released.initialize());
   ASSERT_TRUE(shared.started.initialize());
   WakeAllWaiter waiters[kWaiterCount];
-  for (size_t i = 0; i < kWaiterCount; i++) {
+  for (int i = 0; i < kWaiterCount; i++) {
     // Start a waiter waiting, block until it's within the mutex.
     waiters[i].start(&shared, i);
     ASSERT_TRUE(shared.started.acquire());
   }
-  for (size_t i = 0; i < kWaiterCount; i++) {
+  for (int i = 0; i < kWaiterCount; i++) {
     // Jump to the next step, wake all the waiters and observe that this causes
     // one of them to be released.
     ASSERT_TRUE(shared.mutex.lock());

@@ -63,7 +63,7 @@ bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
   buffer[kMaxSize] = '\0';
   va_list argp;
   va_start(argp, fmt);
-  size_t written = vsnprintf(buffer, kMaxSize, fmt, argp);
+  size_t written = (size_t) vsnprintf(buffer, kMaxSize, fmt, argp);
   va_end(argp);
   // TODO: fix this if we ever hit it.
   CHECK_REL("temp buffer too small", written, <, kMaxSize);
@@ -138,7 +138,7 @@ bool string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
       }
       char c = *p;
       char fmt_buf[256];
-      size_t fmt_size = p - start + 1;
+      size_t fmt_size = (size_t) (p - start + 1);
       if (fmt_size > 255)
         return false;
       memcpy(fmt_buf, start, fmt_size);

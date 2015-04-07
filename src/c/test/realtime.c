@@ -6,5 +6,5 @@
 
 double get_current_time_seconds() {
   real_time_clock_t *system_time = real_time_clock_system();
-  return real_time_clock_millis_since_epoch_utc(system_time) / 1000.0;
+  return ((double) real_time_clock_millis_since_epoch_utc(system_time)) / 1000.0;
 }

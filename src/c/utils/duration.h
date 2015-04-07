@@ -35,7 +35,7 @@ static inline bool duration_is_unlimited(duration_t duration) {
 
 // Returns the number of seconds of this duration.
 static inline double duration_to_seconds(duration_t duration) {
-  return duration.millis / 1000.0;
+  return ((double) duration.millis) / 1000.0;
 }
 
 // Returns the number of milliseconds of this duration.
