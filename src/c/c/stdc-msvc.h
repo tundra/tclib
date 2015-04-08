@@ -17,9 +17,9 @@ typedef unsigned __int64 uint64_t;
 
 // See http://blogs.msdn.com/b/oldnewthing/archive/2006/09/06/742710.aspx.
 #ifdef _M_IX86
-#  define IS_64_BIT 1
-#else
 #  define IS_32_BIT 1
+#else
+#  define IS_64_BIT 1
 #endif
 
 // Windows doesn't have va_copy but this appears to work.
