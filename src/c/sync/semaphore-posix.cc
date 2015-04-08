@@ -37,8 +37,8 @@ bool NativeSemaphore::acquire(duration_t timeout) {
     uint64_t nsec = current.tv_nsec;
     duration_add_to_timespec(timeout, &sec, &nsec);
     struct timespec deadline;
-    deadline.tv_sec = sec;
-    deadline.tv_nsec = nsec;
+    deadline.tv_sec = static_cast<time_t>(sec);
+    deadline.tv_nsec = static_cast<long>(nsec);
     // Wait with the calculated time as the deadline.
     result = sem_timedwait(&sema, &deadline);
   }
