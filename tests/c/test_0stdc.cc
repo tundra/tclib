@@ -3,7 +3,7 @@
 
 #include "test/unittest.hh"
 
-TEST(stdc, int_types) {
+TEST(0stdc, int_types) {
   ASSERT_EQ(1, sizeof(uint8_t));
   ASSERT_EQ(1, sizeof(int8_t));
   ASSERT_EQ(2, sizeof(uint16_t));
@@ -14,7 +14,7 @@ TEST(stdc, int_types) {
   ASSERT_EQ(8, sizeof(int64_t));
 }
 
-TEST(stdc, pointer_size) {
+TEST(0stdc, pointer_size) {
 #ifdef IS_32_BIT
   ASSERT_EQ(4, sizeof(void*));
 #endif
@@ -35,12 +35,12 @@ always_inline int bar() {
   return 11;
 }
 
-TEST(stdc, always_inlines) {
+TEST(0stdc, always_inlines) {
   ASSERT_EQ(10, foo());
   ASSERT_EQ(11, bar());
 }
 
-TEST(stdc, format) {
+TEST(0stdc, format) {
   char buf[256];
   int64_t i64 = 100;
   sprintf(buf, "%" PRIi64, i64);
