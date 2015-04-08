@@ -108,7 +108,7 @@ TEST(string, string_buffer_format) {
   long double ld = 3.1415926;
   check_format("3.141593", "%Lf", ld);
   void *ptr = (void*) 1000;
-  check_format(IF_MSVC("000003E8", "0x3e8"), "%p", ptr);
+  check_format(IF_MSVC(IF_32_BIT("", "00000000") "000003E8", "0x3e8"), "%p", ptr);
   check_format("100", "%i", 100);
   check_format("-1", "%i", -1);
   check_format("4294967295", "%u", -1);

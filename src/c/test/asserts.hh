@@ -14,14 +14,20 @@
 // fails in some appropriate way.
 void fail(const char *file, int line, const char *fmt, ...);
 
-// Fails unless the two values are equal.
-#define ASSERT_EQ(A, B) do {                                                   \
-  int64_t __a__ = (int64_t) (A);                                               \
-  int64_t __b__ = (int64_t) (B);                                               \
-  if (__a__ != __b__)                                                          \
-    fail(__FILE__, __LINE__, "Assertion failed: %s == %s.\n  Expected: %lli\n  Found: %lli", \
-        #A, #B, __a__, __b__);                                                 \
+// Fails unless the given relation holds between the two values.
+#define ASSERT_REL(A, REL, B) do {                                             \
+  int64_t __a__ = static_cast<int64_t>(A);                                     \
+  int64_t __b__ = static_cast<int64_t>(B);                                     \
+  if (!(__a__ REL __b__))                                                      \
+    fail(__FILE__, __LINE__,                                                   \
+        "Assertion failed: " #A " " #REL " " #B ".\n"                          \
+        "  Left: %lli\n"                                                       \
+        "  Right: %lli",                                                       \
+        __a__, __b__);                                                         \
 } while (false)
+
+// Fails unless the two values are equal.
+#define ASSERT_EQ(A, B) ASSERT_REL(A, ==, B)
 
 // Bit-casts a void* to an integer.
 static int64_t ptr_to_int_bit_cast(void *value) {
@@ -34,7 +40,7 @@ static int64_t ptr_to_int_bit_cast(void *value) {
 #define ASSERT_PTREQ(A, B) ASSERT_EQ(ptr_to_int_bit_cast(A), ptr_to_int_bit_cast(B))
 
 // Fails unless the two values are different.
-#define ASSERT_NEQ(A, B) ASSERT_FALSE((A) == (B))
+#define ASSERT_NEQ(A, B) ASSERT_REL(A, !=, B)
 
 // Fails unless the condition is true.
 #define ASSERT_TRUE(COND) ASSERT_EQ(COND, true)

@@ -13,7 +13,7 @@ typedef int32_t native_thread_id_t;
 #define kPlatformThreadInit {INVALID_HANDLE_VALUE, 0}
 #define PLATFORM_THREAD_ENTRY_POINT unsigned long __stdcall entry_point(void *data)
 
-typedef byte_t platform_mutex_t[24];
+typedef byte_t platform_mutex_t[IF_32_BIT(24, 40)];
 #define kPlatformMutexChecksConsistency false
 #define get_platform_mutex(MUTEX) (reinterpret_cast<PCRITICAL_SECTION>(&(MUTEX)->mutex))
 

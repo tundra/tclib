@@ -8,7 +8,7 @@
 using namespace tclib;
 
 TEST(promise_cpp, simple) {
-  promise_t<int> p = promise_t<int>::empty();
+  promise_t<int, int> p = promise_t<int, int>::empty();
   ASSERT_FALSE(p.is_resolved());
   ASSERT_FALSE(p.has_succeeded());
   ASSERT_FALSE(p.has_failed());
@@ -23,7 +23,7 @@ TEST(promise_cpp, simple) {
 }
 
 TEST(promise_cpp, simple_sync) {
-  sync_promise_t<int> p = sync_promise_t<int>::empty();
+  sync_promise_t<int, int> p = sync_promise_t<int, int>::empty();
   ASSERT_FALSE(p.is_resolved());
   ASSERT_FALSE(p.has_succeeded());
   ASSERT_FALSE(p.has_failed());
@@ -47,7 +47,7 @@ TEST(promise_cpp, simple_error) {
   ASSERT_TRUE(p.has_failed());
   ASSERT_FALSE(p.has_succeeded());
   ASSERT_EQ(10, p.peek_error(0));
-  ASSERT_EQ(0, p.peek_value(0));
+  ASSERT_PTREQ(NULL, p.peek_value(0));
 }
 
 TEST(promise_cpp, simple_error_sync) {

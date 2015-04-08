@@ -124,6 +124,6 @@ TEST(mutex_cpp, msvc_sizes) {
 #if defined(IS_MSVC)
   // If this fails it should be easy to fix, just bump up the size of the
   // platform mutex type.
-  ASSERT_TRUE(sizeof(platform_mutex_t) >= sizeof(CRITICAL_SECTION));
+  ASSERT_REL(sizeof(platform_mutex_t), >=, sizeof(CRITICAL_SECTION));
 #endif
 }
