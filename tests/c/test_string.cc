@@ -194,6 +194,20 @@ TEST(string, string_hint) {
   CHECK_HINT("abc", "abc");
   CHECK_HINT("ab", "ab");
   CHECK_HINT("a", "a");
-  CHECK_HINT("", "");
-}
 
+  // 64-bit MSVC gets a little eager with the warnings here -- we want the
+  // conditions in STRING_HINT_INIT to evaluate to a statically known value
+  // but in this particular case MSVC sees fit to warn that they are:
+  //
+  //   .\tests\c\test_string.cc(...) : warning C4296: '<=' : expression is always true
+  //
+  // It's a useful warning in general though so just disable it here.
+#ifdef IS_MSVC
+#  pragma warning(push)
+#  pragma warning(disable: 4296)
+#endif
+  CHECK_HINT("", "");
+#ifdef IS_MSVC
+#  pragma warning(pop)
+#endif
+}
