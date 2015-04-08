@@ -4,6 +4,7 @@
 import re
 
 test_file_names = [
+  "test_0stdc.cc",
   "test_boundbuf.cc",
   "test_callback_c.cc",
   "test_callback_cpp.cc",
@@ -19,7 +20,6 @@ test_file_names = [
   "test_promise_cpp.cc",
   "test_semaphore_c.cc",
   "test_semaphore_cpp.cc",
-  "test_stdc.cc",
   "test_stdhashmap.cc",
   "test_string.cc",
   "test_thread.cc",
