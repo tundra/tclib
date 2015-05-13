@@ -16,3 +16,6 @@ typedef pthread_mutex_t platform_mutex_t;
 typedef sem_t platform_semaphore_t;
 
 typedef pthread_cond_t platform_condition_t;
+
+typedef pid_t platform_process_t;
+#define kPlatformProcessInit 0
