@@ -28,10 +28,11 @@ public:
   bool start(const char *executable, size_t argc, const char **argv);
 
   // Wait for this process, which must already have been started, to complete.
-  // Returns true iff waiting succeeded.
+  // Returns true iff waiting succeeded. The process must have been started.
   bool wait();
 
-  // Returns the process' exit code.
+  // Returns the process' exit code. The process must have been started and
+  // waited on.
   int exit_code();
 
 private:

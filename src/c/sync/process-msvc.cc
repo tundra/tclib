@@ -63,6 +63,7 @@ bool NativeProcess::wait() {
     state = nsComplete;
     return true;
   } else {
+    // TODO: implement.
     CHECK_EQ("waiting for process not running", nsRunning, state);
     return false;
   }
