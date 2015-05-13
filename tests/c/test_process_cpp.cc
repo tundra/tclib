@@ -15,7 +15,9 @@ TEST(process_cpp, exec_missing) {
 
 // Returns the path to the durian executable.
 static const char *get_durian_main() {
-  return getenv("DURIAN_MAIN");
+  const char *result = getenv("DURIAN_MAIN");
+  ASSERT_TRUE(result != NULL);
+  return result;
 }
 
 TEST(process_cpp, exec_simple) {
