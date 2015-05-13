@@ -8,6 +8,14 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+void NativeProcess::platform_initialize() {
+  process = 0;
+}
+
+void NativeProcess::platform_dispose() {
+  // Nothing to do.
+}
+
 bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
   CHECK_EQ("starting process already running", nsInitial, state);
   pid_t fork_pid = fork();

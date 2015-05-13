@@ -13,6 +13,18 @@ TEST(process_cpp, exec_missing) {
   ASSERT_TRUE(process.exit_code() != 0);
 }
 
+// Returns the path to the durian executable.
+static const char *get_durian_main() {
+  return getenv("DURIAN_MAIN");
+}
+
+TEST(process_cpp, exec_simple) {
+  NativeProcess process;
+  ASSERT_TRUE(process.start(get_durian_main(), 0, NULL));
+  ASSERT_TRUE(process.wait());
+  ASSERT_EQ(66, process.exit_code());
+}
+
 #if defined(IS_MSVC)
 #  include "c/winhdr.h"
 #endif

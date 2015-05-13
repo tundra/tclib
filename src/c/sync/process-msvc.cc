@@ -8,6 +8,17 @@ END_C_INCLUDES
 
 #include "c/winhdr.h"
 
+void NativeProcess::platform_initialize() {
+  PROCESS_INFORMATION *info = get_platform_process(this);
+  ZeroMemory(info, sizeof(*info));
+}
+
+void NativeProcess::platform_dispose() {
+  PROCESS_INFORMATION *info = get_platform_process(this);
+  CloseHandle(info->hProcess);
+  CloseHandle(info->hThread);
+}
+
 bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
   CHECK_EQ("starting process already running", nsInitial, state);
   // Joing the arguments array together into a command-line.
@@ -62,11 +73,28 @@ bool NativeProcess::wait() {
     // terminate trivially succeeds.
     state = nsComplete;
     return true;
-  } else {
-    // TODO: implement.
-    CHECK_EQ("waiting for process not running", nsRunning, state);
+  }
+
+  // First, wait for the process to terminate.
+  CHECK_EQ("waiting for process not running", nsRunning, state);
+  PROCESS_INFORMATION *info = get_platform_process(this);
+  dword_t wait_result = WaitForSingleObject(info->hProcess, INFINITE);
+  if (wait_result == WAIT_FAILED) {
+    WARN("Call to WaitForSingleObject failed: %i", GetLastError());
     return false;
   }
+
+  // Then grab the exit code.
+  dword_t exit_code = 0;
+  if (!GetExitCodeProcess(info->hProcess, &exit_code)) {
+    WARN("Call to GetExitCodeProcess failed: %i", GetLastError());
+    return false;
+  }
+
+  // Only if both steps succeed do we count it as completed.
+  state = nsComplete;
+  result = exit_code;
+  return true;
 }
 
 int NativeProcess::exit_code() {

@@ -15,10 +15,12 @@ NativeProcess::NativeProcess() {
 #endif
   state = nsInitial;
   result = -1;
+  platform_initialize();
 }
 
 NativeProcess::~NativeProcess() {
-
+  if (state != nsInitial)
+    platform_dispose();
 }
 
 #ifdef IS_GCC

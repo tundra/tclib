@@ -36,6 +36,11 @@ public:
   int exit_code();
 
 private:
+  // Platform-specific initialization.
+  void platform_initialize();
+
+  // Platform-specific destruction.
+  void platform_dispose();
 };
 
 } // namespace tclib
