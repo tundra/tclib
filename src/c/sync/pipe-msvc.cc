@@ -3,7 +3,7 @@
 
 #include "c/winhdr.h"
 
-// A combined input- and output-stream that operates through a file descriptor.
+// A combined input- and output-stream that operates through a windows handle.
 // This could be useful in multiple places so eventually it might be moved to
 // its own file. Also, possibly it should be split into a separate in and out
 // type.
@@ -47,11 +47,11 @@ bool HandleStream::at_eof() {
 size_t HandleStream::write_bytes(const void *src, size_t size) {
   dword_t written = 0;
   WriteFile(
-    handle_, // hFile
-    src, // lpBuffer
+    handle_,                    // hFile
+    src,                        // lpBuffer
     static_cast<dword_t>(size), // nNumberOfBytesToWrite
-    &written, // lpNumberOfBytesWritten
-    NULL);
+    &written,                   // lpNumberOfBytesWritten
+    NULL);                      // lpOverlapped
   return written;
 }
 

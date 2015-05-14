@@ -24,7 +24,7 @@ public:
   // and if someone is listening on the other end it may be signaled to them.
   // For in input stream it signals that no further input will be read and if
   // someone is writing to the stream it may be signaled to them. Returns false
-  // if closing failed, that is, true if it succeeds or if no action was taken.
+  // iff closing failed, that is, true if it succeeds or if no action was taken.
   // The default implementation does nothing and consequently returns true.
   virtual bool close();
 };
