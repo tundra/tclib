@@ -7,6 +7,7 @@
 #include "c/stdc.h"
 #include "sync/sync.h"
 
+// Current running state of a native process. Used to control internal behavior.
 typedef enum {
   nsInitial,
   nsRunning,

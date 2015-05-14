@@ -20,11 +20,20 @@ static const char *get_durian_main() {
   return result;
 }
 
-TEST(process_cpp, exec_simple) {
+TEST(process_cpp, return_value) {
   NativeProcess process;
-  ASSERT_TRUE(process.start(get_durian_main(), 0, NULL));
+  const char *argv[2] = {"--exit-code", "66"};
+  ASSERT_TRUE(process.start(get_durian_main(), 2, argv));
   ASSERT_TRUE(process.wait());
   ASSERT_EQ(66, process.exit_code());
+}
+
+TEST(process_cpp, argument_passing) {
+  NativeProcess process;
+  const char *argv[1] = {"foo bar baz"};
+  ASSERT_TRUE(process.start(get_durian_main(), 1, argv));
+  ASSERT_TRUE(process.wait());
+  ASSERT_EQ(0, process.exit_code());
 }
 
 #if defined(IS_MSVC)
