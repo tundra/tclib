@@ -11,12 +11,19 @@ END_C_INCLUDES
 void NativeProcess::platform_initialize() {
   PROCESS_INFORMATION *info = get_platform_process(this);
   ZeroMemory(info, sizeof(*info));
+  info->hProcess = INVALID_HANDLE_VALUE;
+  info->hThread = INVALID_HANDLE_VALUE;
 }
 
 void NativeProcess::platform_dispose() {
   PROCESS_INFORMATION *info = get_platform_process(this);
-  CloseHandle(info->hProcess);
-  CloseHandle(info->hThread);
+  if (info->hProcess != INVALID_HANDLE_VALUE)
+    CloseHandle(info->hProcess);
+  if (info->hThread != INVALID_HANDLE_VALUE)
+    CloseHandle(info->hThread);
+  // This is not to actually reinitialize the process, just to clear the process
+  // info.
+  platform_initialize();
 }
 
 bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
