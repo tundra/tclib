@@ -39,6 +39,10 @@ OutStream *FileStreams::out() {
   return static_cast<OutStream*>(file_streams_t::out);
 }
 
+bool AbstractStream::close() {
+  return true;
+}
+
 size_t OutStream::printf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
@@ -56,13 +60,20 @@ public:
   virtual size_t write_bytes(const void *src, size_t size);
   virtual bool at_eof();
   virtual bool flush();
+  virtual bool close();
 private:
   FILE *file_;
 };
 
 StdioOpenFile::~StdioOpenFile() {
-  ::fclose(file_);
+  close();
+}
+
+bool StdioOpenFile::close() {
+  if (file_ != NULL)
+    ::fclose(file_);
   file_ = NULL;
+  return true;
 }
 
 size_t StdioOpenFile::read_bytes(void *dest, size_t size) {

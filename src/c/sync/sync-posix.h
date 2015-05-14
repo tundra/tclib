@@ -19,3 +19,5 @@ typedef pthread_cond_t platform_condition_t;
 
 typedef pid_t platform_process_t;
 #define kPlatformProcessInit 0
+
+typedef int platform_pipe_t[2];

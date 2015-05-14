@@ -25,3 +25,8 @@ typedef byte_t platform_condition_t[8];
 
 typedef byte_t platform_process_t[IF_32_BIT(16, 24)];
 #define get_platform_process(PROC) (reinterpret_cast<LPPROCESS_INFORMATION>(&(PROC)->process))
+
+typedef struct {
+  void *read_;
+  void *write_;
+} platform_pipe_t;

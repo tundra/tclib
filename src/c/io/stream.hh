@@ -14,7 +14,22 @@ struct out_stream_t { };
 
 namespace tclib {
 
-class InStream : public in_stream_t {
+// Behavior shared between in- and out-streams.
+class AbstractStream {
+public:
+  virtual ~AbstractStream() { }
+
+  // Close this stream. It depends on the type of the stream what closing it
+  // means but for an output stream it means that no more output will be written
+  // and if someone is listening on the other end it may be signaled to them.
+  // For in input stream it signals that no further input will be read and if
+  // someone is writing to the stream it may be signaled to them. Returns false
+  // if closing failed, that is, true if it succeeds or if no action was taken.
+  // The default implementation does nothing and consequently returns true.
+  virtual bool close();
+};
+
+class InStream : public in_stream_t, public AbstractStream {
 public:
   virtual ~InStream() { }
 
@@ -26,7 +41,7 @@ public:
   virtual bool at_eof() = 0;
 };
 
-class OutStream : public out_stream_t {
+class OutStream : public out_stream_t, public AbstractStream {
 public:
   virtual ~OutStream() { }
 
