@@ -115,10 +115,8 @@ bool RecordingProcess::for_each_stdout_line(callback_t<bool(const char *line)> c
     } else {
       current = NULL;
     }
-    if (current != NULL) {
-      if (callback(current))
-        return true;
-    }
+    if (current != NULL && callback(current))
+      return true;
   }
   return false;
 }
