@@ -7,14 +7,20 @@
 #include "c/stdc.h"
 
 #include "c/stdvector.hh"
-#include "io/stream.hh"
+
+BEGIN_C_INCLUDES
+#include "io/stream.h"
+END_C_INCLUDES
 
 struct in_stream_t { };
 struct out_stream_t { };
 
 namespace tclib {
 
-typedef IF_MSVC(void*, int) naked_file_handle_t;
+// The type of a naked underlying file handle. We sometimes need to be able to
+// get these for a stream in order to interact with OS apis, for instance when
+// redirecting the standard streams to a child process.
+typedef IF_MSVC(handle_t, int) naked_file_handle_t;
 
 // Behavior shared between in- and out-streams.
 class AbstractStream {

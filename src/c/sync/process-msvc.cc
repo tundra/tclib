@@ -42,7 +42,7 @@ private:
   string_buffer_t cmdline_buf_;
   utf8_t cmdline_;
   STARTUPINFO startup_info_;
-  void *stdout_handle_;
+  handle_t stdout_handle_;
 };
 }
 

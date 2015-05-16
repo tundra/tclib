@@ -114,3 +114,13 @@ TEST(file, byte_out_stream) {
   for (size_t i = 0; i < 10; i++)
     ASSERT_EQ(11 - i, out.data()[i]);
 }
+
+#if defined(IS_MSVC)
+#  include "c/winhdr.h"
+#endif
+
+TEST(file, msvc_stuff) {
+#if defined(IS_MSVC)
+  ASSERT_PTREQ(AbstractStream::kNullNakedFileHandle, INVALID_HANDLE_VALUE);
+#endif
+}

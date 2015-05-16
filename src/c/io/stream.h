@@ -8,6 +8,10 @@
 #include <stdarg.h>
 #include "utils/string.h"
 
+// The windows handle type. It's convenient to have it available to make the
+// intention of a particular void* clear but without having to import windows.h.
+typedef void *handle_t;
+
 // A handle for a stream from which bytes can be read.
 typedef struct in_stream_t in_stream_t;
 

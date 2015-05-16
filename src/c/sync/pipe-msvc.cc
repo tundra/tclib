@@ -11,7 +11,7 @@ using namespace tclib;
 // type.
 class HandleStream : public InStream, public OutStream {
 public:
-  explicit HandleStream(void *handle) : at_eof_(false), is_closed_(false), handle_(handle) { }
+  explicit HandleStream(handle_t handle) : at_eof_(false), is_closed_(false), handle_(handle) { }
   virtual ~HandleStream();
   virtual size_t read_bytes(void *dest, size_t size);
   virtual bool at_eof();
@@ -23,7 +23,7 @@ public:
 private:
   bool at_eof_;
   bool is_closed_;
-  void *handle_;
+  handle_t handle_;
 };
 
 HandleStream::~HandleStream() {
