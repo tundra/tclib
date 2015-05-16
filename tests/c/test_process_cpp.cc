@@ -4,6 +4,7 @@
 #include "test/unittest.hh"
 #include "sync/process.hh"
 #include "sync/pipe.hh"
+#include "utils/callback.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/strbuf.h"
@@ -35,16 +36,28 @@ public:
   // Waits for the process to complete, meanwhile capturing output.
   void complete();
 
-  // Returns a string containing the text written to the process' standard
-  // output.
-  const char *out();
+  // Extracts the recorded argc from the process' output, if no argc can be
+  // found returns -1.
+  int read_argc();
 
-private:
+  // Returns the value of the index'th entry in the process' argv. The given
+  // char buffer is scratch memory to use to store the result. If no argument
+  // is found returns NULL.
+  const char *read_argv(int index, char *scratch);
+
+public:
+  // Iterate through the process' standard output and, for each line, invoke the
+  // given callback. The first time the scan is successful (returns true) this
+  // function returns.
+  bool for_each_stdout_line(callback_t<bool(const char *line)> callback);
+
   NativePipe stdout_pipe_;
   string_buffer_t stdout_buf_;
+  const char *stdout_str_;
 };
 
-RecordingProcess::RecordingProcess() {
+RecordingProcess::RecordingProcess()
+  : stdout_str_(NULL) {
   ASSERT_TRUE(stdout_pipe_.open(NativePipe::pfInherit));
   set_stdout(stdout_pipe_.out());
   string_buffer_init(&stdout_buf_);
@@ -66,10 +79,48 @@ void RecordingProcess::complete() {
   // We know the process has completed but still need to call wait for the
   // state to be updated.
   wait();
+  stdout_str_ = string_buffer_flush(&stdout_buf_).chars;
 }
 
-const char *RecordingProcess::out() {
-  return string_buffer_flush(&stdout_buf_).chars;
+static bool scan_argc(int *argc, const char *line) {
+  return sscanf(line, "ARGC: {%i}", argc) > 0;
+}
+
+int RecordingProcess::read_argc() {
+  int result = -1;
+  for_each_stdout_line(new_callback(scan_argc, &result));
+  return result;
+}
+
+static bool scan_argv(int index, char *out, const char *line) {
+  char fmt[256];
+  sprintf(fmt, "ARGV[%i]: {%%[^}]}", index);
+  return sscanf(line, fmt, out) > 0;
+}
+
+const char *RecordingProcess::read_argv(int index, char *out) {
+  return for_each_stdout_line(new_callback(scan_argv, index, out))
+    ? out
+    : NULL;
+}
+
+bool RecordingProcess::for_each_stdout_line(callback_t<bool(const char *line)> callback) {
+  const char *output = stdout_str_;
+  for (size_t i = 0; output[i] != '\0'; i++) {
+    const char *current;
+    if (i == 0) {
+      current = output;
+    } else if (output[i] == '\n') {
+      current = &output[i + 1];
+    } else {
+      current = NULL;
+    }
+    if (current != NULL) {
+      if (callback(current))
+        return true;
+    }
+  }
+  return false;
 }
 
 TEST(process_cpp, return_value) {
@@ -78,6 +129,11 @@ TEST(process_cpp, return_value) {
   ASSERT_TRUE(process.start(get_durian_main(), 2, argv));
   process.complete();
   ASSERT_EQ(66, process.exit_code());
+  ASSERT_EQ(3, process.read_argc());
+  char argbuf[1024];
+  ASSERT_C_STREQ(get_durian_main(), process.read_argv(0, argbuf));
+  ASSERT_C_STREQ("--exit-code", process.read_argv(1, argbuf));
+  ASSERT_C_STREQ("66", process.read_argv(2, argbuf));
 }
 
 TEST(process_cpp, argument_passing) {
