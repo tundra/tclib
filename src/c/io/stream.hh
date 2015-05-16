@@ -14,6 +14,8 @@ struct out_stream_t { };
 
 namespace tclib {
 
+typedef IF_MSVC(void*, int) naked_file_handle_t;
+
 // Behavior shared between in- and out-streams.
 class AbstractStream {
 public:
@@ -27,6 +29,14 @@ public:
   // iff closing failed, that is, true if it succeeds or if no action was taken.
   // The default implementation does nothing and consequently returns true.
   virtual bool close();
+
+  // If this stream has an underlying OS file handle (think file descriptor)
+  // this method will return it. If not it returns a value equal to
+  // kNullNakedFileHandle; this is the default behavior.
+  virtual naked_file_handle_t to_raw_handle();
+
+  // A value that signifies that there is no naked file handle.
+  static naked_file_handle_t kNullNakedFileHandle;
 };
 
 class InStream : public in_stream_t, public AbstractStream {

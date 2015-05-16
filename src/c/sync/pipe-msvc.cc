@@ -3,6 +3,8 @@
 
 #include "c/winhdr.h"
 
+using namespace tclib;
+
 // A combined input- and output-stream that operates through a windows handle.
 // This could be useful in multiple places so eventually it might be moved to
 // its own file. Also, possibly it should be split into a separate in and out
@@ -16,6 +18,7 @@ public:
   virtual size_t write_bytes(const void *src, size_t size);
   virtual bool flush();
   virtual bool close();
+  virtual naked_file_handle_t to_raw_handle();
 
 private:
   bool at_eof_;
@@ -66,12 +69,23 @@ bool HandleStream::close() {
   return CloseHandle(handle_);
 }
 
-bool NativePipe::open() {
+naked_file_handle_t HandleStream::to_raw_handle() {
+  return handle_;
+}
+
+bool NativePipe::open(uint32_t flags) {
+  SECURITY_ATTRIBUTES attrs;
+  ZeroMemory(&attrs, sizeof(attrs));
+  attrs.nLength = sizeof(attrs);
+  attrs.bInheritHandle = (flags & pfInherit) != 0;
+  attrs.lpSecurityDescriptor = NULL;
+
   bool result = CreatePipe(
       &this->pipe.read_,  // hReadPipe
       &this->pipe.write_, // hWritePipe,
-      NULL,               // lpPipeAttributes,
+      &attrs,             // lpPipeAttributes,
       0);                 // nSize
+
   if (result) {
     in_ = new HandleStream(this->pipe.read_);
     out_ = new HandleStream(this->pipe.write_);

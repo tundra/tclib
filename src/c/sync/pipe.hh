@@ -18,6 +18,14 @@ namespace tclib {
 // An os-native pipe.
 class NativePipe : public native_pipe_t {
 public:
+  // Flags that control how this pipe is created.
+  enum Flags {
+    // Default settings.
+    pfDefault = 0,
+    // The pipe is inherited by child processes.
+    pfInherit = 1
+  };
+
   // Create a new uninitialized pipe.
   NativePipe();
 
@@ -27,7 +35,7 @@ public:
   // Create a new pipe with a read-end and a write-end. Returns true iff
   // creation was successful. You close the pipe by closing the two streams;
   // this also happens automatically when the pipe is destroyed.
-  bool open();
+  bool open(uint32_t flags);
 
   // Returns the read-end of this pipe.
   InStream *in() { return in_; }

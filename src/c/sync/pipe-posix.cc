@@ -17,6 +17,7 @@ public:
   virtual size_t write_bytes(const void *src, size_t size);
   virtual bool flush();
   virtual bool close();
+  virtual naked_file_handle_t to_raw_handle();
 
 private:
   bool at_eof_;
@@ -58,7 +59,11 @@ bool FdStream::close() {
   return ::close(fd_) == 0;
 }
 
-bool NativePipe::open() {
+naked_file_handle_t FdStream::to_raw_handle() {
+  return fd_;
+}
+
+bool NativePipe::open(uint32_t flags) {
   int result = ::pipe(this->pipe);
   if (result == 0) {
     in_ = new FdStream(this->pipe[0]);
@@ -68,4 +73,3 @@ bool NativePipe::open() {
   WARN("Call to pipe failed: %i (error: %s)", errno, strerror(errno));
   return false;
 }
-

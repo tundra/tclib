@@ -8,6 +8,23 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+// This is redundant but it helps IDEs understand what is going on.
+#include "process.hh"
+using namespace tclib;
+
+namespace tclib {
+class NativeProcessStart {
+public:
+  NativeProcessStart(NativeProcess *process);
+  bool configure_file_descriptors();
+  bool parent_post_fork();
+  bool child_post_fork(const char *executable, size_t argc, const char **argv);
+private:
+  NativeProcess *process_;
+  int stdout_fd_;
+};
+}
+
 void NativeProcess::platform_initialize() {
   process = 0;
 }
@@ -16,20 +33,38 @@ void NativeProcess::platform_dispose() {
   // Nothing to do.
 }
 
-bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
-  CHECK_EQ("starting process already running", nsInitial, state);
-  pid_t fork_pid = fork();
-  if (fork_pid == -1) {
-    // Forking failed for some reason.
-    WARN("Call to fork failed: %i", fork_pid);
-    return false;
-  } else if (fork_pid > 0) {
-    // We're in the parent so just record the child's pid and we're done.
-    this->process = fork_pid;
-    this->state = nsRunning;
-    return true;
+NativeProcessStart::NativeProcessStart(NativeProcess *process)
+  : process_(process)
+  , stdout_fd_(AbstractStream::kNullNakedFileHandle) { }
+
+bool NativeProcessStart::configure_file_descriptors() {
+  if (process_->stdout_ != NULL) {
+    stdout_fd_ = process_->stdout_->to_raw_handle();
+    if (stdout_fd_ == AbstractStream::kNullNakedFileHandle) {
+      WARN("Invalid stdout");
+      return false;
+    }
   }
-  // We must be in the child process. Run the executable.
+  return true;
+}
+
+bool NativeProcessStart::parent_post_fork() {
+  // If we have a nontrivial stdout close it since it now belongs to the child.
+  return (process_->stdout_ == NULL) || process_->stdout_->close();
+}
+
+bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
+    const char **argv) {
+  // From here on we're in the child process. First redirect std streams if
+  // necessary.
+  if (stdout_fd_ != AbstractStream::kNullNakedFileHandle) {
+    if (stdout_fd_ != STDOUT_FILENO) {
+      dup2(stdout_fd_, STDOUT_FILENO);
+      close(stdout_fd_);
+    }
+  }
+
+  // Run the executable.
   char **args = new char *[argc + 2];
   args[0] = const_cast<char*>(executable);
   for (size_t i = 0; i < argc; i++)
@@ -45,10 +80,36 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
   return false;
 }
 
+bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
+  CHECK_EQ("starting process already running", nsInitial, state);
+
+  NativeProcessStart start(this);
+
+  // Do the pre-flight work before doing the actual forking so we can report any
+  // errors back in the parent process.
+  if (!start.configure_file_descriptors())
+    return false;
+
+  // Fork the child.
+  pid_t fork_pid = fork();
+  if (fork_pid == -1) {
+    // Forking failed for some reason.
+    WARN("Call to fork failed: %i", fork_pid);
+    return false;
+  } else if (fork_pid > 0) {
+    // We're in the parent so just record the child's pid and we're done.
+    this->process = fork_pid;
+    this->state = nsRunning;
+    return start.parent_post_fork();
+  } else {
+    return start.child_post_fork(executable, argc, argv);
+  }
+}
+
 bool NativeProcess::wait() {
   CHECK_EQ("waiting for process not running", nsRunning, state);
   pid_t pid = waitpid(this->process, &this->result, 0);
-  if (pid == -1) {
+  if (pid == -1 && (errno != ECHILD)) {
     WARN("Failed to wait for pid %i", this->process);
     return false;
   } else {

@@ -56,20 +56,42 @@ bool string_buffer_printf(string_buffer_t *buf, const char *fmt, ...) {
 }
 
 bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
-  // Write the formatted string into a temporary buffer.
-  static const size_t kMaxSize = 1024;
-  char buffer[kMaxSize + 1];
-  // Null terminate explicitly just to be on the safe side.
-  buffer[kMaxSize] = '\0';
-  va_list argp;
-  va_start(argp, fmt);
-  size_t written = (size_t) vsnprintf(buffer, kMaxSize, fmt, argp);
-  va_end(argp);
-  // TODO: fix this if we ever hit it.
-  CHECK_REL("temp buffer too small", written, <, kMaxSize);
-  // Then write the temp string into the string buffer.
-  utf8_t data = {written, buffer};
-  B_TRY(string_buffer_append(buf, data));
+  // We don't know how long the resulting string is going to be but usually it
+  // will be small. So we allocate a buffer on the stack that will usually be
+  // large enough but fall back to using a heap allocated one by looping around
+  // if it turns out to be too small.
+  static const size_t kMaxInlineSize = 1024;
+  char inline_buffer[kMaxInlineSize];
+  size_t current_bufsize = kMaxInlineSize;
+  char *current_buf = inline_buffer;
+  memory_block_t scratch = memory_block_empty();
+  while (true) {
+    // Null terminate explicitly just to be on the safe side.
+    current_buf[current_bufsize - 1] = '\0';
+    va_list argp;
+    va_start(argp, fmt);
+    size_t written = (size_t) vsnprintf(current_buf, current_bufsize, fmt, argp);
+    va_end(argp);
+    if (written < current_bufsize) {
+      // The output fit so we're done. The case where they're equal is subtle,
+      // but the returned value doesn't include the null terminator so if the
+      // number of chars written fits the capacity exactly, it was actually too
+      // small because there wasn't room for the terminator.
+      utf8_t data = {written, current_buf};
+      B_TRY(string_buffer_append(buf, data));
+      break;
+    } else {
+      // The output didn't fit in the buffer so we switch to using a heap
+      // allocated one and try again. The extra character is for the null
+      // terminator.
+      scratch = allocator_default_malloc(written + 1);
+      current_bufsize = written + 1;
+      current_buf = (char*) (scratch.memory);
+      continue;
+    }
+  }
+  if (!memory_block_is_empty(scratch))
+    allocator_default_free(scratch);
   return true;
 }
 

@@ -8,6 +8,8 @@ END_C_INCLUDES
 
 #include "c/winhdr.h"
 
+using namespace tclib;
+
 void NativeProcess::platform_initialize() {
   PROCESS_INFORMATION *info = get_platform_process(this);
   ZeroMemory(info, sizeof(*info));
@@ -26,43 +28,83 @@ void NativeProcess::platform_dispose() {
   platform_initialize();
 }
 
-bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
-  CHECK_EQ("starting process already running", nsInitial, state);
-  // Joing the arguments array together into a command-line.
-  // TODO: handle escaping properly.
-  string_buffer_t buf;
-  string_buffer_init(&buf);
-  string_buffer_append(&buf, new_c_string(executable));
-  for (size_t i = 0; i < argc; i++) {
-    string_buffer_append(&buf, new_c_string(" "));
-    string_buffer_append(&buf, new_c_string(argv[i]));
-  }
-  utf8_t cmdline = string_buffer_flush(&buf);
-  char *cmdline_chars = const_cast<char*>(cmdline.chars);
-  STARTUPINFO info;
-  ZeroMemory(&info, sizeof(info));
-  info.cb = sizeof(info);
+namespace tclib {
+class NativeProcessStart {
+public:
+  NativeProcessStart(NativeProcess *process);
+  ~NativeProcessStart();
+  utf8_t build_cmdline(const char *executable, size_t argc, const char **argv);
+  bool configure_standard_streams();
+  bool launch(const char *executable);
+  bool post_launch();
+private:
+  NativeProcess *process_;
+  string_buffer_t cmdline_buf_;
+  utf8_t cmdline_;
+  STARTUPINFO startup_info_;
+  void *stdout_handle_;
+};
+}
 
+NativeProcessStart::NativeProcessStart(NativeProcess *process)
+  : process_(process)
+  , stdout_handle_(AbstractStream::kNullNakedFileHandle) {
+  string_buffer_init(&cmdline_buf_);
+  ZeroMemory(&startup_info_, sizeof(startup_info_));
+  startup_info_.cb = sizeof(startup_info_);
+}
+
+NativeProcessStart::~NativeProcessStart() {
+  string_buffer_dispose(&cmdline_buf_);
+}
+
+utf8_t NativeProcessStart::build_cmdline(const char *executable, size_t argc,
+    const char **argv) {
+  // TODO: handle escaping properly.
+  string_buffer_append(&cmdline_buf_, new_c_string(executable));
+  for (size_t i = 0; i < argc; i++) {
+    string_buffer_append(&cmdline_buf_, new_c_string(" "));
+    string_buffer_append(&cmdline_buf_, new_c_string(argv[i]));
+  }
+  return cmdline_ = string_buffer_flush(&cmdline_buf_);
+}
+
+bool NativeProcessStart::configure_standard_streams() {
+  bool has_set_stream = false;
+  if (process_->stdout_ != NULL) {
+    stdout_handle_ = process_->stdout_->to_raw_handle();
+    if (stdout_handle_ == AbstractStream::kNullNakedFileHandle) {
+      WARN("Invalid stdout");
+      return false;
+    }
+    startup_info_.hStdOutput = stdout_handle_;
+    has_set_stream = true;
+  }
+  if (has_set_stream)
+    startup_info_.dwFlags |= STARTF_USESTDHANDLES;
+  return true;
+}
+
+bool NativeProcessStart::launch(const char *executable) {
+  char *cmdline_chars = const_cast<char*>(cmdline_.chars);
   // Create the child process.
   bool code = CreateProcess(
     executable,                  // lpApplicationName
     cmdline_chars,               // lpCommandLine
     NULL,                        // lpProcessAttributes
     NULL,                        // lpThreadAttributes
-    false,                       // bInheritHandles
+    true,                        // bInheritHandles
     0,                           // dwCreationFlags
     NULL,                        // lpEnvironment
     NULL,                        // lpCurrentDirectory
-    &info,                       // lpStartupInfo
-    get_platform_process(this)); // lpProcessInformation
-  string_buffer_dispose(&buf);
+    &startup_info_,              // lpStartupInfo
+    get_platform_process(process_)); // lpProcessInformation
 
-  // If creating the process failed we record the error code.
   if (code) {
-    state = nsRunning;
+    process_->state = nsRunning;
   } else {
-    state = nsCouldntCreate;
-    result = GetLastError();
+    process_->state = nsCouldntCreate;
+    process_->result = GetLastError();
   }
 
   // It might seem counter-intuitive to always succeed, even if CreateProcess
@@ -72,6 +114,25 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
   // on windows by succeeding here and recording the error so it can be reported
   // later.
   return true;
+}
+
+bool NativeProcessStart::post_launch() {
+  // Close the parent's clone of the stdout handle since it belongs to the
+  // child now.
+  if (stdout_handle_ != AbstractStream::kNullNakedFileHandle) {
+    CloseHandle(stdout_handle_);
+    stdout_handle_ = AbstractStream::kNullNakedFileHandle;
+  }
+  return true;
+}
+
+bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
+  CHECK_EQ("starting process already running", nsInitial, state);
+  NativeProcessStart start(this);
+  start.build_cmdline(executable, argc, argv);
+  return start.configure_standard_streams()
+      && start.launch(executable)
+      && start.post_launch();
 }
 
 bool NativeProcess::wait() {

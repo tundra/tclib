@@ -9,7 +9,7 @@ using namespace tclib;
 
 TEST(pipe_cpp, simple) {
   NativePipe pipe;
-  ASSERT_TRUE(pipe.open());
+  ASSERT_TRUE(pipe.open(NativePipe::pfDefault));
   ASSERT_EQ(12, pipe.out()->printf("Hello, pipe!"));
   char buf[256];
   memset(buf, 0, sizeof(char) * 256);

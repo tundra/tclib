@@ -6,6 +6,8 @@
 
 #include "c/stdc.h"
 
+#include "io/stream.hh"
+
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
 #include "sync/process.h"
@@ -27,6 +29,10 @@ public:
   // indeed completes successfully.
   bool start(const char *executable, size_t argc, const char **argv);
 
+  // Sets the stream to use as standard output for the running process. Must be
+  // called before starting the process.
+  void set_stdout(OutStream *value) { stdout_ = value; }
+
   // Wait for this process, which must already have been started, to complete.
   // Returns true iff waiting succeeded. The process must have been started.
   bool wait();
@@ -36,11 +42,15 @@ public:
   int exit_code();
 
 private:
+  friend class NativeProcessStart;
+
   // Platform-specific initialization.
   void platform_initialize();
 
   // Platform-specific destruction.
   void platform_dispose();
+
+  OutStream *stdout_;
 };
 
 } // namespace tclib

@@ -43,6 +43,12 @@ bool AbstractStream::close() {
   return true;
 }
 
+naked_file_handle_t AbstractStream::kNullNakedFileHandle = IF_MSVC(NULL, -1);
+
+naked_file_handle_t AbstractStream::to_raw_handle() {
+  return kNullNakedFileHandle;
+}
+
 size_t OutStream::printf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
