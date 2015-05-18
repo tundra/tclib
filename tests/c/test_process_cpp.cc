@@ -134,12 +134,66 @@ TEST(process_cpp, return_value) {
   ASSERT_C_STREQ("66", process.read_argv(2, argbuf));
 }
 
-TEST(process_cpp, argument_passing) {
+static void test_arg_passing(int argc, const char **argv) {
   RecordingProcess process;
-  const char *argv[1] = {"foo bar baz"};
-  ASSERT_TRUE(process.start(get_durian_main(), 1, argv));
+  ASSERT_TRUE(process.start(get_durian_main(), argc, argv));
   process.complete();
   ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(argc + 1, process.read_argc());
+  char argbuf[1024];
+  ASSERT_C_STREQ(get_durian_main(), process.read_argv(0, argbuf));
+  for (int i = 0; i < argc; i++)
+    ASSERT_C_STREQ(argv[i], process.read_argv(i + 1, argbuf));
+}
+
+TEST(process_cpp, arg_with_spaces) {
+  const char *argv[1] = {"foo bar baz"};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, multi_args_with_spaces) {
+  const char *argv[3] = {"foo bar baz", "do re mi", "one two three"};
+  test_arg_passing(3, argv);
+}
+
+TEST(process_cpp, quotes) {
+  const char *argv[1] = {"\"hey\""};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, leading_slash) {
+  const char *argv[1] = {"\\hey"};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, trailing_slash) {
+  const char *argv[1] = {"hey\\"};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, two_trailing_slashes) {
+  const char *argv[1] = {"hey\\\\"};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, many_trailing_slashes) {
+  const char *argv[1] = {"hey\\\\\\\\\\"};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, quotes_and_slashes) {
+  const char *argv[1] = {"\"\\h\\\"\\e\"\\\"y\"\\"};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, many_quotes_and_slashes) {
+  const char *argv[1] = {"\"\\\"\\h\\\"\\\"\\e\"\"\\\\\"\"y\"\"\\\\"};
+  test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, tildes) {
+  const char *argv[1] = {"^b^l\"^\"a\\^\\h^"};
+  test_arg_passing(1, argv);
 }
 
 #if defined(IS_MSVC)

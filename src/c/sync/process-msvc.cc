@@ -58,13 +58,53 @@ NativeProcessStart::~NativeProcessStart() {
   string_buffer_dispose(&cmdline_buf_);
 }
 
+static void string_buffer_append_escaped(string_buffer_t *buf, const char *str) {
+  // Escaping commands on windows is tricky. Quoting strings takes care of most
+  // luckily but quotes themselves must be escaped with \s. You'd think you'd
+  // then need to also escape \s themselves but if you try that fails -- two
+  // slashes in a row is read as two actual slashes, not one escaped one, except
+  // for immediately before an escaped quote and then at the end of the string
+  // because we'll add an unescaped quote there.
+  string_buffer_putc(buf, '"');
+  size_t length = strlen(str);
+  for (size_t ic = 0; ic < length; ic++) {
+    // Count slashes from this point. Usually it will be 0.
+    size_t slash_count = 0;
+    while (str[ic] == '\\' && ic < length) {
+      ic++;
+      slash_count++;
+    }
+    // At this point if we started at a sequence of slashes we will now be
+    // immediately past it, possibly just past the end of the string.
+    if (ic == length || str[ic] == '"') {
+      // If we're at the end or before a quote slashes need to be escaped.
+      for (size_t is = 0; is < slash_count; is++) {
+        string_buffer_putc(buf, '\\');
+        string_buffer_putc(buf, '\\');
+      }
+      // If we're at the end there's nothing to do, the quote will be added
+      // below, otherwise escape the quote.
+      if (str[ic] == '"') {
+        string_buffer_putc(buf, '\\');
+        string_buffer_putc(buf, '"');
+      }
+    } else {
+      // The slashes were followed by a non-special character so we can just
+      // output them, no need to escape.
+      for (size_t is = 0; is < slash_count; is++)
+        string_buffer_putc(buf, '\\');
+      string_buffer_putc(buf, str[ic]);
+    }
+  }
+  string_buffer_putc(buf, '"');
+}
+
 utf8_t NativeProcessStart::build_cmdline(const char *executable, size_t argc,
     const char **argv) {
-  // TODO: handle escaping properly.
-  string_buffer_append(&cmdline_buf_, new_c_string(executable));
+  string_buffer_append_escaped(&cmdline_buf_, executable);
   for (size_t i = 0; i < argc; i++) {
     string_buffer_append(&cmdline_buf_, new_c_string(" "));
-    string_buffer_append(&cmdline_buf_, new_c_string(argv[i]));
+    string_buffer_append_escaped(&cmdline_buf_, argv[i]);
   }
   return cmdline_ = string_buffer_flush(&cmdline_buf_);
 }
