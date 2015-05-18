@@ -7,6 +7,8 @@
 #include "c/stdc.h"
 
 #include "io/stream.hh"
+#include "c/stdvector.hh"
+#include <string>
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
@@ -29,6 +31,10 @@ public:
   // indeed completes successfully.
   bool start(const char *executable, size_t argc, const char **argv);
 
+  // Adds an environment mapping to the set visible to the process. The process
+  // copies the key and value.
+  bool set_env(const char *key, const char *value);
+
   // Sets the stream to use as standard output for the running process. Must be
   // called before starting the process.
   void set_stdout(OutStream *value) { stdout_ = value; }
@@ -49,6 +55,9 @@ private:
 
   // Platform-specific destruction.
   void platform_dispose();
+
+  // Extra bindings to add to the subprocess' environment.
+  std::vector<std::string> env_;
 
   OutStream *stdout_;
 };

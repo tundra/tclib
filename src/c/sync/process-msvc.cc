@@ -35,6 +35,7 @@ public:
   ~NativeProcessStart();
   utf8_t build_cmdline(const char *executable, size_t argc, const char **argv);
   bool configure_standard_streams();
+  bool configure_sub_environment();
   bool launch(const char *executable);
   bool post_launch();
 private:
@@ -43,19 +44,24 @@ private:
   utf8_t cmdline_;
   STARTUPINFO startup_info_;
   handle_t stdout_handle_;
+  string_buffer_t new_env_buf_;
+  utf8_t new_env_;
 };
 }
 
 NativeProcessStart::NativeProcessStart(NativeProcess *process)
   : process_(process)
-  , stdout_handle_(AbstractStream::kNullNakedFileHandle) {
+  , stdout_handle_(AbstractStream::kNullNakedFileHandle)
+  , new_env_(string_empty()) {
   string_buffer_init(&cmdline_buf_);
   ZeroMemory(&startup_info_, sizeof(startup_info_));
   startup_info_.cb = sizeof(startup_info_);
+  string_buffer_init(&new_env_buf_);
 }
 
 NativeProcessStart::~NativeProcessStart() {
   string_buffer_dispose(&cmdline_buf_);
+  string_buffer_dispose(&new_env_buf_);
 }
 
 static void string_buffer_append_escaped(string_buffer_t *buf, const char *str) {
@@ -125,8 +131,50 @@ bool NativeProcessStart::configure_standard_streams() {
   return true;
 }
 
+bool NativeProcessStart::configure_sub_environment() {
+  if (process_->env_.empty())
+    // If we don't want the environment to change we just leave new_env_ empty
+    // and launch will do the right thing.
+    return true;
+
+  // Copy the existing environment into the new env block.
+  for (char **entry = environ; *entry != NULL; entry++) {
+    string_buffer_append(&new_env_buf_, new_c_string(*entry));
+    string_buffer_putc(&new_env_buf_, '\0');
+  }
+
+  // Copy the new variables also.
+  for (size_t i = 0; i < process_->env_.size(); i++) {
+    std::string entry = process_->env_[i];
+    string_buffer_append(&new_env_buf_, new_string(entry.c_str(), entry.length()));
+    string_buffer_putc(&new_env_buf_, '\0');
+  }
+
+  // Flushing adds the last of the two null terminators that ends the whole
+  // thing.
+  new_env_ = string_buffer_flush(&new_env_buf_);
+  return true;
+}
+
+bool NativeProcess::set_env(const char *key, const char *value) {
+  // TODO: consider whether this could meaningfully be folded together with the
+  //   posix implementation. Need to implement escaping first though.
+  string_buffer_t buf;
+  string_buffer_init(&buf);
+  string_buffer_printf(&buf, "%s=%s", key, value);
+  utf8_t raw_binding = string_buffer_flush(&buf);
+  std::string binding(raw_binding.chars, raw_binding.size);
+  env_.push_back(binding);
+  string_buffer_dispose(&buf);
+  return true;
+}
+
 bool NativeProcessStart::launch(const char *executable) {
   char *cmdline_chars = const_cast<char*>(cmdline_.chars);
+  void *env = NULL;
+  if (!string_is_empty(new_env_))
+    env = static_cast<void*>(const_cast<char*>(new_env_.chars));
+
   // Create the child process.
   bool code = CreateProcess(
     executable,                  // lpApplicationName
@@ -135,7 +183,7 @@ bool NativeProcessStart::launch(const char *executable) {
     NULL,                        // lpThreadAttributes
     true,                        // bInheritHandles
     0,                           // dwCreationFlags
-    NULL,                        // lpEnvironment
+    env,                         // lpEnvironment
     NULL,                        // lpCurrentDirectory
     &startup_info_,              // lpStartupInfo
     get_platform_process(process_)); // lpProcessInformation
@@ -171,6 +219,7 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
   NativeProcessStart start(this);
   start.build_cmdline(executable, argc, argv);
   return start.configure_standard_streams()
+      && start.configure_sub_environment()
       && start.launch(executable)
       && start.post_launch();
 }

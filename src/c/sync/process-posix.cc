@@ -8,20 +8,29 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+BEGIN_C_INCLUDES
+#include "utils/strbuf.h"
+END_C_INCLUDES
+
 // This is redundant but it helps IDEs understand what is going on.
 #include "process.hh"
 using namespace tclib;
+
+// By convention this is available even on windows. See man environ.
+extern char **environ;
 
 namespace tclib {
 class NativeProcessStart {
 public:
   NativeProcessStart(NativeProcess *process);
   bool configure_file_descriptors();
+  bool build_sub_environment();
   bool parent_post_fork();
   bool child_post_fork(const char *executable, size_t argc, const char **argv);
 private:
   NativeProcess *process_;
   int stdout_fd_;
+  std::vector<char*> new_environ_;
 };
 }
 
@@ -48,6 +57,39 @@ bool NativeProcessStart::configure_file_descriptors() {
   return true;
 }
 
+bool NativeProcess::set_env(const char *key, const char *value) {
+  string_buffer_t buf;
+  string_buffer_init(&buf);
+  string_buffer_printf(&buf, "%s=%s", key, value);
+  utf8_t raw_binding = string_buffer_flush(&buf);
+  std::string binding(raw_binding.chars, raw_binding.size);
+  env_.push_back(binding);
+  string_buffer_dispose(&buf);
+  return true;
+}
+
+bool NativeProcessStart::build_sub_environment() {
+  if (process_->env_.empty())
+    // Fast case if the sub-environment is identical to the caller's. In that
+    // case we just leave it NULL and the child won't use it.
+    return true;
+
+  // Copy the current environment.
+  for (char **entry = environ; *entry != NULL; entry++)
+    new_environ_.push_back(*entry);
+
+  // Append the new bindings.
+  for (size_t i = 0; i < process_->env_.size(); i++) {
+    const char *binding = process_->env_[i].c_str();
+    new_environ_.push_back(const_cast<char*>(binding));
+  }
+
+  // Remember to null terminate.
+  new_environ_.push_back(NULL);
+
+  return true;
+}
+
 bool NativeProcessStart::parent_post_fork() {
   // If we have a nontrivial stdout close it since it now belongs to the child.
   return (process_->stdout_ == NULL) || process_->stdout_->close();
@@ -63,6 +105,13 @@ bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
       close(stdout_fd_);
     }
   }
+
+  // Execv implicitly takes its environment from environ. The underlying data
+  // would be disposed when the NativeProcessStart is but we'll never get to
+  // that point and execv will copy the environment along the the arguments.
+  // See https://www.gnu.org/software/libc/manual/html_node/Executing-a-File.html.
+  if (!new_environ_.empty())
+    environ = new_environ_.data();
 
   // Run the executable.
   char **args = new char *[argc + 2];
@@ -87,7 +136,7 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
 
   // Do the pre-flight work before doing the actual forking so we can report any
   // errors back in the parent process.
-  if (!start.configure_file_descriptors())
+  if (!start.configure_file_descriptors() || !start.build_sub_environment())
     return false;
 
   // Fork the child.

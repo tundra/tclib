@@ -45,6 +45,11 @@ public:
   // is found returns NULL.
   const char *read_argv(int index, char *scratch);
 
+  // Returns the value of the environment variable with the given name. The
+  // given char buffer is scratch memory to use to store the result. If the env
+  // is not found returns NULL.
+  const char *read_env(const char *name, char *scratch);
+
 public:
   // Iterate through the process' standard output and, for each line, invoke the
   // given callback. The first time the scan is successful (returns true) this
@@ -104,6 +109,18 @@ const char *RecordingProcess::read_argv(int index, char *out) {
     : NULL;
 }
 
+static bool scan_env(const char *key, char *out, const char *line) {
+  char fmt[256];
+  sprintf(fmt, "ENV: {%s=%%[^}]}", key);
+  return sscanf(line, fmt, out) > 0;
+}
+
+const char *RecordingProcess::read_env(const char *key, char *out) {
+  return for_each_stdout_line(new_callback(scan_env, key, out))
+    ? out
+    : NULL;
+}
+
 bool RecordingProcess::for_each_stdout_line(callback_t<bool(const char *line)> callback) {
   const char *output = stdout_str_;
   for (size_t i = 0; output[i] != '\0'; i++) {
@@ -146,7 +163,7 @@ static void test_arg_passing(int argc, const char **argv) {
     ASSERT_C_STREQ(argv[i], process.read_argv(i + 1, argbuf));
 }
 
-TEST(process_cpp, arg_with_spaces) {
+TEST(process_cpp, arg_spaces) {
   const char *argv[1] = {"foo bar baz"};
   test_arg_passing(1, argv);
 }
@@ -194,6 +211,17 @@ TEST(process_cpp, many_quotes_and_slashes) {
 TEST(process_cpp, tildes) {
   const char *argv[1] = {"^b^l\"^\"a\\^\\h^"};
   test_arg_passing(1, argv);
+}
+
+TEST(process_cpp, env_simple) {
+  RecordingProcess process;
+  process.set_env("FOO", "bar");
+  ASSERT_TRUE(process.start(get_durian_main(), 0, NULL));
+  process.complete();
+  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(1, process.read_argc());
+  char envbuf[1024];
+  ASSERT_C_STREQ("bar", process.read_env("FOO", envbuf));
 }
 
 #if defined(IS_MSVC)

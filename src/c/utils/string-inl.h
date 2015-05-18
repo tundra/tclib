@@ -32,4 +32,17 @@ static utf8_t new_c_string(const char *value) {
   return new_string(value, strlen(value));
 }
 
+// Returns the empty utf8-string. This is different from a utf8 that represents
+// "" in that "" is actually backed by a 1-element char array containing '\0'
+// whereas the empty utf8 contains nothing.
+static utf8_t string_empty() {
+  return new_string(NULL, 0);
+}
+
+// Is the given value the empty utf8 string? Note that this is not the same
+// as the empty string; see string_empty().
+static bool string_is_empty(utf8_t value) {
+  return value.chars == NULL;
+}
+
 #endif // _TCLIB_STRING_INL_H
