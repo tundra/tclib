@@ -32,7 +32,14 @@ public:
   bool start(const char *executable, size_t argc, const char **argv);
 
   // Adds an environment mapping to the set visible to the process. The process
-  // copies the key and value.
+  // copies the key and value so they can be released immediately after this
+  // call. Note that if the key includes an equals sign it will cause not just
+  // that binding to be created but also permutations around the the equals
+  // sign. For instance, if you do set_env("A=B", "c=d") you will get a binding
+  // for ("A=B", "c=d") but also ("A", "B=c=d"), and ("A=B=c", "d"). This is not
+  // necessarily what you want -- it would be nice just from an orthogonality
+  // viewpoint to be able to pass values with equals signs in them without
+  // getting funky behavior, but it's not clear that there's a way to do that
   bool set_env(const char *key, const char *value);
 
   // Sets the stream to use as standard output for the running process. Must be

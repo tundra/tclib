@@ -8,10 +8,6 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-BEGIN_C_INCLUDES
-#include "utils/strbuf.h"
-END_C_INCLUDES
-
 // This is redundant but it helps IDEs understand what is going on.
 #include "process.hh"
 using namespace tclib;
@@ -57,32 +53,21 @@ bool NativeProcessStart::configure_file_descriptors() {
   return true;
 }
 
-bool NativeProcess::set_env(const char *key, const char *value) {
-  string_buffer_t buf;
-  string_buffer_init(&buf);
-  string_buffer_printf(&buf, "%s=%s", key, value);
-  utf8_t raw_binding = string_buffer_flush(&buf);
-  std::string binding(raw_binding.chars, raw_binding.size);
-  env_.push_back(binding);
-  string_buffer_dispose(&buf);
-  return true;
-}
-
 bool NativeProcessStart::build_sub_environment() {
   if (process_->env_.empty())
     // Fast case if the sub-environment is identical to the caller's. In that
     // case we just leave it NULL and the child won't use it.
     return true;
 
-  // Copy the current environment.
-  for (char **entry = environ; *entry != NULL; entry++)
-    new_environ_.push_back(*entry);
-
-  // Append the new bindings.
-  for (size_t i = 0; i < process_->env_.size(); i++) {
-    const char *binding = process_->env_[i].c_str();
+  // Push the bindings in reverse order to given them priority.
+  for (size_t i = process_->env_.size(); i > 0; i--) {
+    const char *binding = process_->env_[i - 1].c_str();
     new_environ_.push_back(const_cast<char*>(binding));
   }
+
+  // Then copy the current environment.
+  for (char **entry = environ; *entry != NULL; entry++)
+    new_environ_.push_back(*entry);
 
   // Remember to null terminate.
   new_environ_.push_back(NULL);

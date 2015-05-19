@@ -2,7 +2,6 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 BEGIN_C_INCLUDES
-#include "utils/strbuf.h"
 #include "utils/string-inl.h"
 END_C_INCLUDES
 
@@ -137,35 +136,22 @@ bool NativeProcessStart::configure_sub_environment() {
     // and launch will do the right thing.
     return true;
 
+  // Copy the new variables also.
+  for (size_t i = process_->env_.size(); i > 0; i--) {
+    std::string entry = process_->env_[i - 1];
+    string_buffer_append(&new_env_buf_, new_string(entry.c_str(), entry.length()));
+    string_buffer_putc(&new_env_buf_, '\0');
+  }
+
   // Copy the existing environment into the new env block.
   for (char **entry = environ; *entry != NULL; entry++) {
     string_buffer_append(&new_env_buf_, new_c_string(*entry));
     string_buffer_putc(&new_env_buf_, '\0');
   }
 
-  // Copy the new variables also.
-  for (size_t i = 0; i < process_->env_.size(); i++) {
-    std::string entry = process_->env_[i];
-    string_buffer_append(&new_env_buf_, new_string(entry.c_str(), entry.length()));
-    string_buffer_putc(&new_env_buf_, '\0');
-  }
-
   // Flushing adds the last of the two null terminators that ends the whole
   // thing.
   new_env_ = string_buffer_flush(&new_env_buf_);
-  return true;
-}
-
-bool NativeProcess::set_env(const char *key, const char *value) {
-  // TODO: consider whether this could meaningfully be folded together with the
-  //   posix implementation. Need to implement escaping first though.
-  string_buffer_t buf;
-  string_buffer_init(&buf);
-  string_buffer_printf(&buf, "%s=%s", key, value);
-  utf8_t raw_binding = string_buffer_flush(&buf);
-  std::string binding(raw_binding.chars, raw_binding.size);
-  env_.push_back(binding);
-  string_buffer_dispose(&buf);
   return true;
 }
 

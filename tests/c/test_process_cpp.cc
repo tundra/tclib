@@ -50,6 +50,11 @@ public:
   // is not found returns NULL.
   const char *read_env(const char *name, char *scratch);
 
+  // Returns the value of the getenv output printed by the process. The given
+  // char buffer is scratch memory to use to store the result. If the env is not
+  // found returns NULL.
+  const char *read_getenv(const char *name, char *scratch);
+
 public:
   // Iterate through the process' standard output and, for each line, invoke the
   // given callback. The first time the scan is successful (returns true) this
@@ -117,6 +122,18 @@ static bool scan_env(const char *key, char *out, const char *line) {
 
 const char *RecordingProcess::read_env(const char *key, char *out) {
   return for_each_stdout_line(new_callback(scan_env, key, out))
+    ? out
+    : NULL;
+}
+
+static bool scan_getenv(const char *key, char *out, const char *line) {
+  char fmt[256];
+  sprintf(fmt, "GETENV(%s): {%%[^}]}", key);
+  return sscanf(line, fmt, out) > 0;
+}
+
+const char *RecordingProcess::read_getenv(const char *key, char *out) {
+  return for_each_stdout_line(new_callback(scan_getenv, key, out))
     ? out
     : NULL;
 }
@@ -208,7 +225,7 @@ TEST(process_cpp, many_quotes_and_slashes) {
   test_arg_passing(1, argv);
 }
 
-TEST(process_cpp, tildes) {
+TEST(process_cpp, caret) {
   const char *argv[1] = {"^b^l\"^\"a\\^\\h^"};
   test_arg_passing(1, argv);
 }
@@ -222,6 +239,87 @@ TEST(process_cpp, env_simple) {
   ASSERT_EQ(1, process.read_argc());
   char envbuf[1024];
   ASSERT_C_STREQ("bar", process.read_env("FOO", envbuf));
+}
+
+// Inline environment binding.
+typedef struct {
+  const char *key;
+  const char *value;
+} binding_t;
+
+static void test_env_passing(size_t in_envc, binding_t *in_envv, size_t out_envc,
+    binding_t *out_envv) {
+  RecordingProcess process;
+  for (size_t i = 0; i < in_envc; i++)
+    process.set_env(in_envv[i].key, in_envv[i].value);
+  // We're interested both in how the environ array looks but also what gets
+  // returned from getenv so for each binding we ask the program to print the
+  // result of getenv.
+  size_t argc = out_envc * 2;
+  const char **argv = new const char *[argc];
+  for (size_t i = 0; i < out_envc; i++) {
+    argv[2 * i] = "--getenv";
+    argv[2 * i + 1] = out_envv[i].key;
+  }
+  ASSERT_TRUE(process.start(get_durian_main(), argc, argv));
+  delete[] argv;
+  process.complete();
+  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(argc + 1, process.read_argc());
+  char argbuf[1024];
+  ASSERT_C_STREQ(get_durian_main(), process.read_argv(0, argbuf));
+  for (size_t i = 0; i < out_envc; i++) {
+    ASSERT_C_STREQ(out_envv[i].value, process.read_env(out_envv[i].key, argbuf));
+    ASSERT_C_STREQ(out_envv[i].value, process.read_getenv(out_envv[i].key, argbuf));
+  }
+}
+
+#define ALEN(A) (sizeof(A) / sizeof(*(A)))
+
+TEST(process_cpp, env_multiple) {
+  binding_t envv[2] = {{"FOO", "foo"}, {"BAR", "bar"}};
+  test_env_passing(ALEN(envv), envv, ALEN(envv), envv);
+}
+
+TEST(process_cpp, env_value_eq) {
+  binding_t in_envv[1] = {{"FOO", "fo=o"}};
+  binding_t out_envv[2] = {{"FOO", "fo=o"}, {"FOO=fo", "o"}};
+  test_env_passing(ALEN(in_envv), in_envv, ALEN(out_envv), out_envv);
+}
+
+TEST(process_cpp, env_value_quote_eq) {
+  // In the env, no one can hear you quote.
+  binding_t in_envv[1] = {{"FOO", "fo\\=o"}};
+  binding_t out_envv[2] = {{"FOO", "fo\\=o"}, {"FOO=fo\\", "o"}};
+  test_env_passing(ALEN(in_envv), in_envv, ALEN(out_envv), out_envv);
+}
+
+TEST(process_cpp, env_key_eq) {
+  binding_t in_envv[1] = {{"FO=O", "foo"}};
+  binding_t out_envv[2] = {{"FO=O", "foo"}, {"FO", "O=foo"}};
+  test_env_passing(ALEN(in_envv), in_envv, ALEN(out_envv), out_envv);
+}
+
+TEST(process_cpp, env_key_quote) {
+  binding_t in_envv[1] = {{"\"F\'O\\O\"", "foo"}};
+  test_env_passing(ALEN(in_envv), in_envv, ALEN(in_envv), in_envv);
+}
+
+TEST(process_cpp, env_key_space) {
+  binding_t in_envv[1] = {{"F O O", "foo"}};
+  test_env_passing(ALEN(in_envv), in_envv, ALEN(in_envv), in_envv);
+}
+
+TEST(process_cpp, env_simple_override) {
+  binding_t in_envv[2] = {{"FOO", "foo"}, {"FOO", "bar"}};
+  binding_t out_envv[1] = {{"FOO", "bar"}};
+  test_env_passing(ALEN(in_envv), in_envv, ALEN(out_envv), out_envv);
+}
+
+TEST(process_cpp, env_multi_override) {
+  binding_t in_envv[5] = {{"FOO", "1"}, {"BAR", "a"}, {"FOO", "2"}, {"BAR", "b"}, {"FOO", "3"}};
+  binding_t out_envv[2] = {{"FOO", "3"}, {"BAR", "b"}};
+  test_env_passing(ALEN(in_envv), in_envv, ALEN(out_envv), out_envv);
 }
 
 #if defined(IS_MSVC)
