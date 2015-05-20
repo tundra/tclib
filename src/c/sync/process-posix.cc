@@ -36,7 +36,7 @@ bool NativeProcessStart::configure_file_descriptors() {
   if (process_->stdout_ != NULL) {
     if (!process_->stdout_->prepare_launch())
       return false;
-    if (!process_->stdout_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
+    if (process_->stdout_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
       WARN("Invalid stdout");
       return false;
     }
@@ -44,7 +44,7 @@ bool NativeProcessStart::configure_file_descriptors() {
   if (process_->stderr_ != NULL) {
     if (!process_->stderr_->prepare_launch())
       return false;
-    if (!process_->stderr_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
+    if (process_->stderr_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
       WARN("Invalid stderr");
       return false;
     }
