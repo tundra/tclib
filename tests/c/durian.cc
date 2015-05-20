@@ -25,6 +25,9 @@ int main(int argc, char *argv[]) {
       const char *key = argv[i++];
       const char *value = getenv(key);
       printf("GETENV(%s): {%s}\n", key, value);
+    } else if (strcmp(next, "--print-stderr") == 0) {
+      const char *value = argv[i++];
+      fprintf(stderr, "%s\n", value);
     }
   }
   return exit_code;

@@ -25,28 +25,27 @@ public:
   bool child_post_fork(const char *executable, size_t argc, const char **argv);
 private:
   NativeProcess *process_;
-  int stdout_fd_;
   std::vector<char*> new_environ_;
 };
 }
 
-void NativeProcess::platform_initialize() {
-  process = 0;
-}
-
-void NativeProcess::platform_dispose() {
-  // Nothing to do.
-}
-
 NativeProcessStart::NativeProcessStart(NativeProcess *process)
-  : process_(process)
-  , stdout_fd_(AbstractStream::kNullNakedFileHandle) { }
+  : process_(process) { }
 
 bool NativeProcessStart::configure_file_descriptors() {
   if (process_->stdout_ != NULL) {
-    stdout_fd_ = process_->stdout_->to_raw_handle();
-    if (stdout_fd_ == AbstractStream::kNullNakedFileHandle) {
+    if (!process_->stdout_->prepare_launch())
+      return false;
+    if (!process_->stdout_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
       WARN("Invalid stdout");
+      return false;
+    }
+  }
+  if (process_->stderr_ != NULL) {
+    if (!process_->stderr_->prepare_launch())
+      return false;
+    if (!process_->stderr_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
+      WARN("Invalid stderr");
       return false;
     }
   }
@@ -75,21 +74,42 @@ bool NativeProcessStart::build_sub_environment() {
   return true;
 }
 
+static bool close_parent_if_necessary(StreamRedirect *stream) {
+  return (stream == NULL) || stream->parent_side_close();
+}
+
 bool NativeProcessStart::parent_post_fork() {
-  // If we have a nontrivial stdout close it since it now belongs to the child.
-  return (process_->stdout_ == NULL) || process_->stdout_->close();
+  // Any nontrivial streams should be closed because they now belong to the
+  // child.
+  return close_parent_if_necessary(process_->stdout_)
+      && close_parent_if_necessary(process_->stderr_);
+}
+
+static void remap_std_stream(StreamRedirect *redirect, int old_fd) {
+  if (redirect == NULL)
+    return;
+  int new_fd = redirect->remote_handle();
+  CHECK_TRUE("invalid fd", new_fd != AbstractStream::kNullNakedFileHandle);
+  if (new_fd == old_fd)
+    return;
+  dup2(new_fd, old_fd);
+  close(new_fd);
+}
+
+static bool close_child_if_necessary(StreamRedirect *stream) {
+  return (stream == NULL) || stream->child_side_close();
 }
 
 bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
     const char **argv) {
   // From here on we're in the child process. First redirect std streams if
   // necessary.
-  if (stdout_fd_ != AbstractStream::kNullNakedFileHandle) {
-    if (stdout_fd_ != STDOUT_FILENO) {
-      dup2(stdout_fd_, STDOUT_FILENO);
-      close(stdout_fd_);
-    }
-  }
+  remap_std_stream(process_->stdout_, STDOUT_FILENO);
+  remap_std_stream(process_->stderr_, STDERR_FILENO);
+
+  if (!close_child_if_necessary(process_->stdout_)
+      || !close_child_if_necessary(process_->stderr_))
+    return false;
 
   // Execv implicitly takes its environment from environ. The underlying data
   // would be disposed when the NativeProcessStart is but we'll never get to
@@ -112,6 +132,29 @@ bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
   // This should never be reached.
   ERROR("Fell through exec, pid %i", getpid());
   return false;
+}
+
+bool PipeRedirect::prepare_launch() {
+  return true;
+}
+
+bool PipeRedirect::parent_side_close() {
+  // The child now has a clone of the remote handle so we can close this side.
+  return remote_side()->close();
+}
+
+bool PipeRedirect::child_side_close() {
+  // We have a clone of the local handle which is really only useful to the
+  // parent so we close it.
+  return local_side()->close();
+}
+
+void NativeProcess::platform_initialize() {
+  process = 0;
+}
+
+void NativeProcess::platform_dispose() {
+  // Nothing to do.
 }
 
 bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {

@@ -55,6 +55,9 @@ public:
   // found returns NULL.
   const char *read_getenv(const char *name, char *scratch);
 
+  // Returns the raw stderr output as a string.
+  const char *err() { return stderr_str_; }
+
 public:
   // Iterate through the process' standard output and, for each line, invoke the
   // given callback. The first time the scan is successful (returns true) this
@@ -62,34 +65,54 @@ public:
   bool for_each_stdout_line(callback_t<bool(const char *line)> callback);
 
   NativePipe stdout_pipe_;
+  NativePipe stderr_pipe_;
+  PipeRedirect stdout_redirect_;
+  PipeRedirect stderr_redirect_;
   string_buffer_t stdout_buf_;
+  string_buffer_t stderr_buf_;
   const char *stdout_str_;
+  const char *stderr_str_;
 };
 
 RecordingProcess::RecordingProcess()
-  : stdout_str_(NULL) {
+  : stdout_redirect_(&stdout_pipe_, PipeRedirect::pdOut)
+  , stderr_redirect_(&stderr_pipe_, PipeRedirect::pdOut)
+  , stdout_str_(NULL)
+  , stderr_str_(NULL) {
   ASSERT_TRUE(stdout_pipe_.open(NativePipe::pfInherit));
-  set_stdout(stdout_pipe_.out());
+  set_stdout(&stdout_redirect_);
   string_buffer_init(&stdout_buf_);
+  ASSERT_TRUE(stderr_pipe_.open(NativePipe::pfInherit));
+  set_stderr(&stderr_redirect_);
+  string_buffer_init(&stderr_buf_);
 }
 
 RecordingProcess::~RecordingProcess() {
   string_buffer_dispose(&stdout_buf_);
+  string_buffer_dispose(&stderr_buf_);
 }
 
 void RecordingProcess::complete() {
+  // TODO: fix stderr on msvc.
   InStream *out = stdout_pipe_.in();
-  size_t last_read = 1;
-  while (last_read > 0 || !out->at_eof()) {
+  InStream *err = stderr_pipe_.in();
+  bool maybe_more_input = true;
+  while (maybe_more_input || !out->at_eof() || IF_MSVC(false, !err->at_eof())) {
     char chars[256];
-    last_read = out->read_bytes(chars, 256);
-    ASSERT_TRUE(last_read <= 256);
-    string_buffer_append(&stdout_buf_, new_string(chars, last_read));
+    size_t out_read = out->read_bytes(chars, 256);
+    string_buffer_append(&stdout_buf_, new_string(chars, out_read));
+    size_t err_read = 0;
+    if (!IF_MSVC(true, false)) {
+      err_read = err->read_bytes(chars, 256);
+      string_buffer_append(&stderr_buf_, new_string(chars, err_read));
+    }
+    maybe_more_input = (out_read > 0) || (err_read > 0);
   }
   // We know the process has completed but still need to call wait for the
   // state to be updated.
   wait();
   stdout_str_ = string_buffer_flush(&stdout_buf_).chars;
+  stderr_str_ = string_buffer_flush(&stderr_buf_).chars;
 }
 
 static bool scan_argc(int *argc, const char *line) {
@@ -272,6 +295,7 @@ static void test_env_passing(size_t in_envc, binding_t *in_envv, size_t out_envc
     ASSERT_C_STREQ(out_envv[i].value, process.read_env(out_envv[i].key, argbuf));
     ASSERT_C_STREQ(out_envv[i].value, process.read_getenv(out_envv[i].key, argbuf));
   }
+  ASSERT_C_STREQ("", process.err());
 }
 
 #define ALEN(A) (sizeof(A) / sizeof(*(A)))
@@ -320,6 +344,20 @@ TEST(process_cpp, env_multi_override) {
   binding_t in_envv[5] = {{"FOO", "1"}, {"BAR", "a"}, {"FOO", "2"}, {"BAR", "b"}, {"FOO", "3"}};
   binding_t out_envv[2] = {{"FOO", "3"}, {"BAR", "b"}};
   test_env_passing(ALEN(in_envv), in_envv, ALEN(out_envv), out_envv);
+}
+
+#define MESSAGE "I am process, hear me stderr!"
+
+TEST(process_cpp, stderr) {
+  IF_MSVC(return,);
+  RecordingProcess process;
+  const char *argv[2] = {"--print-stderr", MESSAGE};
+  ASSERT_TRUE(process.start(get_durian_main(), 2, argv));
+  process.complete();
+  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(3, process.read_argc());
+  // Printing adds a newline.
+  ASSERT_C_STREQ(MESSAGE "\n", process.err());
 }
 
 #if defined(IS_MSVC)

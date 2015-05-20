@@ -17,8 +17,61 @@ END_C_INCLUDES
 
 namespace tclib {
 
+class NativePipe;
+
+// Encapsulates the behavior of redirecting input/output to a process. The
+// implementations and patterns of use are somewhat platform dependent so read
+// the platform-independent documentation with a grain of salt, you kind of have
+// to know what's going on on the platform to know how it really works.
+class StreamRedirect {
+public:
+  // No-op destructor.
+  virtual ~StreamRedirect() { }
+
+  // Returns the file handle to export to the child process.
+  virtual naked_file_handle_t remote_handle() = 0;
+
+  // Perform any work that needs to be done before creating the child.
+  virtual bool prepare_launch() = 0;
+
+  // Called after the child has been successfully spawned to clean up the parent
+  // side of the redirect.
+  virtual bool parent_side_close() = 0;
+
+  // Called after the child has been successfully spawned to clean up the child
+  // side of the redirect.
+  virtual bool child_side_close() = 0;
+};
+
+// A pipe-based redirect. This takes ownership of the pipe and will close the
+// in- and outgoing handles appropriately. When the child process exits the
+// pipe will be dead.
+class PipeRedirect : public StreamRedirect {
+public:
+  typedef enum { pdIn, pdOut } pipe_direction_t;
+  explicit PipeRedirect(NativePipe *pipe, pipe_direction_t direction);
+  virtual naked_file_handle_t remote_handle();
+  virtual bool prepare_launch();
+  virtual bool parent_side_close();
+  virtual bool child_side_close();
+
+private:
+  NativePipe *pipe_;
+  pipe_direction_t direction_;
+
+  // Does this redirect output or input?
+  bool is_output() { return direction_ == pdOut; }
+
+  // The remote stream, the stream that will be passed on to the child.
+  AbstractStream *remote_side();
+
+  // The local stream, the stream the current process will use to interact with
+  // the child.
+  AbstractStream *local_side();
+};
+
 // An os-native process.
-class NativeProcess : public native_process_t {
+class NativeProcess: public native_process_t {
 public:
   // Create a new uninitialized process.
   NativeProcess();
@@ -44,7 +97,15 @@ public:
 
   // Sets the stream to use as standard output for the running process. Must be
   // called before starting the process.
-  void set_stdout(OutStream *value) { stdout_ = value; }
+  void set_stdout(StreamRedirect *redirect) {
+    stdout_ = redirect;
+  }
+
+  // Sets the stream to use as standard error for the running process. Must be
+  // called before starting the process.
+  void set_stderr(StreamRedirect *redirect) {
+    stderr_ = redirect;
+  }
 
   // Wait for this process, which must already have been started, to complete.
   // Returns true iff waiting succeeded. The process must have been started.
@@ -66,7 +127,9 @@ private:
   // Extra bindings to add to the subprocess' environment.
   std::vector<std::string> env_;
 
-  OutStream *stdout_;
+  StreamRedirect *stdout_;
+
+  StreamRedirect *stderr_;
 };
 
 } // namespace tclib

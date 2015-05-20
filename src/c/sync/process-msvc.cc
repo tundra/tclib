@@ -33,16 +33,24 @@ public:
   NativeProcessStart(NativeProcess *process);
   ~NativeProcessStart();
   utf8_t build_cmdline(const char *executable, size_t argc, const char **argv);
+
+  // Set up any standard stream redirection in the startup_info.
   bool configure_standard_streams();
+
+  // If necessary set up redirection using the given stream, storing the result
+  // in the three out parameters. This is a little messy but we need to do this
+  // a couple of times so it seems worth it.
+  bool maybe_redirect_standard_stream(const char *name, StreamRedirect *stream,
+      handle_t *handle_out, bool *has_redirected);
   bool configure_sub_environment();
   bool launch(const char *executable);
   bool post_launch();
+  bool maybe_close_standard_stream(StreamRedirect *stream);
 private:
   NativeProcess *process_;
   string_buffer_t cmdline_buf_;
   utf8_t cmdline_;
   STARTUPINFO startup_info_;
-  handle_t stdout_handle_;
   string_buffer_t new_env_buf_;
   utf8_t new_env_;
 };
@@ -50,7 +58,6 @@ private:
 
 NativeProcessStart::NativeProcessStart(NativeProcess *process)
   : process_(process)
-  , stdout_handle_(AbstractStream::kNullNakedFileHandle)
   , new_env_(string_empty()) {
   string_buffer_init(&cmdline_buf_);
   ZeroMemory(&startup_info_, sizeof(startup_info_));
@@ -114,19 +121,36 @@ utf8_t NativeProcessStart::build_cmdline(const char *executable, size_t argc,
   return cmdline_ = string_buffer_flush(&cmdline_buf_);
 }
 
-bool NativeProcessStart::configure_standard_streams() {
-  bool has_set_stream = false;
-  if (process_->stdout_ != NULL) {
-    stdout_handle_ = process_->stdout_->to_raw_handle();
-    if (stdout_handle_ == AbstractStream::kNullNakedFileHandle) {
-      WARN("Invalid stdout");
-      return false;
-    }
-    startup_info_.hStdOutput = stdout_handle_;
-    has_set_stream = true;
+bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
+    StreamRedirect *stream, handle_t *handle_out, bool *has_redirected) {
+  if (stream == NULL)
+    return true;
+  if (!stream->prepare_launch())
+    return false;
+  handle_t handle = stream->remote_handle();
+  if (handle == AbstractStream::kNullNakedFileHandle) {
+    WARN("Invalid %s", name);
+    return false;
   }
-  if (has_set_stream)
+  *handle_out = handle;
+  *has_redirected = true;
+  return true;
+}
+
+bool NativeProcessStart::configure_standard_streams() {
+  bool has_redirected = false;
+
+  if (!maybe_redirect_standard_stream("stdout", process_->stdout_,
+      &startup_info_.hStdOutput, &has_redirected))
+    return false;
+
+  if (!maybe_redirect_standard_stream("stderr", process_->stderr_,
+      &startup_info_.hStdError, &has_redirected))
+    return false;
+
+  if (has_redirected)
     startup_info_.dwFlags |= STARTF_USESTDHANDLES;
+
   return true;
 }
 
@@ -190,13 +214,44 @@ bool NativeProcessStart::launch(const char *executable) {
   return true;
 }
 
+bool NativeProcessStart::maybe_close_standard_stream(StreamRedirect *stream) {
+  return (stream == NULL) || stream->parent_side_close();
+}
+
 bool NativeProcessStart::post_launch() {
   // Close the parent's clone of the stdout handle since it belongs to the
   // child now.
-  if (stdout_handle_ != AbstractStream::kNullNakedFileHandle) {
-    CloseHandle(stdout_handle_);
-    stdout_handle_ = AbstractStream::kNullNakedFileHandle;
+  return maybe_close_standard_stream(process_->stdout_)
+      && maybe_close_standard_stream(process_->stdout_);
+}
+
+bool PipeRedirect::prepare_launch() {
+  // Do inherit the remote side of this pipe.
+  if (!SetHandleInformation(
+          remote_side()->to_raw_handle(), // hObject
+          HANDLE_FLAG_INHERIT,            // dwMask
+          1)) {                           // dwFlags
+    WARN("Failed to set remote pipe flags while redirecting");
+    return false;
   }
+
+  // Don't inherit the local side of this pipe.
+  if (!SetHandleInformation(
+          local_side()->to_raw_handle(), // hObject
+          HANDLE_FLAG_INHERIT,           // dwMask
+          0)) {                          // dwFlags
+    WARN("Failed to set local pipe flags while redirecting");
+    return false;
+  }
+  return true;
+}
+
+bool PipeRedirect::parent_side_close() {
+  return remote_side()->close();
+}
+
+bool PipeRedirect::child_side_close() {
+  // There is no child side, or -- there is but we don't have access to it.
   return true;
 }
 
