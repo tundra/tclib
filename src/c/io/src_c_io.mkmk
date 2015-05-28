@@ -2,7 +2,9 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 library_files = [
-  "file.cc"
+  "file.cc",
+  "iop.cc",
+  "stream.cc",
 ]
 
 library = get_group("library")

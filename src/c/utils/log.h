@@ -35,7 +35,8 @@ typedef enum {
   C(Info,    I, 1, lsStdout, lbContinue)                                       \
   C(Warning, W, 2, lsStderr, lbContinue)                                       \
   C(Error,   E, 3, lsStderr, lbContinue)                                       \
-  C(Fatal,   F, 4, lsStderr, lbAbort)
+  C(Fatal,   F, 4, lsStderr, lbAbort)                                          \
+  C(Hest,    H, 5, lsStderr, lbContinue)
 
 // Special log topics that can be turned on and off statically and dynamically.
 // These are useful if you want to instrument particular areas of the code but
@@ -165,7 +166,6 @@ log_o *set_global_log(log_o *log);
 // linter to choke if you try to submit. If you use this when debugging/tracing
 // by hest the linter will help you remember to get rid of all the debug print
 // statements before submitting.
-#define HEST(...) INFO(__VA_ARGS__)
-
+#define HEST(...) log_message(llHest, __FILE__, __LINE__, __VA_ARGS__)
 
 #endif // _LOG

@@ -11,9 +11,9 @@ using namespace tclib;
 // type.
 class HandleStream : public InStream, public OutStream {
 public:
-  explicit HandleStream(handle_t handle) : at_eof_(false), is_closed_(false), handle_(handle) { }
+  explicit HandleStream(handle_t handle);
   virtual ~HandleStream();
-  virtual size_t read_bytes(void *dest, size_t size);
+  virtual bool read_sync(read_iop_t *op);
   virtual bool at_eof();
   virtual size_t write_bytes(const void *src, size_t size);
   virtual bool flush();
@@ -24,27 +24,42 @@ private:
   bool at_eof_;
   bool is_closed_;
   handle_t handle_;
+  OVERLAPPED overlapped_;
 };
+
+HandleStream::HandleStream(handle_t handle)
+  : at_eof_(false)
+  , is_closed_(false)
+  , handle_(handle) {
+  ZeroMemory(&overlapped_, sizeof(overlapped_));
+}
+
 
 HandleStream::~HandleStream() {
   close();
 }
 
-size_t HandleStream::read_bytes(void *dest, size_t size) {
+bool HandleStream::read_sync(read_iop_t *op) {
   dword_t read = 0;
   bool result = ReadFile(
-      handle_,                    // hFile
-      dest,                       // lpBuffer
-      static_cast<dword_t>(size), // nNumberOfBytesToRead
-      &read,                      // lpNumberOfBytesRead
-      NULL);                      // lpOverlapped
-  if (!result && (read == 0))
-    at_eof_ = true;
-  return read;
+      handle_,                         // hFile
+      op->dest_,                            // lpBuffer
+      static_cast<dword_t>(op->dest_size_), // nNumberOfBytesToRead
+      &read,                           // lpNumberOfBytesRead
+      &overlapped_);                   // lpOverlapped
+  if (!result) {
+    if (GetLastError() == ERROR_IO_PENDING) {
+      result = GetOverlappedResult(handle_, &overlapped_, &read, true);
+    } else {
+      op->at_eof_ = true;
+    }
+  }
+  op->read_out_ = read;
+  return true;
 }
 
 bool HandleStream::at_eof() {
-  return at_eof_;
+  return true;
 }
 
 size_t HandleStream::write_bytes(const void *src, size_t size) {
@@ -54,7 +69,7 @@ size_t HandleStream::write_bytes(const void *src, size_t size) {
     src,                        // lpBuffer
     static_cast<dword_t>(size), // nNumberOfBytesToWrite
     &written,                   // lpNumberOfBytesWritten
-    NULL);                      // lpOverlapped
+    &overlapped_);              // lpOverlapped
   return written;
 }
 
@@ -73,6 +88,52 @@ naked_file_handle_t HandleStream::to_raw_handle() {
   return handle_;
 }
 
+
+static bool create_overlapped_pipe(handle_t *read_pipe, handle_t *write_pipe,
+    SECURITY_ATTRIBUTES *pipe_attributes, dword_t size) {
+  static size_t next_pipe_serial = 0;
+  char pipe_name[MAX_PATH];
+
+  // Generate a unique name for this pipe. There is a race condition here in
+  // that access to next_pipe_serial is unsynchronized but the serial only has
+  // to be unique within one thread so if we include the thread id we should
+  // be fine. I think we're fine. Pretty sure we're fine.
+  sprintf(pipe_name, "\\\\.\\Pipe\\TclibPipe-%016x-%016x-%016x",
+      GetCurrentProcessId(), GetCurrentThreadId(), next_pipe_serial++);
+
+  if (size == 0)
+    size = 4096;
+
+  handle_t read = CreateNamedPipe(
+      pipe_name,                                  // lpName
+      PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,  // dwOpenMode
+      PIPE_TYPE_BYTE | PIPE_WAIT,                 // dwPipeMode
+      1,                                          // nMaxInstances
+      size,                                       // nOutBufferSize
+      size,                                       // nInBufferSize
+      120 * 1000,                                 // nDefaultTimeOut
+      pipe_attributes);                           // lpSecurityAttributes
+
+  if (read == INVALID_HANDLE_VALUE)
+    return false;
+
+  handle_t write = CreateFile(
+      pipe_name,                                    // lpFileName
+      GENERIC_WRITE,                                // dwDesiredAccess
+      0,                                            // dwShareMode
+      pipe_attributes,                              // lpSecurityAttributes
+      OPEN_EXISTING,                                // dwCreationDisposition
+      FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, // dwFlagsAndAttributes
+      NULL);                                        // hTemplateFile
+
+  if (write == INVALID_HANDLE_VALUE)
+    return false;
+
+  *read_pipe = read;
+  *write_pipe = write;
+  return true;
+}
+
 bool NativePipe::open(uint32_t flags) {
   SECURITY_ATTRIBUTES attrs;
   ZeroMemory(&attrs, sizeof(attrs));
@@ -80,7 +141,7 @@ bool NativePipe::open(uint32_t flags) {
   attrs.bInheritHandle = (flags & pfInherit) != 0;
   attrs.lpSecurityDescriptor = NULL;
 
-  bool result = CreatePipe(
+  bool result = create_overlapped_pipe(
       &this->pipe.read_,  // hReadPipe
       &this->pipe.write_, // hWritePipe,
       &attrs,             // lpPipeAttributes,

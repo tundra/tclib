@@ -20,10 +20,8 @@ typedef struct out_stream_t out_stream_t;
 
 // Attempt to read 'size' bytes from this stream, storing the data at the given
 // destination. Returns the number of bytes actually read.
-size_t in_stream_read_bytes(in_stream_t *file, void *dest, size_t size);
-
-// Returns true if this stream has been read to the end.
-bool in_stream_at_eof(in_stream_t *file);
+bool in_stream_read_bytes(in_stream_t *file, void *dest, size_t dest_size,
+    size_t *read_out);
 
 // Works just like normal printf, it just writes to this file.
 size_t out_stream_printf(out_stream_t *file, const char *fmt, ...);

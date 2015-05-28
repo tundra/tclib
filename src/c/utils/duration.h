@@ -3,6 +3,9 @@
 
 /// A few abstractions for working with time.
 
+#ifndef _UTILS_DURATION_H
+#define _UTILS_DURATION_H
+
 #include "c/stdc.h"
 
 // A period of time, possibly unlimited.
@@ -28,9 +31,19 @@ static inline duration_t duration_unlimited() {
   return result;
 }
 
+static inline duration_t duration_instant() {
+  duration_t result = {false, 0};
+  return result;
+}
+
 // Is the given value the unlimited duration?
 static inline bool duration_is_unlimited(duration_t duration) {
   return duration.is_unlimited;
+}
+
+// Is the given duration the instant duration, that is, zero time?
+static inline bool duration_is_instant(duration_t duration) {
+  return !duration.is_unlimited && duration.millis == 0;
 }
 
 // Returns the number of seconds of this duration.
@@ -46,3 +59,5 @@ static inline uint64_t duration_to_millis(duration_t duration) {
 // Adds the given duration to a pair of sec/nsec which is what you need to add
 // a duration to a posix timespec. For unlimited durations this does nothing.
 void duration_add_to_timespec(duration_t duration, uint64_t *sec, uint64_t *nsec);
+
+#endif // _UTILS_DURATION_H

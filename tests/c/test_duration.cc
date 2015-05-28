@@ -30,3 +30,17 @@ TEST(duration, string_simple) {
   ASSERT_EQ(202, secs);
   ASSERT_EQ(237000000, nanos);
 }
+
+TEST(duration, predicates) {
+  ASSERT_TRUE(duration_is_instant(duration_instant()));
+  ASSERT_FALSE(duration_is_instant(duration_unlimited()));
+  ASSERT_FALSE(duration_is_instant(duration_millis(1)));
+  ASSERT_FALSE(duration_is_instant(duration_millis(1000)));
+  ASSERT_TRUE(duration_is_instant(duration_millis(0)));
+
+  ASSERT_FALSE(duration_is_unlimited(duration_instant()));
+  ASSERT_TRUE(duration_is_unlimited(duration_unlimited()));
+  ASSERT_FALSE(duration_is_unlimited(duration_millis(1)));
+  ASSERT_FALSE(duration_is_unlimited(duration_millis(1000)));
+  ASSERT_FALSE(duration_is_unlimited(duration_millis(0)));
+}

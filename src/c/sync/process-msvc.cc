@@ -222,7 +222,7 @@ bool NativeProcessStart::post_launch() {
   // Close the parent's clone of the stdout handle since it belongs to the
   // child now.
   return maybe_close_standard_stream(process_->stdout_)
-      && maybe_close_standard_stream(process_->stdout_);
+      && maybe_close_standard_stream(process_->stderr_);
 }
 
 bool PipeRedirect::prepare_launch() {

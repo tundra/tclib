@@ -93,20 +93,35 @@ RecordingProcess::~RecordingProcess() {
 }
 
 void RecordingProcess::complete() {
-  // TODO: fix stderr on msvc.
-  InStream *out = stdout_pipe_.in();
-  InStream *err = stderr_pipe_.in();
-  bool maybe_more_input = true;
-  while (maybe_more_input || !out->at_eof() || IF_MSVC(false, !err->at_eof())) {
-    char chars[256];
-    size_t out_read = out->read_bytes(chars, 256);
-    string_buffer_append(&stdout_buf_, new_string(chars, out_read));
-    size_t err_read = 0;
-    if (!IF_MSVC(true, false)) {
-      err_read = err->read_bytes(chars, 256);
-      string_buffer_append(&stderr_buf_, new_string(chars, err_read));
+  IopGroup group;
+  char stdout_buf[256];
+  ReadIop read_stdout(stdout_pipe_.in(), stdout_buf, 256);
+  group.schedule(&read_stdout);
+  char stderr_buf[256];
+  ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256);
+  group.schedule(&read_stderr);
+  for (int live_count = 2; live_count > 0;) {
+    size_t index = 0;
+    ASSERT_TRUE(group.wait_for_next(&index));
+    ReadIop *iop;
+    char *buf;
+    string_buffer_t *strbuf;
+    if (index == 0) {
+      iop = &read_stdout;
+      buf = stdout_buf;
+      strbuf = &stdout_buf_;
+    } else {
+      ASSERT_EQ(1, index);
+      iop = &read_stderr;
+      buf = stderr_buf;
+      strbuf = &stderr_buf_;
     }
-    maybe_more_input = (out_read > 0) || (err_read > 0);
+    string_buffer_append(strbuf, new_string(buf, iop->read_size()));
+    if (iop->at_eof()) {
+      live_count--;
+    } else {
+      iop->recycle();
+    }
   }
   // We know the process has completed but still need to call wait for the
   // state to be updated.

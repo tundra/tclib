@@ -7,9 +7,12 @@
 #include "c/stdc.h"
 
 #include "c/stdvector.hh"
+#include "io/iop.hh"
 
 BEGIN_C_INCLUDES
 #include "io/stream.h"
+#include "sync/sync.h"
+#include "utils/duration.h"
 END_C_INCLUDES
 
 struct in_stream_t { };
@@ -21,6 +24,10 @@ namespace tclib {
 // get these for a stream in order to interact with OS apis, for instance when
 // redirecting the standard streams to a child process.
 typedef IF_MSVC(handle_t, int) naked_file_handle_t;
+
+class InStream;
+class OutStream;
+class Iop;
 
 // Behavior shared between in- and out-streams.
 class AbstractStream {
@@ -49,12 +56,17 @@ class InStream : public in_stream_t, public AbstractStream {
 public:
   virtual ~InStream() { }
 
-  // Attempt to read 'size' bytes from this stream, storing the data at the
-  // given destination. Returns the number of bytes actually read.
-  virtual size_t read_bytes(void *dest, size_t size) = 0;
+  // Attempt to read 'dest_size' bytes from this stream, storing the data at the
+  // given destination. If successful stores he number of bytes actually read
+  // in the out parameter and returns true, otherwise returns false.
+  virtual bool read_bytes(void *dest, size_t dest_size, size_t *read_out);
 
-  // Returns true if this stream has been read to the end.
-  virtual bool at_eof() = 0;
+protected:
+  friend class Iop;
+  friend class ReadIop;
+
+  // Perform the given iop synchronously.
+  virtual bool read_sync(read_iop_t *op) = 0;
 };
 
 class OutStream : public out_stream_t, public AbstractStream {
@@ -79,7 +91,7 @@ public:
 class ByteInStream : public InStream {
 public:
   ByteInStream(const void *data, size_t size);
-  virtual size_t read_bytes(void *dest, size_t size);
+  virtual bool read_sync(read_iop_t *op);
   virtual bool at_eof();
 
 private:
