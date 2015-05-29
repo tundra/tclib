@@ -46,9 +46,10 @@ size_t OutStream::vprintf(const char *fmt, va_list argp) {
     return 0;
   va_end(next);
   utf8_t str = string_buffer_flush(&buf);
-  size_t result = write_bytes(str.chars, str.size);
+  WriteIop iop(this, str.chars, str.size);
+  iop.execute();
   string_buffer_dispose(&buf);
-  return result;
+  return iop.bytes_written();
 }
 
 bool out_stream_flush(out_stream_t *file) {
@@ -95,11 +96,13 @@ void byte_in_stream_destroy(in_stream_t *stream) {
 
 ByteOutStream::ByteOutStream() { }
 
-size_t ByteOutStream::write_bytes(const void *raw_src, size_t size) {
-  const byte_t *src = static_cast<const byte_t*>(raw_src);
+bool ByteOutStream::write_sync(write_iop_t *op) {
+  const byte_t *src = static_cast<const byte_t*>(op->src_);
+  size_t size = op->src_size_;
   for (size_t i = 0; i < size; i++)
     data_.push_back(src[i]);
-  return size;
+  op->bytes_written_ = size;
+  return true;
 }
 
 bool ByteOutStream::flush() {

@@ -15,7 +15,7 @@ public:
   explicit FdStream(int fd) : is_closed_(false), fd_(fd) { }
   virtual ~FdStream();
   virtual bool read_sync(read_iop_t *op);
-  virtual size_t write_bytes(const void *src, size_t size);
+  virtual bool write_sync(write_iop_t *op);
   virtual bool flush();
   virtual bool close();
   virtual naked_file_handle_t to_raw_handle();
@@ -36,8 +36,9 @@ bool FdStream::read_sync(read_iop_t *op) {
   return true;
 }
 
-size_t FdStream::write_bytes(const void *src, size_t size) {
-  return write(fd_, src, size);
+bool FdStream::write_sync(write_iop_t *op) {
+  op->bytes_written_ = write(fd_, op->src_, op->src_size_);
+  return true;
 }
 
 bool FdStream::flush() {

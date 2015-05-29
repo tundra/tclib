@@ -62,7 +62,7 @@ protected:
   friend class Iop;
   friend class ReadIop;
 
-  // Perform the given iop synchronously.
+  // Perform the given read synchronously.
   virtual bool read_sync(read_iop_t *op) = 0;
 };
 
@@ -70,24 +70,31 @@ class OutStream : public out_stream_t, public AbstractStream {
 public:
   virtual ~OutStream() { }
 
-  // Attempt to write 'size' bytes to this stream. Returns the number of bytes
-  // actually written.
-  virtual size_t write_bytes(const void *src, size_t size) = 0;
-
-  // Works just like normal printf, it just writes to this file.
+  // Works just like normal printf but writes to this stream. Returns the number
+  // of bytes written.
   virtual size_t printf(const char *fmt, ...);
 
-  // Works just like vprintf, it just writes to this file.
+  // Works just like vprintf but writes to this stream. Returns the number of
+  // bytes written.
   virtual size_t vprintf(const char *fmt, va_list argp);
 
   // Flushes any buffered writes. Returns true if flushing succeeded.
   virtual bool flush() = 0;
+
+protected:
+  friend class Iop;
+  friend class WriteIop;
+
+  // Perform the given write synchronously.
+  virtual bool write_sync(write_iop_t *op) = 0;
 };
 
 // An io stream that reads data from a block of bytes and ignores writes.
 class ByteInStream : public InStream {
 public:
   ByteInStream(const void *data, size_t size);
+
+protected:
   virtual bool read_sync(read_iop_t *op);
 
 private:
@@ -100,7 +107,6 @@ private:
 class ByteOutStream : public OutStream {
 public:
   ByteOutStream();
-  virtual size_t write_bytes(const void *src, size_t size);
   virtual bool flush();
 
   // Returns the number of bytes written to this stream.
@@ -108,6 +114,9 @@ public:
 
   // Returns the data stored so far in this stream.
   std::vector<byte_t> &data() { return data_; }
+
+protected:
+  virtual bool write_sync(write_iop_t *op);
 
 private:
   std::vector<byte_t> data_;

@@ -68,7 +68,14 @@ typedef struct {
   out_stream_t *out_;
   const void *src_;
   size_t src_size_;
-  size_t written_out_;
+  size_t bytes_written_;
 } write_iop_t;
+
+// Initialize a write operation.
+void write_iop_init(write_iop_t *iop, out_stream_t *out, const void *src,
+    size_t src_size);
+
+// Dispose the given initialized write.
+void write_iop_dispose(write_iop_t *iop);
 
 #endif // _TCLIB_IOP_H

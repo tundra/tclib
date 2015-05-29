@@ -14,7 +14,7 @@ public:
   explicit HandleStream(handle_t handle);
   virtual ~HandleStream();
   virtual bool read_sync(read_iop_t *op);
-  virtual size_t write_bytes(const void *src, size_t size);
+  virtual bool write_sync(write_iop_t *op);
   virtual bool flush();
   virtual bool close();
   virtual naked_file_handle_t to_raw_handle();
@@ -30,7 +30,6 @@ HandleStream::HandleStream(handle_t handle)
   , handle_(handle) {
   ZeroMemory(&overlapped_, sizeof(overlapped_));
 }
-
 
 HandleStream::~HandleStream() {
   close();
@@ -64,15 +63,16 @@ bool HandleStream::read_sync(read_iop_t *op) {
   return true;
 }
 
-size_t HandleStream::write_bytes(const void *src, size_t size) {
-  dword_t written = 0;
+bool HandleStream::write_sync(write_iop_t *op) {
+  dword_t bytes_written = 0;
   WriteFile(
-    handle_,                    // hFile
-    src,                        // lpBuffer
-    static_cast<dword_t>(size), // nNumberOfBytesToWrite
-    &written,                   // lpNumberOfBytesWritten
-    &overlapped_);              // lpOverlapped
-  return written;
+    handle_,                             // hFile
+    op->src_,                            // lpBuffer
+    static_cast<dword_t>(op->src_size_), // nNumberOfBytesToWrite
+    &bytes_written,                      // lpNumberOfBytesWritten
+    &overlapped_);                       // lpOverlapped
+  op->bytes_written_ = bytes_written;
+  return true;
 }
 
 bool HandleStream::flush() {

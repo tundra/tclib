@@ -121,22 +121,30 @@ TEST(stream, byte_in_stream_c) {
 TEST(stream, byte_out_stream) {
   ByteOutStream out;
   byte_t data[4] = {11, 0, 0, 0};
-  ASSERT_EQ(1, out.write_bytes(data, 1));
+  WriteIop iop(&out, data, 1);
+  ASSERT_TRUE(iop.execute());
+  ASSERT_EQ(1, iop.bytes_written());
   ASSERT_EQ(1, out.size());
   data[0] = 10;
   data[1] = 9;
-  ASSERT_EQ(2, out.write_bytes(data, 2));
+  iop.recycle(data, 2);
+  ASSERT_TRUE(iop.execute());
+  ASSERT_EQ(2, iop.bytes_written());
   ASSERT_EQ(3, out.size());
   data[0] = 8;
   data[1] = 7;
   data[2] = 6;
-  ASSERT_EQ(3, out.write_bytes(data, 3));
+  iop.recycle(data, 3);
+  ASSERT_TRUE(iop.execute());
+  ASSERT_EQ(3, iop.bytes_written());
   ASSERT_EQ(6, out.size());
   data[0] = 5;
   data[1] = 4;
   data[2] = 3;
   data[3] = 2;
-  ASSERT_EQ(4, out.write_bytes(data, 4));
+  iop.recycle(data, 4);
+  ASSERT_TRUE(iop.execute());
+  ASSERT_EQ(4, iop.bytes_written());
   ASSERT_EQ(10, out.size());
   for (size_t i = 0; i < 10; i++)
     ASSERT_EQ(11 - i, out.data()[i]);

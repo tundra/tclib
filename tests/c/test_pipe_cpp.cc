@@ -32,16 +32,26 @@ TEST(pipe_cpp, simple) {
 
 static void *do_test_steps(NativeSemaphore *step, OutStream *a, OutStream *b) {
   step->acquire(duration_unlimited());
-  ASSERT_EQ(1, a->write_bytes("1", 1));
+  WriteIop write_a(a, "1", 1);
+  ASSERT_TRUE(write_a.execute());
+  ASSERT_EQ(1, write_a.bytes_written());
   step->acquire(duration_unlimited());
-  ASSERT_EQ(1, b->write_bytes("2", 1));
+  WriteIop write_b(b, "2", 1);
+  ASSERT_TRUE(write_b.execute());
+  ASSERT_EQ(1, write_b.bytes_written());
   step->acquire(duration_unlimited());
-  ASSERT_EQ(1, a->write_bytes("3", 1));
-  ASSERT_EQ(1, b->write_bytes("4", 1));
+  write_a.recycle("3", 1);
+  ASSERT_TRUE(write_a.execute());
+  ASSERT_EQ(1, write_a.bytes_written());
+  write_b.recycle("4", 1);
+  ASSERT_TRUE(write_b.execute());
+  ASSERT_EQ(1, write_b.bytes_written());
   step->acquire(duration_unlimited());
   ASSERT_TRUE(b->close());
   step->acquire(duration_unlimited());
-  ASSERT_EQ(1, a->write_bytes("5", 1));
+  write_a.recycle("5", 1);
+  ASSERT_TRUE(write_a.execute());
+  ASSERT_EQ(1, write_a.bytes_written());
   step->acquire(duration_unlimited());
   ASSERT_TRUE(a->close());
   return NULL;

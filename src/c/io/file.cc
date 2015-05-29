@@ -45,7 +45,7 @@ public:
   explicit StdioOpenFile(FILE *file) : file_(file) { }
   virtual ~StdioOpenFile();
   virtual bool read_sync(read_iop_t *op);
-  virtual size_t write_bytes(const void *src, size_t size);
+  virtual bool write_sync(write_iop_t *op);
   virtual bool flush();
   virtual bool close();
 
@@ -71,8 +71,9 @@ bool StdioOpenFile::read_sync(read_iop_t *op) {
   return true;
 }
 
-size_t StdioOpenFile::write_bytes(const void *src, size_t size) {
-  return fwrite(src, 1, size, file_);
+bool StdioOpenFile::write_sync(write_iop_t *op) {
+  op->bytes_written_ = fwrite(op->src_, 1, op->src_size_, file_);
+  return true;
 }
 
 bool StdioOpenFile::flush() {

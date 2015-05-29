@@ -57,6 +57,17 @@ bool read_iop_execute(read_iop_t *iop) {
   return static_cast<ReadIop*>(iop)->execute();
 }
 
+void write_iop_init(write_iop_t *iop, out_stream_t *out, const void *src,
+    size_t src_size) {
+  new (static_cast<WriteIop*>(iop)) WriteIop(static_cast<OutStream*>(out), src,
+      src_size);
+}
+
+void write_iop_dispose(write_iop_t *iop) {
+  static_cast<WriteIop*>(iop)->~WriteIop();
+}
+
+
 IopGroup::IopGroup() { }
 
 IopGroup::~IopGroup() { }
@@ -95,12 +106,8 @@ void Iop::mark_complete(bool has_succeeded) {
 
 ReadIop::ReadIop(InStream *in, void *dest, size_t dest_size)
   : Iop(ioRead) {
-  recycle(dest, dest_size);
   in_ = in;
-  dest_ = dest;
-  dest_size_ = dest_size;
-  at_eof_ = false;
-  bytes_read_ = 0;
+  recycle(dest, dest_size);
 }
 
 bool ReadIop::execute() {
@@ -120,6 +127,26 @@ void ReadIop::recycle(void *dest, size_t dest_size) {
 
 void ReadIop::recycle() {
   recycle(as_read()->dest_, as_read()->dest_size_);
+}
+
+WriteIop::WriteIop(OutStream *out, const void *src, size_t src_size)
+  : Iop(ioWrite) {
+  out_ = out;
+  recycle(src, src_size);
+}
+
+bool WriteIop::execute() {
+  CHECK_FALSE("re-execution", is_complete());
+  bool result = as_out()->write_sync(this);
+  mark_complete(result);
+  return result;
+}
+
+void WriteIop::recycle(const void *src, size_t src_size) {
+  Iop::recycle();
+  src_ = src;
+  src_size_ = src_size;
+  bytes_written_ = 0;
 }
 
 #ifdef IS_GCC

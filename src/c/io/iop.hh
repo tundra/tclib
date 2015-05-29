@@ -138,9 +138,12 @@ protected:
 };
 
 // A write operation.
-class WriteIop : public Iop {
+class WriteIop : public Iop, public write_iop_t {
 public:
   WriteIop(OutStream *out, const void *src, size_t src_size);
+
+  // Perform this write operation synchronously.
+  bool execute();
 
   // Reuse this iop struct to perform another write of the given data to the
   // same output stream. This op must have completed before this can be
@@ -149,7 +152,7 @@ public:
   void recycle(const void *src, size_t src_size);
 
   // Returns the number of bytes written.
-  size_t written() { return as_write()->written_out_; }
+  size_t bytes_written() { return as_write()->bytes_written_; }
 };
 
 // A read operation.
