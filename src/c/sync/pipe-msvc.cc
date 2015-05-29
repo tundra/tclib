@@ -65,14 +65,23 @@ bool HandleStream::read_sync(read_iop_t *op) {
 
 bool HandleStream::write_sync(write_iop_t *op) {
   dword_t bytes_written = 0;
-  WriteFile(
+  bool result = WriteFile(
     handle_,                             // hFile
     op->src_,                            // lpBuffer
     static_cast<dword_t>(op->src_size_), // nNumberOfBytesToWrite
     &bytes_written,                      // lpNumberOfBytesWritten
     &overlapped_);                       // lpOverlapped
+  if (!result) {
+    if (GetLastError() == ERROR_IO_PENDING) {
+      result = GetOverlappedResult(
+          handle_,        // hFile
+          &overlapped_,   // lpOverlapped
+          &bytes_written, // lpNumberOfBytesTransferred
+          true);          // bWait
+    }
+  }
   op->bytes_written_ = bytes_written;
-  return true;
+  return result;
 }
 
 bool HandleStream::flush() {

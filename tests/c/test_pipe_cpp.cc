@@ -57,7 +57,7 @@ static void *do_test_steps(NativeSemaphore *step, OutStream *a, OutStream *b) {
   return NULL;
 }
 
-TEST(pipe_cpp, multiplex) {
+TEST(pipe_cpp, simple_multiplex) {
   NativePipe a_pipe;
   ASSERT_TRUE(a_pipe.open(NativePipe::pfDefault));
   InStream *a = a_pipe.in();
@@ -148,4 +148,72 @@ TEST(pipe_cpp, multiplex) {
   ASSERT_TRUE(read_a.at_eof());
 
   other.join();
+}
+
+#define kPipeCount 8
+#define kValueCount 16384
+
+struct Atom {
+  int64_t stream;
+  int64_t value;
+};
+
+static void *sync_write_streams(NativePipe *pipes) {
+  for (int iv = 0; iv < kValueCount; iv++) {
+    for (int is = 0; is < kPipeCount; is++) {
+      Atom atom = {is, iv};
+      WriteIop iop(pipes[is].out(), &atom, sizeof(Atom));
+      ASSERT_TRUE(iop.execute());
+      ASSERT_EQ(sizeof(Atom), iop.bytes_written());
+    }
+  }
+  for (size_t is = 0; is < kPipeCount; is++)
+    ASSERT_TRUE(pipes[is].out()->close());
+  return NULL;
+}
+
+static void group_read_streams(NativePipe *pipes) {
+  Atom atoms[kPipeCount];
+  ReadIop *iops[kPipeCount];
+  size_t counts[kPipeCount];
+  IopGroup group;
+  for (size_t is = 0; is < kPipeCount; is++) {
+    counts[is] = 0;
+    iops[is] = new ReadIop(pipes[is].in(), atoms + is, sizeof(Atom));
+    group.schedule(iops[is]);
+  }
+  int live_count = kPipeCount;
+  int read_count = 0;
+  while (live_count > 0) {
+    size_t index = 0;
+    ASSERT_TRUE(group.wait_for_next(&index));
+    ReadIop *iop = iops[index];
+    if (iop->at_eof()) {
+      ASSERT_EQ(kValueCount, counts[index]);
+      live_count--;
+    } else {
+      read_count++;
+      ASSERT_EQ(sizeof(Atom), iop->bytes_read());
+      Atom *atom = &atoms[index];
+      ASSERT_EQ(index, atom->stream);
+      ASSERT_EQ(counts[index], atom->value);
+      atom->stream = -1;
+      atom->value = 0;
+      counts[index]++;
+      iop->recycle();
+    }
+  }
+  ASSERT_EQ(kPipeCount * kValueCount, read_count);
+  for (size_t is = 0; is < kPipeCount; is++)
+    delete iops[is];
+}
+
+TEST(pipe_cpp, sync_write_group_read) {
+  NativePipe pipes[kPipeCount];
+  for (size_t i = 0; i < kPipeCount; i++)
+    ASSERT_TRUE(pipes[i].open(NativePipe::pfDefault));
+  tclib::NativeThread thread(new_callback(sync_write_streams, pipes));
+  ASSERT_TRUE(thread.start());
+  group_read_streams(pipes);
+  ASSERT_PTREQ(NULL, thread.join());
 }
