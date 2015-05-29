@@ -175,11 +175,11 @@ static void *sync_write_streams(NativePipe *pipes) {
 static void group_read_streams(NativePipe *pipes) {
   Atom atoms[kPipeCount];
   ReadIop *iops[kPipeCount];
-  size_t counts[kPipeCount];
+  size_t next_value[kPipeCount];
   IopGroup group;
   for (size_t is = 0; is < kPipeCount; is++) {
-    counts[is] = 0;
-    iops[is] = new ReadIop(pipes[is].in(), atoms + is, sizeof(Atom));
+    next_value[is] = 0;
+    iops[is] = new ReadIop(pipes[is].in(), &atoms[is], sizeof(Atom));
     group.schedule(iops[is]);
   }
   int live_count = kPipeCount;
@@ -189,17 +189,17 @@ static void group_read_streams(NativePipe *pipes) {
     ASSERT_TRUE(group.wait_for_next(&index));
     ReadIop *iop = iops[index];
     if (iop->at_eof()) {
-      ASSERT_EQ(kValueCount, counts[index]);
+      ASSERT_EQ(kValueCount, next_value[index]);
       live_count--;
     } else {
       read_count++;
       ASSERT_EQ(sizeof(Atom), iop->bytes_read());
       Atom *atom = &atoms[index];
       ASSERT_EQ(index, atom->stream);
-      ASSERT_EQ(counts[index], atom->value);
+      ASSERT_EQ(next_value[index], atom->value);
+      next_value[index]++;
       atom->stream = -1;
       atom->value = 0;
-      counts[index]++;
       iop->recycle();
     }
   }
