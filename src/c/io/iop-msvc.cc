@@ -11,12 +11,11 @@ public:
   iop_group_state_t();
   ~iop_group_state_t();
 
-  OVERLAPPED *overlapped() { return &overlapped_; }
-
-  handle_t event() { return event_; }
-
+  // Resets the group state to make it ready to reuse.
   void recycle();
 
+  OVERLAPPED *overlapped() { return &overlapped_; }
+  handle_t event() { return event_; }
   bool has_been_scheduled_;
 
 private:
@@ -78,12 +77,14 @@ Iop::ensure_scheduled_outcome_t Iop::ensure_scheduled() {
   if (group_state->has_been_scheduled_)
     // This iop is already scheduled so don't do it again.
     return eoScheduled;
+
   handle_t handle = stream()->to_raw_handle();
   if (handle == AbstractStream::kNullNakedFileHandle) {
     WARN("Multiplexing invalid stream");
     mark_complete(false);
     return eoFailedImmediately;
   }
+
   // The op is not complete and it has not already been scheduled. Schedule it.
   dword_t bytes_read = 0;
   OVERLAPPED *overlapped = group_state->overlapped();
@@ -94,6 +95,7 @@ Iop::ensure_scheduled_outcome_t Iop::ensure_scheduled() {
       static_cast<dword_t>(read_iop->dest_size_), // nNumberOfBytesToRead
       &bytes_read,                                // lpNumberOfBytesRead
       overlapped);                                // lpOverlapped
+
   if (result) {
     // Read may succeed immediately in which case we're done. If the read does
     // succeed it will have read something, if it can't read the call will fail
@@ -169,5 +171,6 @@ bool IopGroup::wait_for_next(size_t *index_out) {
       return true;
     }
   }
+  UNREACHABLE("event matched no iops");
   return false;
 }

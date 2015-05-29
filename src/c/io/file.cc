@@ -66,7 +66,7 @@ bool StdioOpenFile::close() {
 
 bool StdioOpenFile::read_sync(read_iop_t *op) {
   size_t bytes_read = fread(op->dest_, 1, op->dest_size_, file_);
-  bool at_eof = (bytes_read == 0) && (feof(file_) != 0);
+  bool at_eof = (bytes_read == 0) && feof(file_);
   read_iop_deliver(op, bytes_read, at_eof);
   return true;
 }
