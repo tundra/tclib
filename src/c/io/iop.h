@@ -7,7 +7,9 @@
 #include "c/stdc.h"
 #include "io/stream.h"
 
-struct iop_group_state_t;
+// State used when issuing iops as a group. The actual contents of this is
+// platform dependent.
+typedef struct iop_group_state_t iop_group_state_t;
 
 // Marker indicating the type of an iop.
 typedef enum {
@@ -20,20 +22,23 @@ typedef struct {
   bool is_complete_;
   bool has_succeeded_;
   iop_group_state_t *group_state_;
-} iop_t;
+} iop_header_t;
 
 // Data associated with a read operation.
 typedef struct {
-  iop_t iop_;
+  iop_header_t header_;
   in_stream_t *in_;
   void *dest_;
   size_t dest_size_;
-  size_t read_out_;
+  size_t bytes_read_;
   bool at_eof_;
 } read_iop_t;
 
 // Initialize a read operation.
 void read_iop_init(read_iop_t *iop, in_stream_t *in, void *dest, size_t dest_size);
+
+// Deliver the result of a read to a read iop.
+void read_iop_deliver(read_iop_t *iop, size_t bytes_read, bool at_eof);
 
 // Dispose the given initialized read.
 void read_iop_dispose(read_iop_t *iop);
@@ -52,13 +57,14 @@ void read_iop_recycle_same_state(read_iop_t *iop);
 bool read_iop_at_eof(read_iop_t *iop);
 
 // Returns the number of bytes read.
-size_t read_iop_read_size(read_iop_t *iop);
+size_t read_iop_bytes_read(read_iop_t *iop);
 
 // Perform this read operation synchronously.
-bool read_iop_exec_sync(read_iop_t *iop);
+bool read_iop_execute(read_iop_t *iop);
 
+// Data associated with a write operation.
 typedef struct {
-  iop_t iop_;
+  iop_header_t header_;
   out_stream_t *out_;
   const void *src_;
   size_t src_size_;

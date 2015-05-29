@@ -44,7 +44,7 @@ class OutStream;
 //      using the recycle method. This adds it back to the set wait will wait
 //      for. Typically if you wait on multiple reads, for instance, you want all
 //      the reads to stay active so as soon as one has succeeded you would
-//      recycle it to reactivate, it unless it reaches EOF.
+//      recycle it to reactivate it unless it reaches EOF.
 class IopGroup {
 public:
   IopGroup();
@@ -73,20 +73,19 @@ private:
 // safely be cast to the base Iop type, all the information is stored there.
 class Iop {
 public:
-  Iop(iop_type_t type);
-
   // Has this iop completed successfully. That is, this will return false either
   // if the op is not yet complete or it is complete but failed.
-  bool has_succeeded() { return iop()->has_succeeded_; }
+  bool has_succeeded() { return header()->has_succeeded_; }
 
   // Has this op completed, successfully or otherwise?
-  bool is_complete() { return iop()->is_complete_; }
+  bool is_complete() { return header()->is_complete_; }
 
   // Is this a read operation?
-  bool is_read() { return iop()->type_ == ioRead; }
+  bool is_read() { return header()->type_ == ioRead; }
 
 protected:
   friend class IopGroup;
+  Iop(iop_type_t type);
   ~Iop();
 
   // Marks this iop as having completed.
@@ -98,14 +97,15 @@ protected:
   // Hook platforms can use to do platform-specific recycling.
   void platform_recycle();
 
-  // Returns this iop viewed as a C iop.
-  iop_t *iop() { return reinterpret_cast<iop_t*>(this); }
+  // Returns this iop viewed as a C iop. This only works because of the way
+  // the iop structs are arranged so be careful with changing those.
+  iop_header_t *header() { return reinterpret_cast<iop_header_t*>(this); }
 
   // Returns this iop's group state, creating it if necessary.
   iop_group_state_t *get_or_create_group_state();
 
   // Returns this iop's group state if it has one, otherwise NULL.
-  iop_group_state_t *peek_group_state() { return iop()->group_state_; }
+  iop_group_state_t *peek_group_state() { return header()->group_state_; }
 
   // Returns this op viewed as a write op.
   write_iop_t *as_write();
@@ -113,10 +113,10 @@ protected:
   // Returns this op viewed as a read op.
   read_iop_t *as_read();
 
-  // Returns the out stream for this write op.
+  // Returns the out stream for this op, which must be a write.
   OutStream *as_out();
 
-  // Returns the in stream for this read op.
+  // Returns the in stream for this op, which must be a read.
   InStream *as_in();
 
   // Returns the stream used by this op, independent of type.
@@ -124,6 +124,7 @@ protected:
 
   // What happened when we ensured this iop was scheduled?
   typedef enum {
+    // The op is currently scheduled to be performed.
     eoScheduled,
     eoFailedImmediately,
     eoCompletedImmediately
@@ -132,8 +133,7 @@ protected:
   // Schedules this iop if it hasn't been already. Not used on all platforms.
   ensure_scheduled_outcome_t ensure_scheduled();
 
-  // Performs this iop which is assumed to be able to complete without blocking.
-  // Not used on all platforms.
+  // Perform this iop which has already been scheduled by an iop group.
   bool finish_nonblocking();
 };
 
@@ -158,7 +158,7 @@ public:
   ReadIop(InStream *in, void *dest, size_t dest_size);
 
   // Perform this read operation synchronously.
-  bool exec_sync();
+  bool execute();
 
   // Reuse this iop struct to perform another read into the given buffer from
   // the same input stream. This op must have completed before this can be
@@ -171,7 +171,7 @@ public:
   void recycle();
 
   // Returns the number of bytes read.
-  size_t read_size() { return read_out_; }
+  size_t bytes_read() { return bytes_read_; }
 
   // Did this read hit the end of the input?
   bool at_eof() { return at_eof_; }

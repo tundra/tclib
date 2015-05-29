@@ -10,10 +10,16 @@ struct iop_group_state_t {
 public:
   iop_group_state_t();
   ~iop_group_state_t();
+
   OVERLAPPED *overlapped() { return &overlapped_; }
+
+  handle_t event() { return event_; }
+
   void recycle();
 
   bool has_been_scheduled_;
+
+private:
   handle_t event_;
   OVERLAPPED overlapped_;
 };
@@ -40,7 +46,7 @@ void iop_group_state_t::recycle() {
 
 iop_group_state_t *Iop::get_or_create_group_state() {
   if (peek_group_state() == NULL)
-    iop()->group_state_ = new iop_group_state_t();
+    header()->group_state_ = new iop_group_state_t();
   return peek_group_state();
 }
 
@@ -51,65 +57,77 @@ void Iop::platform_recycle() {
 }
 
 bool Iop::finish_nonblocking() {
-  handle_t handle = stream()->to_raw_handle();
   iop_group_state_t *group_state = peek_group_state();
+  CHECK_TRUE("finishing non-scheduled", group_state->has_been_scheduled_);
+  handle_t handle = stream()->to_raw_handle();
   OVERLAPPED *overlapped = group_state->overlapped();
-  dword_t read = 0;
+  dword_t bytes_read = 0;
   bool result = GetOverlappedResult(
-      handle,     // hFile
-      overlapped, // lpOverlapped
-      &read,      // lpNumberOfBytesTransferred
-      false);     // bWait
-  as_read()->read_out_ = read;
-  if (!result && read == 0)
-    as_read()->at_eof_ = true;
+      handle,      // hFile
+      overlapped,  // lpOverlapped
+      &bytes_read, // lpNumberOfBytesTransferred
+      false);      // bWait
+  bool at_eof = !result && (bytes_read == 0);
+  read_iop_deliver(as_read(), bytes_read, at_eof);
   return true;
 }
 
 Iop::ensure_scheduled_outcome_t Iop::ensure_scheduled() {
   CHECK_FALSE("scheduling complete iop", is_complete());
   iop_group_state_t *group_state = get_or_create_group_state();
-  if (group_state->has_been_scheduled_) {
+  if (group_state->has_been_scheduled_)
     // This iop is already scheduled so don't do it again.
     return eoScheduled;
-  }
   handle_t handle = stream()->to_raw_handle();
   if (handle == AbstractStream::kNullNakedFileHandle) {
     WARN("Multiplexing invalid stream");
     mark_complete(false);
     return eoFailedImmediately;
   }
-  dword_t read = 0;
+  // The op is not complete and it has not already been scheduled. Schedule it.
+  dword_t bytes_read = 0;
   OVERLAPPED *overlapped = group_state->overlapped();
   read_iop_t *read_iop = as_read();
   bool result = ReadFile(
       handle,                                     // hFile
       read_iop->dest_,                            // lpBuffer
       static_cast<dword_t>(read_iop->dest_size_), // nNumberOfBytesToRead
-      &read,                                      // lpNumberOfBytesRead
+      &bytes_read,                                // lpNumberOfBytesRead
       overlapped);                                // lpOverlapped
   if (result) {
-    // The read call succeeded immediately, we didn't even have to wait.
-    read_iop->read_out_ = read;
+    // Read may succeed immediately in which case we're done. If the read does
+    // succeed it will have read something, if it can't read the call will fail
+    // or block. That's the assumption.
+    CHECK_TRUE("successful empty read", bytes_read > 0);
+    read_iop_deliver(read_iop, bytes_read, false);
     mark_complete(true);
     return eoCompletedImmediately;
+  } else if (GetLastError() == ERROR_IO_PENDING) {
+    // The read call succeeded in scheduling the read but we have to wait for
+    // it to complete.
+    group_state->has_been_scheduled_ = true;
+    return eoScheduled;
   } else {
-    int err = GetLastError();
-    if (err == ERROR_IO_PENDING) {
-      // The read call succeeded in scheduling the read but we have to wait for
-      // it to complete.
-      group_state->has_been_scheduled_ = true;
-      return eoScheduled;
-    } else {
-      read_iop->at_eof_ = true;
-      mark_complete(true);
-      // Scheduling went wrong for some reason; bail.
-      return eoCompletedImmediately;
-    }
+    read_iop_deliver(read_iop, bytes_read, true);
+    mark_complete(true);
+    // Scheduling went wrong for some reason; bail.
+    return eoCompletedImmediately;
   }
 }
 
 bool IopGroup::wait_for_next(size_t *index_out) {
+  // Okay, so this is a little bit involved. It works like this.
+  //
+  // In the current set of ops there will be some that have already completed
+  // and some that have been started but not yet completed. We first scan
+  // through and start any ones that haven't been started. It may happen that
+  // starting one causes it to complete immediately, in which case we're done.
+  // At that point we may have started a number of the others but won't ever
+  // have gotten to the point of waiting for them and that's fine.
+  //
+  // If we get past this point none of the ops will have completed immediately
+  // and any incomplete ones will have been started.
+
   size_t count = ops_.size();
   CHECK_TRUE("multiplexing too much", count <= MAXIMUM_WAIT_OBJECTS);
   std::vector<handle_t> events;
@@ -125,7 +143,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
     } else if (outcome == Iop::eoFailedImmediately) {
       return false;
     } else {
-      events.push_back(iop->peek_group_state()->event_);
+      events.push_back(iop->peek_group_state()->event());
     }
   }
   dword_t result = WaitForMultipleObjects(
@@ -144,7 +162,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
     Iop *iop = ops_[i];
     if (iop->is_complete())
       continue;
-    if (iop->peek_group_state()->event_ == event) {
+    if (event == iop->peek_group_state()->event()) {
       *index_out = i;
       bool result = iop->finish_nonblocking();
       iop->mark_complete(result);

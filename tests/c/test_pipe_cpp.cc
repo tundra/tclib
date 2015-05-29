@@ -19,14 +19,14 @@ TEST(pipe_cpp, simple) {
   memset(buf, 0, 256);
   ReadIop read_iop(pipe.in(), buf, 256);
   ASSERT_FALSE(read_iop.at_eof());
-  ASSERT_TRUE(read_iop.exec_sync());
-  ASSERT_EQ(12, read_iop.read_size());
+  ASSERT_TRUE(read_iop.execute());
+  ASSERT_EQ(12, read_iop.bytes_read());
   ASSERT_C_STREQ("Hello, pipe!", buf);
   ASSERT_FALSE(read_iop.at_eof());
   ASSERT_TRUE(pipe.out()->close());
   read_iop.recycle();
-  ASSERT_TRUE(read_iop.exec_sync());
-  ASSERT_EQ(0, read_iop.read_size());
+  ASSERT_TRUE(read_iop.execute());
+  ASSERT_EQ(0, read_iop.bytes_read());
   ASSERT_TRUE(read_iop.at_eof());
 }
 
@@ -77,7 +77,7 @@ TEST(pipe_cpp, multiplex) {
   ASSERT_TRUE(read_a_and_b.wait_for_next(&index));
   ASSERT_EQ(index, 0);
   ASSERT_TRUE(read_a.has_succeeded());
-  ASSERT_EQ(1, read_a.read_size());
+  ASSERT_EQ(1, read_a.bytes_read());
   ASSERT_EQ('1', a_buf[0]);
   read_a.recycle();
 
@@ -87,7 +87,7 @@ TEST(pipe_cpp, multiplex) {
   ASSERT_TRUE(read_a_and_b.wait_for_next(&index));
   ASSERT_EQ(index, 1);
   ASSERT_TRUE(read_b.has_succeeded());
-  ASSERT_EQ(1, read_b.read_size());
+  ASSERT_EQ(1, read_b.bytes_read());
   ASSERT_EQ('2', b_buf[0]);
   read_b.recycle();
 
@@ -101,12 +101,12 @@ TEST(pipe_cpp, multiplex) {
     ASSERT_TRUE(index <= 1);
     if (index == 0) {
       ASSERT_TRUE(read_a.has_succeeded());
-      ASSERT_EQ(1, read_a.read_size());
+      ASSERT_EQ(1, read_a.bytes_read());
       ASSERT_EQ('3', a_buf[0]);
       read_a.recycle();
     } else {
       ASSERT_TRUE(read_b.has_succeeded());
-      ASSERT_EQ(1, read_b.read_size());
+      ASSERT_EQ(1, read_b.bytes_read());
       ASSERT_EQ('4', b_buf[0]);
       read_b.recycle();
     }
@@ -125,7 +125,7 @@ TEST(pipe_cpp, multiplex) {
   ASSERT_TRUE(read_a_and_b.wait_for_next(&index));
   ASSERT_EQ(index, 0);
   ASSERT_TRUE(read_a.has_succeeded());
-  ASSERT_EQ(1, read_a.read_size());
+  ASSERT_EQ(1, read_a.bytes_read());
   ASSERT_EQ('5', a_buf[0]);
   read_a.recycle();
 

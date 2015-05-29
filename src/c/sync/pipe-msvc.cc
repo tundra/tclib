@@ -14,22 +14,19 @@ public:
   explicit HandleStream(handle_t handle);
   virtual ~HandleStream();
   virtual bool read_sync(read_iop_t *op);
-  virtual bool at_eof();
   virtual size_t write_bytes(const void *src, size_t size);
   virtual bool flush();
   virtual bool close();
   virtual naked_file_handle_t to_raw_handle();
 
 private:
-  bool at_eof_;
   bool is_closed_;
   handle_t handle_;
   OVERLAPPED overlapped_;
 };
 
 HandleStream::HandleStream(handle_t handle)
-  : at_eof_(false)
-  , is_closed_(false)
+  : is_closed_(false)
   , handle_(handle) {
   ZeroMemory(&overlapped_, sizeof(overlapped_));
 }
@@ -40,25 +37,30 @@ HandleStream::~HandleStream() {
 }
 
 bool HandleStream::read_sync(read_iop_t *op) {
-  dword_t read = 0;
+  dword_t bytes_read = 0;
+  // Because this handle can be read both sync and async we make it overlapped,
+  // and then we have to always provide an overlapped struct when reading even
+  // when it's a sync read.
   bool result = ReadFile(
-      handle_,                         // hFile
+      handle_,                              // hFile
       op->dest_,                            // lpBuffer
       static_cast<dword_t>(op->dest_size_), // nNumberOfBytesToRead
-      &read,                           // lpNumberOfBytesRead
-      &overlapped_);                   // lpOverlapped
+      &bytes_read,                          // lpNumberOfBytesRead
+      &overlapped_);                        // lpOverlapped
+  bool at_eof = false;
   if (!result) {
     if (GetLastError() == ERROR_IO_PENDING) {
-      result = GetOverlappedResult(handle_, &overlapped_, &read, true);
+      result = GetOverlappedResult(
+          handle_,      // hFile
+          &overlapped_, // lpOverlapped
+          &bytes_read,  // lpNumberOfBytesTransferred
+          true);        // bWait
     } else {
-      op->at_eof_ = true;
+      at_eof = true;
     }
   }
-  op->read_out_ = read;
-  return true;
-}
-
-bool HandleStream::at_eof() {
+  at_eof = at_eof || (!result && (bytes_read == 0));
+  read_iop_deliver(op, bytes_read, at_eof);
   return true;
 }
 
@@ -87,7 +89,6 @@ bool HandleStream::close() {
 naked_file_handle_t HandleStream::to_raw_handle() {
   return handle_;
 }
-
 
 static bool create_overlapped_pipe(handle_t *read_pipe, handle_t *write_pipe,
     SECURITY_ATTRIBUTES *pipe_attributes, dword_t size) {

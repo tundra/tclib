@@ -52,14 +52,11 @@ public:
   static naked_file_handle_t kNullNakedFileHandle;
 };
 
+// An input stream is a source from which blocks of bytes can be read. You don't
+// read them directly from the stream though, you use ReadOps.
 class InStream : public in_stream_t, public AbstractStream {
 public:
   virtual ~InStream() { }
-
-  // Attempt to read 'dest_size' bytes from this stream, storing the data at the
-  // given destination. If successful stores he number of bytes actually read
-  // in the out parameter and returns true, otherwise returns false.
-  virtual bool read_bytes(void *dest, size_t dest_size, size_t *read_out);
 
 protected:
   friend class Iop;
@@ -92,7 +89,6 @@ class ByteInStream : public InStream {
 public:
   ByteInStream(const void *data, size_t size);
   virtual bool read_sync(read_iop_t *op);
-  virtual bool at_eof();
 
 private:
   const byte_t *data_;

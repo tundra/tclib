@@ -116,7 +116,7 @@ void RecordingProcess::complete() {
       buf = stderr_buf;
       strbuf = &stderr_buf_;
     }
-    string_buffer_append(strbuf, new_string(buf, iop->read_size()));
+    string_buffer_append(strbuf, new_string(buf, iop->bytes_read()));
     if (iop->at_eof()) {
       live_count--;
     } else {

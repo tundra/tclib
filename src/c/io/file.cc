@@ -46,9 +46,9 @@ public:
   virtual ~StdioOpenFile();
   virtual bool read_sync(read_iop_t *op);
   virtual size_t write_bytes(const void *src, size_t size);
-  virtual bool at_eof();
   virtual bool flush();
   virtual bool close();
+
 private:
   FILE *file_;
 };
@@ -65,18 +65,14 @@ bool StdioOpenFile::close() {
 }
 
 bool StdioOpenFile::read_sync(read_iop_t *op) {
-  size_t result = fread(op->dest_, 1, op->dest_size_, file_);
-  op->read_out_ = result;
-  op->at_eof_ = (result == 0) && (feof(file_) != 0);
+  size_t bytes_read = fread(op->dest_, 1, op->dest_size_, file_);
+  bool at_eof = (bytes_read == 0) && (feof(file_) != 0);
+  read_iop_deliver(op, bytes_read, at_eof);
   return true;
 }
 
 size_t StdioOpenFile::write_bytes(const void *src, size_t size) {
   return fwrite(src, 1, size, file_);
-}
-
-bool StdioOpenFile::at_eof() {
-  return true;
 }
 
 bool StdioOpenFile::flush() {

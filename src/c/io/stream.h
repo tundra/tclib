@@ -18,11 +18,6 @@ typedef struct in_stream_t in_stream_t;
 // A handle for a stream to which bytes can be written.
 typedef struct out_stream_t out_stream_t;
 
-// Attempt to read 'size' bytes from this stream, storing the data at the given
-// destination. Returns the number of bytes actually read.
-bool in_stream_read_bytes(in_stream_t *file, void *dest, size_t dest_size,
-    size_t *read_out);
-
 // Works just like normal printf, it just writes to this file.
 size_t out_stream_printf(out_stream_t *file, const char *fmt, ...);
 

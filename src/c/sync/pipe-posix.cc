@@ -15,7 +15,6 @@ public:
   explicit FdStream(int fd) : is_closed_(false), fd_(fd) { }
   virtual ~FdStream();
   virtual bool read_sync(read_iop_t *op);
-  virtual bool at_eof();
   virtual size_t write_bytes(const void *src, size_t size);
   virtual bool flush();
   virtual bool close();
@@ -31,16 +30,9 @@ FdStream::~FdStream() {
 }
 
 bool FdStream::read_sync(read_iop_t *op) {
-  ssize_t count = read(fd_, op->dest_, op->dest_size_);
-  if (count == 0) {
-    int e = errno;
-    op->at_eof_ = !((e == EINTR) || (e == EAGAIN));
-  }
-  op->read_out_ = count;
-  return true;
-}
-
-bool FdStream::at_eof() {
+  ssize_t bytes_read = read(fd_, op->dest_, op->dest_size_);
+  bool at_eof = (bytes_read == 0) && !((errno == EINTR) || (errno == EAGAIN));
+  read_iop_deliver(op, bytes_read, at_eof);
   return true;
 }
 

@@ -44,7 +44,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
     }
     if (fd > high_fd_mark)
       high_fd_mark = fd;
-    fd_set *set = (iop->is_read()) ? &reads : &writes;
+    fd_set *set = iop->is_read() ? &reads : &writes;
     FD_SET(fd, set);
   }
   if (select(high_fd_mark + 1, &reads, &writes, NULL, NULL) == -1)
@@ -56,7 +56,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
       continue;
     AbstractStream *stream = iop->stream();
     naked_file_handle_t fd = stream->to_raw_handle();
-    fd_set *set = (iop->is_read()) ? &reads : &writes;
+    fd_set *set = iop->is_read() ? &reads : &writes;
     if (FD_ISSET(fd, set)) {
       *index_out = i;
       bool result = iop->finish_nonblocking();

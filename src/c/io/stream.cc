@@ -23,18 +23,6 @@ naked_file_handle_t AbstractStream::to_raw_handle() {
   return kNullNakedFileHandle;
 }
 
-bool InStream::read_bytes(void *dest, size_t dest_size, size_t *read_out) {
-  read_iop_t read_iop;
-  read_iop_init(&read_iop, this, dest, dest_size);
-  if (!read_sync(&read_iop)) {
-    return false;
-  } else {
-    *read_out = read_iop.read_out_;
-    return true;
-  }
-}
-
-
 size_t OutStream::printf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
@@ -67,11 +55,6 @@ bool out_stream_flush(out_stream_t *file) {
   return static_cast<OutStream*>(file)->flush();
 }
 
-bool in_stream_read_bytes(in_stream_t *file, void *dest, size_t dest_size,
-    size_t *read_out) {
-  return static_cast<InStream*>(file)->read_bytes(dest, dest_size, read_out);
-}
-
 size_t out_stream_vprintf(out_stream_t *file, const char *fmt, va_list argp) {
   va_list next;
   va_copy(next, argp);
@@ -98,13 +81,8 @@ bool ByteInStream::read_sync(read_iop_t *iop) {
   size_t block = (iop->dest_size_ > remaining) ? remaining : iop->dest_size_;
   memcpy(iop->dest_, data_ + cursor_, block);
   cursor_ += block;
-  iop->read_out_ = block;
-  iop->at_eof_ = (cursor_ == size_);
+  read_iop_deliver(iop, block, cursor_ == size_);
   return true;
-}
-
-bool ByteInStream::at_eof() {
-  return false;
 }
 
 in_stream_t *byte_in_stream_open(const void *data, size_t size) {

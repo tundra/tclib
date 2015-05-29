@@ -15,14 +15,10 @@ NativePipe::NativePipe()
 }
 
 NativePipe::~NativePipe() {
-  if (in_ != NULL) {
-    delete in_;
-    in_ = NULL;
-  }
-  if (out_ != NULL) {
-    delete out_;
-    out_ = NULL;
-  }
+  delete in_;
+  in_ = NULL;
+  delete out_;
+  out_ = NULL;
 }
 
 #ifdef IS_GCC

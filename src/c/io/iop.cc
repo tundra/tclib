@@ -11,15 +11,21 @@ END_C_INCLUDES
 
 using namespace tclib;
 
+// Deliver the result of a read to a read iop.
+void read_iop_deliver(read_iop_t *iop, size_t bytes_read, bool at_eof) {
+  iop->bytes_read_ = bytes_read;
+  iop->at_eof_ = at_eof;
+}
+
 Iop::Iop(iop_type_t type) {
-  iop()->type_ = type;
-  iop()->group_state_ = NULL;
+  header()->type_ = type;
+  header()->group_state_ = NULL;
   recycle();
 }
 
 void Iop::recycle() {
-  iop()->is_complete_ = false;
-  iop()->has_succeeded_ = false;
+  header()->is_complete_ = false;
+  header()->has_succeeded_ = false;
   platform_recycle();
 }
 
@@ -43,12 +49,12 @@ bool read_iop_at_eof(read_iop_t *iop) {
   return static_cast<ReadIop*>(iop)->at_eof();
 }
 
-size_t read_iop_read_size(read_iop_t *iop) {
-  return static_cast<ReadIop*>(iop)->read_size();
+size_t read_iop_bytes_read(read_iop_t *iop) {
+  return static_cast<ReadIop*>(iop)->bytes_read();
 }
 
-bool read_iop_exec_sync(read_iop_t *iop) {
-  return static_cast<ReadIop*>(iop)->exec_sync();
+bool read_iop_execute(read_iop_t *iop) {
+  return static_cast<ReadIop*>(iop)->execute();
 }
 
 IopGroup::IopGroup() { }
@@ -82,9 +88,9 @@ AbstractStream *Iop::stream() {
 }
 
 void Iop::mark_complete(bool has_succeeded) {
-  CHECK_FALSE("already complete", iop()->is_complete_);
-  iop()->is_complete_ = true;
-  iop()->has_succeeded_ = has_succeeded;
+  CHECK_FALSE("already complete", header()->is_complete_);
+  header()->is_complete_ = true;
+  header()->has_succeeded_ = has_succeeded;
 }
 
 ReadIop::ReadIop(InStream *in, void *dest, size_t dest_size)
@@ -94,10 +100,11 @@ ReadIop::ReadIop(InStream *in, void *dest, size_t dest_size)
   dest_ = dest;
   dest_size_ = dest_size;
   at_eof_ = false;
-  read_out_ = 0;
+  bytes_read_ = 0;
 }
 
-bool ReadIop::exec_sync() {
+bool ReadIop::execute() {
+  CHECK_FALSE("re-execution", is_complete());
   bool result = as_in()->read_sync(this);
   mark_complete(result);
   return result;
@@ -108,7 +115,7 @@ void ReadIop::recycle(void *dest, size_t dest_size) {
   dest_ = dest;
   dest_size_ = dest_size;
   at_eof_ = false;
-  read_out_ = false;
+  bytes_read_ = 0;
 }
 
 void ReadIop::recycle() {
@@ -124,7 +131,7 @@ void ReadIop::recycle() {
 #endif
 
 Iop::~Iop() {
-  CHECK_TRUE("incomplete iop", iop()->is_complete_);
+  CHECK_TRUE("incomplete iop", header()->is_complete_);
   delete peek_group_state();
 }
 
