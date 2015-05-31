@@ -218,7 +218,8 @@ TEST(pipe_cpp, sync_write_group_read) {
   ASSERT_PTREQ(NULL, thread.join());
 }
 
-static void *async_read_streams(NativePipe *pipes, size_t own_index, size_t *read_count_out) {
+static void *async_read_streams(NativePipe *pipes, size_t own_index,
+    size_t *read_count_out) {
   Atom atoms[kPipeCount];
   ReadIop *iops[kPipeCount];
   IopGroup group;
@@ -263,7 +264,8 @@ TEST(pipe_cpp, sync_write_contend_read) {
     ASSERT_TRUE(pipes[i].open(NativePipe::pfDefault));
   for (size_t i = 0; i < kPipeCount; i++) {
     read_counts[i] = 0;
-    readers[i].set_callback(new_callback(async_read_streams, pipes, i, &read_counts[i]));
+    readers[i].set_callback(new_callback(async_read_streams, pipes, i,
+        &read_counts[i]));
     ASSERT_TRUE(readers[i].start());
   }
   NativeThread thread(new_callback(sync_write_streams, pipes));
