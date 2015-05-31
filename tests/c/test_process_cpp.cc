@@ -108,9 +108,9 @@ void RecordingProcess::set_stdin_data(const char *data) {
 
 
 void RecordingProcess::complete() {
-  static const int kStdinIndex = 0;
-  static const int kStdoutIndex = 1;
-  static const int kStderrIndex = 2;
+  static const size_t kStdinIndex = 0;
+  static const size_t kStdoutIndex = 1;
+  static const size_t kStderrIndex = 2;
   IopGroup group;
   size_t stdin_cursor = 0;
   WriteIop write_stdin(stdin_pipe_.out(), stdin_data_.memory, stdin_data_.size);
