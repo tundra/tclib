@@ -81,7 +81,8 @@ static bool close_parent_if_necessary(StreamRedirect *stream) {
 bool NativeProcessStart::parent_post_fork() {
   // Any nontrivial streams should be closed because they now belong to the
   // child.
-  return close_parent_if_necessary(process_->stdout_)
+  return close_parent_if_necessary(process_->stdin_)
+      && close_parent_if_necessary(process_->stdout_)
       && close_parent_if_necessary(process_->stderr_);
 }
 
@@ -104,10 +105,12 @@ bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
     const char **argv) {
   // From here on we're in the child process. First redirect std streams if
   // necessary.
+  remap_std_stream(process_->stdin_, STDIN_FILENO);
   remap_std_stream(process_->stdout_, STDOUT_FILENO);
   remap_std_stream(process_->stderr_, STDERR_FILENO);
 
-  if (!close_child_if_necessary(process_->stdout_)
+  if (!close_child_if_necessary(process_->stdin_)
+      || !close_child_if_necessary(process_->stdout_)
       || !close_child_if_necessary(process_->stderr_))
     return false;
 

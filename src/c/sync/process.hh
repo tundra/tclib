@@ -95,6 +95,12 @@ public:
   // getting funky behavior, but it's not clear that there's a way to do that
   bool set_env(const char *key, const char *value);
 
+  // Sets the stream to use as standard input for the running process. Must be
+  // called before starting the process.
+  void set_stdin(StreamRedirect *redirect) {
+    stdin_ = redirect;
+  }
+
   // Sets the stream to use as standard output for the running process. Must be
   // called before starting the process.
   void set_stdout(StreamRedirect *redirect) {
@@ -127,8 +133,8 @@ private:
   // Extra bindings to add to the subprocess' environment.
   std::vector<std::string> env_;
 
+  StreamRedirect *stdin_;
   StreamRedirect *stdout_;
-
   StreamRedirect *stderr_;
 };
 

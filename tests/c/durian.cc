@@ -27,7 +27,21 @@ int main(int argc, char *argv[]) {
       printf("GETENV(%s): {%s}\n", key, value);
     } else if (strcmp(next, "--print-stderr") == 0) {
       const char *value = argv[i++];
-      fprintf(stderr, "%s\n", value);
+      fprintf(stderr, "%s", value);
+    } else if (strcmp(next, "--echo-stdin") == 0) {
+      char buf[256];
+      while (true) {
+        size_t bytes_read = fread(buf, 1, 256, stdin);
+        if (bytes_read > 0) {
+          fwrite(buf, 1, bytes_read, stderr);
+        } else if (feof(stdin)) {
+          break;
+        }
+      }
+    } else if ((strlen(next) >= 2) && (next[0] == '-') && (next[1] == '-')) {
+      fprintf(stderr, "Unexpected option %s\n", next);
+      fflush(stderr);
+      exit(1);
     }
   }
   return exit_code;

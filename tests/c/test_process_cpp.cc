@@ -33,6 +33,9 @@ public:
   RecordingProcess();
   ~RecordingProcess();
 
+  // Sets the data to write on the process' stdin.
+  void set_stdin_data(const char *data);
+
   // Waits for the process to complete, meanwhile capturing output.
   void complete();
 
@@ -64,21 +67,28 @@ public:
   // function returns.
   bool for_each_stdout_line(callback_t<bool(const char *line)> callback);
 
+  NativePipe stdin_pipe_;
   NativePipe stdout_pipe_;
   NativePipe stderr_pipe_;
+  PipeRedirect stdin_redirect_;
   PipeRedirect stdout_redirect_;
   PipeRedirect stderr_redirect_;
   string_buffer_t stdout_buf_;
   string_buffer_t stderr_buf_;
+  memory_block_t stdin_data_;
   const char *stdout_str_;
   const char *stderr_str_;
 };
 
 RecordingProcess::RecordingProcess()
-  : stdout_redirect_(&stdout_pipe_, PipeRedirect::pdOut)
+  : stdin_redirect_(&stdin_pipe_, PipeRedirect::pdIn)
+  , stdout_redirect_(&stdout_pipe_, PipeRedirect::pdOut)
   , stderr_redirect_(&stderr_pipe_, PipeRedirect::pdOut)
+  , stdin_data_(memory_block_empty())
   , stdout_str_(NULL)
   , stderr_str_(NULL) {
+  ASSERT_TRUE(stdin_pipe_.open(NativePipe::pfInherit));
+  set_stdin(&stdin_redirect_);
   ASSERT_TRUE(stdout_pipe_.open(NativePipe::pfInherit));
   set_stdout(&stdout_redirect_);
   string_buffer_init(&stdout_buf_);
@@ -92,35 +102,59 @@ RecordingProcess::~RecordingProcess() {
   string_buffer_dispose(&stderr_buf_);
 }
 
+void RecordingProcess::set_stdin_data(const char *data) {
+  stdin_data_ = new_memory_block(const_cast<char*>(data), strlen(data));
+}
+
+
 void RecordingProcess::complete() {
+  static const int kStdinIndex = 0;
+  static const int kStdoutIndex = 1;
+  static const int kStderrIndex = 2;
   IopGroup group;
+  size_t stdin_cursor = 0;
+  WriteIop write_stdin(stdin_pipe_.out(), stdin_data_.memory, stdin_data_.size);
+  group.schedule(&write_stdin);
   char stdout_buf[256];
   ReadIop read_stdout(stdout_pipe_.in(), stdout_buf, 256);
   group.schedule(&read_stdout);
   char stderr_buf[256];
   ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256);
   group.schedule(&read_stderr);
-  for (int live_count = 2; live_count > 0;) {
+  for (int live_count = 3; live_count > 0;) {
     size_t index = 0;
     ASSERT_TRUE(group.wait_for_next(&index));
-    ReadIop *iop;
-    char *buf;
-    string_buffer_t *strbuf;
-    if (index == 0) {
-      iop = &read_stdout;
-      buf = stdout_buf;
-      strbuf = &stdout_buf_;
+    if (index == kStdinIndex) {
+      ASSERT_TRUE(write_stdin.has_succeeded());
+      stdin_cursor += write_stdin.bytes_written();
+      if (stdin_cursor < stdin_data_.size) {
+        write_stdin.recycle(static_cast<byte_t*>(stdin_data_.memory) + stdin_cursor,
+            stdin_data_.size - stdin_cursor);
+      } else {
+        ASSERT_TRUE(stdin_pipe_.out()->close());
+        live_count--;
+      }
     } else {
-      ASSERT_EQ(1, index);
-      iop = &read_stderr;
-      buf = stderr_buf;
-      strbuf = &stderr_buf_;
-    }
-    string_buffer_append(strbuf, new_string(buf, iop->bytes_read()));
-    if (iop->at_eof()) {
-      live_count--;
-    } else {
-      iop->recycle();
+      ReadIop *iop;
+      char *buf;
+      string_buffer_t *strbuf;
+      if (index == kStdoutIndex) {
+        iop = &read_stdout;
+        buf = stdout_buf;
+        strbuf = &stdout_buf_;
+      } else {
+        ASSERT_EQ(kStderrIndex, index);
+        iop = &read_stderr;
+        buf = stderr_buf;
+        strbuf = &stderr_buf_;
+      }
+      ASSERT_TRUE(iop->has_succeeded());
+      string_buffer_append(strbuf, new_string(buf, iop->bytes_read()));
+      if (iop->at_eof()) {
+        live_count--;
+      } else {
+        iop->recycle();
+      }
     }
   }
   // We know the process has completed but still need to call wait for the
@@ -361,18 +395,31 @@ TEST(process_cpp, env_multi_override) {
   test_env_passing(ALEN(in_envv), in_envv, ALEN(out_envv), out_envv);
 }
 
-#define MESSAGE "I am process, hear me stderr!"
+#define STDERR_MESSAGE "I am process, hear me stderr!"
 
 TEST(process_cpp, stderr) {
-  IF_MSVC(return,);
   RecordingProcess process;
-  const char *argv[2] = {"--print-stderr", MESSAGE};
+  const char *argv[2] = {"--print-stderr", STDERR_MESSAGE};
   ASSERT_TRUE(process.start(get_durian_main(), 2, argv));
   process.complete();
   ASSERT_EQ(0, process.exit_code());
   ASSERT_EQ(3, process.read_argc());
   // Printing adds a newline.
-  ASSERT_C_STREQ(MESSAGE "\n", process.err());
+  ASSERT_C_STREQ(STDERR_MESSAGE, process.err());
+}
+
+#define STDIN_MESSAGE "In through the one pipe and out of the other."
+
+TEST(process_cpp, stdin) {
+  RecordingProcess process;
+  process.set_stdin_data(STDIN_MESSAGE);
+  const char *argv[1] = {"--echo-stdin"};
+  ASSERT_TRUE(process.start(get_durian_main(), 1, argv));
+  process.complete();
+  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(2, process.read_argc());
+  // Printing adds a newline.
+  ASSERT_C_STREQ(STDIN_MESSAGE, process.err());
 }
 
 #if defined(IS_MSVC)

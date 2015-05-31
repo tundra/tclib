@@ -140,6 +140,10 @@ bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
 bool NativeProcessStart::configure_standard_streams() {
   bool has_redirected = false;
 
+  if (!maybe_redirect_standard_stream("stdin", process_->stdin_,
+      &startup_info_.hStdInput, &has_redirected))
+    return false;
+
   if (!maybe_redirect_standard_stream("stdout", process_->stdout_,
       &startup_info_.hStdOutput, &has_redirected))
     return false;
@@ -221,7 +225,8 @@ bool NativeProcessStart::maybe_close_standard_stream(StreamRedirect *stream) {
 bool NativeProcessStart::post_launch() {
   // Close the parent's clone of the stdout handle since it belongs to the
   // child now.
-  return maybe_close_standard_stream(process_->stdout_)
+  return maybe_close_standard_stream(process_->stdin_)
+      && maybe_close_standard_stream(process_->stdout_)
       && maybe_close_standard_stream(process_->stderr_);
 }
 

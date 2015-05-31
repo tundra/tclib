@@ -12,7 +12,8 @@ END_C_INCLUDES
 using namespace tclib;
 
 NativeProcess::NativeProcess()
-  : stdout_(NULL)
+  : stdin_(NULL)
+  , stdout_(NULL)
   , stderr_(NULL) {
 #if defined(kPlatformProcessInit)
   process = kPlatformProcessInit;
