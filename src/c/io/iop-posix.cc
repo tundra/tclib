@@ -16,12 +16,9 @@ void Iop::platform_recycle() {
 }
 
 bool Iop::finish_nonblocking() {
-  if (is_read()) {
-    return as_in()->read_sync(as_read());
-  } else {
-    UNREACHABLE("unexpected iop type");
-    return false;
-  }
+  return is_read()
+      ? as_in()->read_sync(as_read())
+      : as_out()->write_sync(as_write());
 }
 
 bool IopGroup::wait_for_next(size_t *index_out) {

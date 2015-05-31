@@ -75,6 +75,9 @@ typedef struct {
 void write_iop_init(write_iop_t *iop, out_stream_t *out, const void *src,
     size_t src_size);
 
+// Deliver the result of a write to a write iop.
+void write_iop_deliver(write_iop_t *iop, size_t bytes_written);
+
 // Dispose the given initialized write.
 void write_iop_dispose(write_iop_t *iop);
 

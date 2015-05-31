@@ -72,7 +72,8 @@ bool StdioOpenFile::read_sync(read_iop_t *op) {
 }
 
 bool StdioOpenFile::write_sync(write_iop_t *op) {
-  op->bytes_written_ = fwrite(op->src_, 1, op->src_size_, file_);
+  size_t bytes_written = fwrite(op->src_, 1, op->src_size_, file_);
+  write_iop_deliver(op, bytes_written);
   return true;
 }
 

@@ -11,10 +11,13 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-// Deliver the result of a read to a read iop.
 void read_iop_deliver(read_iop_t *iop, size_t bytes_read, bool at_eof) {
   iop->bytes_read_ = bytes_read;
   iop->at_eof_ = at_eof;
+}
+
+void write_iop_deliver(write_iop_t *iop, size_t bytes_written) {
+  iop->bytes_written_ = bytes_written;
 }
 
 Iop::Iop(iop_type_t type) {
@@ -147,6 +150,10 @@ void WriteIop::recycle(const void *src, size_t src_size) {
   src_ = src;
   src_size_ = src_size;
   bytes_written_ = 0;
+}
+
+void WriteIop::recycle() {
+  recycle(src_, src_size_);
 }
 
 #ifdef IS_GCC

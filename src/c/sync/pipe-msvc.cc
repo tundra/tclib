@@ -80,7 +80,7 @@ bool HandleStream::write_sync(write_iop_t *op) {
           true);          // bWait
     }
   }
-  op->bytes_written_ = bytes_written;
+  write_iop_deliver(op, bytes_written);
   return result;
 }
 

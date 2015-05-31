@@ -133,6 +133,12 @@ protected:
   // Schedules this iop if it hasn't been already. Not used on all platforms.
   ensure_scheduled_outcome_t ensure_scheduled();
 
+  // Schedules a read. Not used on all platforms.
+  ensure_scheduled_outcome_t schedule_read(handle_t handle, read_iop_t *read_iop);
+
+  // Schedules a write. Not used on all platforms.
+  ensure_scheduled_outcome_t schedule_write(handle_t handle, write_iop_t *write_iop);
+
   // Perform this iop which has already been scheduled by an iop group.
   bool finish_nonblocking();
 };
@@ -150,6 +156,12 @@ public:
   // called, otherwise if a pending write is still ongoing this can corrupt the
   // pending state.
   void recycle(const void *src, size_t src_size);
+
+  // Reuse this iop struct to perform another write of the same data to the
+  // same output stream. This op must have completed before this can be
+  // called, otherwise if a pending write is still ongoing this can corrupt the
+  // pending state.
+  void recycle();
 
   // Returns the number of bytes written.
   size_t bytes_written() { return as_write()->bytes_written_; }

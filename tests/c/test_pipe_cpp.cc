@@ -279,3 +279,54 @@ TEST(pipe_cpp, sync_write_contend_read) {
     total_read_count += read_counts[i];
   ASSERT_EQ(kPipeCount * kValueCount, total_read_count);
 }
+
+static void *run_sibling(OutStream *out, InStream *in) {
+  size_t limit = 8192;
+  size_t next_value_in = 0;
+  size_t value_in = 0;
+  size_t next_value_out = 0;
+  ReadIop read_iop(in, &value_in, sizeof(value_in));
+  WriteIop write_iop(out, &next_value_out, sizeof(next_value_out));
+  IopGroup group;
+  group.schedule(&read_iop);
+  group.schedule(&write_iop);
+  int live_streams = 2;
+  while (live_streams > 0) {
+    size_t index = 0;
+    ASSERT_TRUE(group.wait_for_next(&index));
+    if (index == 0) {
+      // Read succeeded.
+      if (next_value_in == (limit + 1)) {
+        ASSERT_TRUE(read_iop.at_eof());
+        live_streams--;
+      } else {
+        ASSERT_EQ(next_value_in, value_in);
+        next_value_in++;
+        read_iop.recycle();
+      }
+    } else {
+      // Write succeeded.
+      ASSERT_EQ(1, index);
+      if (next_value_out == limit) {
+        ASSERT_TRUE(out->close());
+        live_streams--;
+      } else {
+        next_value_out++;
+        write_iop.recycle();
+      }
+    }
+  }
+  ASSERT_EQ(limit + 1, next_value_in);
+  ASSERT_EQ(limit, next_value_out);
+  return NULL;
+}
+
+TEST(pipe_cpp, sync_twins) {
+  NativePipe red, blue;
+  ASSERT_TRUE(red.open(NativePipe::pfDefault));
+  ASSERT_TRUE(blue.open(NativePipe::pfDefault));
+  NativeThread other(new_callback(run_sibling, red.out(), blue.in()));
+  ASSERT_TRUE(other.start());
+  run_sibling(blue.out(), red.in());
+  ASSERT_PTREQ(NULL, other.join());
+}

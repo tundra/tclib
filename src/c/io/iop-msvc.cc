@@ -60,14 +60,18 @@ bool Iop::finish_nonblocking() {
   CHECK_TRUE("finishing non-scheduled", group_state->has_been_scheduled_);
   handle_t handle = stream()->to_raw_handle();
   OVERLAPPED *overlapped = group_state->overlapped();
-  dword_t bytes_read = 0;
+  dword_t bytes_xferred = 0;
   bool result = GetOverlappedResult(
-      handle,      // hFile
-      overlapped,  // lpOverlapped
-      &bytes_read, // lpNumberOfBytesTransferred
-      false);      // bWait
-  bool at_eof = !result && (bytes_read == 0);
-  read_iop_deliver(as_read(), bytes_read, at_eof);
+      handle,         // hFile
+      overlapped,     // lpOverlapped
+      &bytes_xferred, // lpNumberOfBytesTransferred
+      false);         // bWait
+  if (is_read()) {
+    bool at_eof = !result && (bytes_xferred == 0);
+    read_iop_deliver(as_read(), bytes_xferred, at_eof);
+  } else {
+    write_iop_deliver(as_write(), bytes_xferred);
+  }
   return true;
 }
 
@@ -85,17 +89,22 @@ Iop::ensure_scheduled_outcome_t Iop::ensure_scheduled() {
     return eoFailedImmediately;
   }
 
-  // The op is not complete and it has not already been scheduled. Schedule it.
+  return is_read()
+      ? schedule_read(handle, as_read())
+      : schedule_write(handle, as_write());
+}
+
+Iop::ensure_scheduled_outcome_t Iop::schedule_read(handle_t handle,
+    read_iop_t *read_iop) {
+  iop_group_state_t *group_state = peek_group_state();
   dword_t bytes_read = 0;
   OVERLAPPED *overlapped = group_state->overlapped();
-  read_iop_t *read_iop = as_read();
   bool result = ReadFile(
       handle,                                     // hFile
       read_iop->dest_,                            // lpBuffer
       static_cast<dword_t>(read_iop->dest_size_), // nNumberOfBytesToRead
       &bytes_read,                                // lpNumberOfBytesRead
       overlapped);                                // lpOverlapped
-
   if (result) {
     // Read may succeed immediately in which case we're done. If the read does
     // succeed it will have read something, if it can't read the call will fail
@@ -115,6 +124,35 @@ Iop::ensure_scheduled_outcome_t Iop::ensure_scheduled() {
     // Scheduling went wrong for some reason; bail.
     return eoCompletedImmediately;
   }
+}
+
+Iop::ensure_scheduled_outcome_t Iop::schedule_write(handle_t handle,
+    write_iop_t *write_iop) {
+  iop_group_state_t *group_state = peek_group_state();
+  dword_t bytes_written = 0;
+  OVERLAPPED *overlapped = group_state->overlapped();
+  bool result = WriteFile(
+      handle,                                     // hFile
+      write_iop->src_,                            // lpBuffer
+      static_cast<dword_t>(write_iop->src_size_), // nNumberOfBytesToWrite
+      &bytes_written,                             // lpNumberOfBytesWritten
+      overlapped);                                // lpOverlapped
+  if (result) {
+    write_iop_deliver(write_iop, bytes_written);
+    mark_complete(true);
+    return eoCompletedImmediately;
+  } else if (GetLastError() == ERROR_IO_PENDING) {
+    // The read call succeeded in scheduling the read but we have to wait for
+    // it to complete.
+    group_state->has_been_scheduled_ = true;
+    return eoScheduled;
+  } else {
+    write_iop_deliver(write_iop, bytes_written);
+    mark_complete(true);
+    // Scheduling went wrong for some reason; bail.
+    return eoCompletedImmediately;
+  }
+  return eoFailedImmediately;
 }
 
 bool IopGroup::wait_for_next(size_t *index_out) {
@@ -137,7 +175,6 @@ bool IopGroup::wait_for_next(size_t *index_out) {
     Iop *iop = ops_[i];
     if (iop->is_complete())
       continue;
-    CHECK_TRUE("unsupported iop", iop->is_read());
     Iop::ensure_scheduled_outcome_t outcome = iop->ensure_scheduled();
     if (outcome == Iop::eoCompletedImmediately) {
       *index_out = i;

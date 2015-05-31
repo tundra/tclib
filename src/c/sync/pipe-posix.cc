@@ -37,7 +37,8 @@ bool FdStream::read_sync(read_iop_t *op) {
 }
 
 bool FdStream::write_sync(write_iop_t *op) {
-  op->bytes_written_ = write(fd_, op->src_, op->src_size_);
+  size_t bytes_written = write(fd_, op->src_, op->src_size_);
+  write_iop_deliver(op, bytes_written);
   return true;
 }
 
