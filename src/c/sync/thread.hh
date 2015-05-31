@@ -42,6 +42,9 @@ public:
   // Returns true iff the two given thread ids are identical.
   static bool ids_equal(native_thread_id_t a, native_thread_id_t b);
 
+  // Yield execution to another thread.
+  static bool yield();
+
 private:
   // Platform-specific start routine.
   bool platform_start();

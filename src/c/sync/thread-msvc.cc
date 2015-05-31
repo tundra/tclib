@@ -3,6 +3,9 @@
 
 #include "c/winhdr.h"
 
+#include "sync/thread.hh"
+using namespace tclib;
+
 bool NativeThread::platform_dispose() {
   if (thread_.handle_ != INVALID_HANDLE_VALUE) {
     if (!CloseHandle(thread_.handle_)) {
@@ -43,6 +46,10 @@ void *NativeThread::join() {
 
 native_thread_id_t NativeThread::get_current_id() {
   return GetCurrentThreadId();
+}
+
+bool NativeThread::yield() {
+  return SwitchToThread();
 }
 
 bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {

@@ -217,3 +217,63 @@ TEST(pipe_cpp, sync_write_group_read) {
   group_read_streams(pipes);
   ASSERT_PTREQ(NULL, thread.join());
 }
+
+static void *async_read_streams(NativePipe *pipes, size_t own_index, size_t *read_count_out) {
+  Atom atoms[kPipeCount];
+  ReadIop *iops[kPipeCount];
+  IopGroup group;
+  int last_value[kPipeCount];
+  for (size_t is = 0; is < kPipeCount; is++) {
+    iops[is] = new ReadIop(pipes[is].in(), &atoms[is], sizeof(Atom));
+    group.schedule(iops[is]);
+    last_value[is] = -1;
+  }
+  int live_count = kPipeCount;
+  int read_count = 0;
+  while (live_count > 0) {
+    size_t index = 0;
+    ASSERT_TRUE(group.wait_for_next(&index));
+    NativeThread::yield(); // Just so no one thread hogs the input.
+    ReadIop *iop = iops[index];
+    if (iop->at_eof()) {
+      live_count--;
+    } else {
+      ASSERT_EQ(sizeof(Atom), iop->bytes_read());
+      Atom *atom = &atoms[index];
+      ASSERT_EQ(index, atom->stream);
+      ASSERT_REL(atom->value, >, last_value[index]);
+      last_value[index] = static_cast<int>(atom->value);
+      atom->stream = -1;
+      atom->value = 0;
+      iop->recycle();
+      read_count++;
+    }
+  }
+  for (size_t is = 0; is < kPipeCount; is++)
+    delete iops[is];
+  *read_count_out = read_count;
+  return NULL;
+}
+
+TEST(pipe_cpp, sync_write_contend_read) {
+  NativePipe pipes[kPipeCount];
+  NativeThread readers[kPipeCount];
+  size_t read_counts[kPipeCount];
+  for (size_t i = 0; i < kPipeCount; i++)
+    ASSERT_TRUE(pipes[i].open(NativePipe::pfDefault));
+  for (size_t i = 0; i < kPipeCount; i++) {
+    read_counts[i] = 0;
+    readers[i].set_callback(new_callback(async_read_streams, pipes, i, &read_counts[i]));
+    ASSERT_TRUE(readers[i].start());
+  }
+  NativeThread thread(new_callback(sync_write_streams, pipes));
+  ASSERT_TRUE(thread.start());
+  for (size_t i = 0; i < kPipeCount; i++)
+    ASSERT_PTREQ(NULL, readers[i].join());
+  ASSERT_PTREQ(NULL, thread.join());
+
+  size_t total_read_count = 0;
+  for (size_t i = 0; i < kPipeCount; i++)
+    total_read_count += read_counts[i];
+  ASSERT_EQ(kPipeCount * kValueCount, total_read_count);
+}

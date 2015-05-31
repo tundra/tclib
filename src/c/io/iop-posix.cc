@@ -3,6 +3,8 @@
 
 #include <sys/select.h>
 
+#include "sync/thread.hh"
+
 #include "iop.hh"
 using namespace tclib;
 
@@ -49,6 +51,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
   }
   if (select(high_fd_mark + 1, &reads, &writes, NULL, NULL) == -1)
     return false;
+  NativeThread::yield();
   // Scan through the out fd_set to identify the stream that became available.
   for (size_t i = 0; i < ops_.size(); i++) {
     Iop *iop = ops_[i];

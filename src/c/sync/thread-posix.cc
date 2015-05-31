@@ -3,6 +3,9 @@
 
 #include <errno.h>
 
+#include "thread.hh"
+using namespace tclib;
+
 void *NativeThread::entry_point(void *arg) {
   NativeThread *thread = static_cast<NativeThread*>(arg);
   return (thread->callback_)();
@@ -32,6 +35,10 @@ void *NativeThread::join() {
 native_thread_id_t NativeThread::get_current_id() {
   // Always succeeds according to the man page.
   return pthread_self();
+}
+
+bool NativeThread::yield() {
+  return pthread_yield() == 0;
 }
 
 bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {
