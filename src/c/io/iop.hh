@@ -45,13 +45,14 @@ class OutStream;
 //      for. Typically if you wait on multiple reads, for instance, you want all
 //      the reads to stay active so as soon as one has succeeded you would
 //      recycle it to reactivate it unless it reaches EOF.
-class IopGroup {
+class IopGroup : public iop_group_t {
 public:
   IopGroup();
   ~IopGroup();
 
   // Add an iop to this group. See the class comment for how to use this
-  // correctly.
+  // correctly. Only incomplete iops may be scheduled, also once an iop has been
+  // scheduled it may not be completed synchronously.
   void schedule(Iop *iop);
 
   // Wait for the next iop to complete, storing the index of the iop in the
@@ -64,6 +65,12 @@ public:
   // See the class comment for details on the discipline you need to use when
   // calling this.
   bool wait_for_next(size_t *index_out);
+
+  // Returns the number of iops in this group that haven't been completed yet.
+  size_t pending_count() { return pending_count_; }
+
+  // Returns true iff this group has pending operations left.
+  bool has_pending() { return pending_count_ > 0; }
 
 private:
   std::vector<Iop*> ops_;

@@ -182,15 +182,13 @@ static void group_read_streams(NativePipe *pipes) {
     iops[is] = new ReadIop(pipes[is].in(), &atoms[is], sizeof(Atom));
     group.schedule(iops[is]);
   }
-  int live_count = kPipeCount;
   int read_count = 0;
-  while (live_count > 0) {
+  while (group.has_pending()) {
     size_t index = 0;
     ASSERT_TRUE(group.wait_for_next(&index));
     ReadIop *iop = iops[index];
     if (iop->at_eof()) {
       ASSERT_EQ(kValueCount, next_value[index]);
-      live_count--;
     } else {
       read_count++;
       ASSERT_EQ(sizeof(Atom), iop->bytes_read());
@@ -229,16 +227,13 @@ static void *async_read_streams(NativePipe *pipes, size_t own_index,
     group.schedule(iops[is]);
     last_value[is] = -1;
   }
-  int live_count = kPipeCount;
   int read_count = 0;
-  while (live_count > 0) {
+  while (group.has_pending()) {
     size_t index = 0;
     ASSERT_TRUE(group.wait_for_next(&index));
     NativeThread::yield(); // Just so no one thread hogs the input.
     ReadIop *iop = iops[index];
-    if (iop->at_eof()) {
-      live_count--;
-    } else {
+    if (!iop->at_eof()) {
       ASSERT_EQ(sizeof(Atom), iop->bytes_read());
       Atom *atom = &atoms[index];
       ASSERT_EQ(index, atom->stream);

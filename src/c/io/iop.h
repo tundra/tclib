@@ -16,11 +16,17 @@ typedef enum {
   ioRead, ioWrite
 } iop_type_t;
 
+// A group of iops that can be executed in parallel.
+typedef struct {
+  size_t pending_count_;
+} iop_group_t;
+
 // State shared between read and write iops.
 typedef struct {
   iop_type_t type_;
   bool is_complete_;
   bool has_succeeded_;
+  iop_group_t *group_;
   iop_group_state_t *group_state_;
 } iop_header_t;
 

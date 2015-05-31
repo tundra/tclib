@@ -121,7 +121,7 @@ void RecordingProcess::complete() {
   char stderr_buf[256];
   ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256);
   group.schedule(&read_stderr);
-  for (int live_count = 3; live_count > 0;) {
+  while (group.has_pending()) {
     size_t index = 0;
     ASSERT_TRUE(group.wait_for_next(&index));
     if (index == kStdinIndex) {
@@ -132,7 +132,6 @@ void RecordingProcess::complete() {
             stdin_data_.size - stdin_cursor);
       } else {
         ASSERT_TRUE(stdin_pipe_.out()->close());
-        live_count--;
       }
     } else {
       ReadIop *iop;
@@ -150,11 +149,8 @@ void RecordingProcess::complete() {
       }
       ASSERT_TRUE(iop->has_succeeded());
       string_buffer_append(strbuf, new_string(buf, iop->bytes_read()));
-      if (iop->at_eof()) {
-        live_count--;
-      } else {
+      if (!iop->at_eof())
         iop->recycle();
-      }
     }
   }
   // We know the process has completed but still need to call wait for the

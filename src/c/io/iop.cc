@@ -23,12 +23,16 @@ void write_iop_deliver(write_iop_t *iop, size_t bytes_written) {
 Iop::Iop(iop_type_t type) {
   header()->type_ = type;
   header()->group_state_ = NULL;
+  header()->group_ = NULL;
   recycle();
 }
 
 void Iop::recycle() {
   header()->is_complete_ = false;
   header()->has_succeeded_ = false;
+  iop_group_t *group = header()->group_;
+  if (group != NULL)
+    group->pending_count_++;
   platform_recycle();
 }
 
@@ -71,12 +75,20 @@ void write_iop_dispose(write_iop_t *iop) {
 }
 
 
-IopGroup::IopGroup() { }
+IopGroup::IopGroup() {
+  pending_count_ = 0;
+}
 
-IopGroup::~IopGroup() { }
+IopGroup::~IopGroup() {
+  CHECK_EQ("disposing active group", 0, pending_count_);
+}
 
 void IopGroup::schedule(Iop *iop) {
+  CHECK_FALSE("scheduling complete iop", iop->is_complete());
+  CHECK_TRUE("rescheduling iop", iop->header()->group_ == NULL);
   ops_.push_back(iop);
+  iop->header()->group_ = this;
+  pending_count_++;
 }
 
 write_iop_t *Iop::as_write() {
@@ -105,6 +117,9 @@ void Iop::mark_complete(bool has_succeeded) {
   CHECK_FALSE("already complete", header()->is_complete_);
   header()->is_complete_ = true;
   header()->has_succeeded_ = has_succeeded;
+  iop_group_t *group = header()->group_;
+  if (group != NULL)
+    group->pending_count_--;
 }
 
 ReadIop::ReadIop(InStream *in, void *dest, size_t dest_size)
@@ -115,6 +130,7 @@ ReadIop::ReadIop(InStream *in, void *dest, size_t dest_size)
 
 bool ReadIop::execute() {
   CHECK_FALSE("re-execution", is_complete());
+  CHECK_TRUE("executing group iop", header()->group_ == NULL);
   bool result = as_in()->read_sync(this);
   mark_complete(result);
   return result;
@@ -140,6 +156,7 @@ WriteIop::WriteIop(OutStream *out, const void *src, size_t src_size)
 
 bool WriteIop::execute() {
   CHECK_FALSE("re-execution", is_complete());
+  CHECK_TRUE("executing group iop", header()->group_ == NULL);
   bool result = as_out()->write_sync(this);
   mark_complete(result);
   return result;
