@@ -4,14 +4,15 @@
 library_files = [
   "alloc.c",
   "boundbuf.c",
+  "callback.cc",
+  "clock.cc",
   "crash.c",
   "duration.c",
   "log.c",
   "strbuf.c",
   "string.c",
   "tinymt.c",
-  "callback.cc",
-  "clock.cc",
+  "vector.cc",
 ]
 
 library = get_group("library")
