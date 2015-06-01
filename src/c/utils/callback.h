@@ -28,6 +28,8 @@ nullary_callback_t *nullary_callback_new_0(opaque_t (invoker)(void));
 nullary_callback_t *nullary_callback_new_1(opaque_t (invoker)(opaque_t), opaque_t b0);
 nullary_callback_t *nullary_callback_new_2(opaque_t (invoker)(opaque_t, opaque_t),
     opaque_t b0, opaque_t b1);
+nullary_callback_t *nullary_callback_new_3(opaque_t (invoker)(opaque_t, opaque_t,
+    opaque_t), opaque_t b0, opaque_t b1, opaque_t b2);
 opaque_t nullary_callback_call(nullary_callback_t *callback);
 
 // opaque_t(opaque_t)

@@ -38,14 +38,10 @@ public:
   bool open(uint32_t flags);
 
   // Returns the read-end of this pipe.
-  InStream *in() { return in_; }
+  InStream *in() { return static_cast<InStream*>(in_); }
 
   // Returns the write-end of this pipe.
-  OutStream *out() { return out_; }
-
-private:
-  InStream *in_;
-  OutStream *out_;
+  OutStream *out() { return static_cast<OutStream*>(out_); }
 };
 
 } // namespace tclib

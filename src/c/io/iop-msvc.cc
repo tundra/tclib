@@ -168,11 +168,11 @@ bool IopGroup::wait_for_next(size_t *index_out) {
   // If we get past this point none of the ops will have completed immediately
   // and any incomplete ones will have been started.
 
-  size_t count = ops_.size();
+  size_t count = ops()->size();
   CHECK_TRUE("multiplexing too much", count <= MAXIMUM_WAIT_OBJECTS);
   std::vector<handle_t> events;
   for (size_t i = 0; i < count; i++) {
-    Iop *iop = ops_[i];
+    Iop *iop = ops()->at(i);
     if (iop->is_complete())
       continue;
     Iop::ensure_scheduled_outcome_t outcome = iop->ensure_scheduled();
@@ -198,7 +198,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
   size_t index = result - WAIT_OBJECT_0;
   handle_t event = events[index];
   for (size_t i = 0; i < count; i++) {
-    Iop *iop = ops_[i];
+    Iop *iop = ops()->at(i);
     if (iop->is_complete())
       continue;
     if (event == iop->peek_group_state()->event()) {

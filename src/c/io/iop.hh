@@ -72,8 +72,7 @@ public:
   // Returns true iff this group has pending operations left.
   bool has_pending() { return pending_count_ > 0; }
 
-private:
-  std::vector<Iop*> ops_;
+  std::vector<Iop*> *ops() { return static_cast<std::vector<Iop*>*>(ops_.delegate_); }
 };
 
 // Abstract I/O operation. There are iop subtypes for convenience but they can

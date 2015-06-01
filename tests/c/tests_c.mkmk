@@ -17,6 +17,7 @@ test_file_names = [
   "test_ook.cc",
   "test_opaque.cc",
   "test_process_cpp.cc",
+  "test_pipe_c.cc",
   "test_pipe_cpp.cc",
   "test_promise_c.cc",
   "test_promise_cpp.cc",

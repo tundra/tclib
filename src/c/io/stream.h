@@ -27,6 +27,12 @@ size_t out_stream_vprintf(out_stream_t *file, const char *fmt, va_list argp);
 // Flushes any buffered writes to the given stream.
 bool out_stream_flush(out_stream_t *stream);
 
+// Close this stream. This means that no more output will be written and if
+// someone is listening on the other end it may be signaled to them. Returns
+// false iff closing failed, that is, true if it succeeds or if no action was
+// taken. The default implementation does nothing and consequently returns true.
+bool out_stream_close(out_stream_t *stream);
+
 // Returns an in stream that returns bytes from the given block.
 in_stream_t *byte_in_stream_open(const void *data, size_t size);
 

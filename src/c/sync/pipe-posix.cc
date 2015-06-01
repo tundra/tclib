@@ -58,10 +58,10 @@ naked_file_handle_t FdStream::to_raw_handle() {
 }
 
 bool NativePipe::open(uint32_t flags) {
-  int result = ::pipe(this->pipe);
+  int result = ::pipe(this->pipe_);
   if (result == 0) {
-    in_ = new FdStream(this->pipe[0]);
-    out_ = new FdStream(this->pipe[1]);
+    in_ = new FdStream(this->pipe_[0]);
+    out_ = new FdStream(this->pipe_[1]);
     return true;
   }
   WARN("Call to pipe failed: %i (error: %s)", errno, strerror(errno));

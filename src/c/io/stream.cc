@@ -52,8 +52,12 @@ size_t OutStream::vprintf(const char *fmt, va_list argp) {
   return iop.bytes_written();
 }
 
-bool out_stream_flush(out_stream_t *file) {
-  return static_cast<OutStream*>(file)->flush();
+bool out_stream_flush(out_stream_t *stream) {
+  return static_cast<OutStream*>(stream)->flush();
+}
+
+bool out_stream_close(out_stream_t *stream) {
+  return static_cast<OutStream*>(stream)->close();
 }
 
 size_t out_stream_vprintf(out_stream_t *file, const char *fmt, va_list argp) {

@@ -31,8 +31,8 @@ bool IopGroup::wait_for_next(size_t *index_out) {
   fd_set writes;
   FD_ZERO(&writes);
   int high_fd_mark = 0;
-  for (size_t i = 0; i < ops_.size(); i++) {
-    Iop *iop = ops_[i];
+  for (size_t i = 0; i < ops()->size(); i++) {
+    Iop *iop = ops()->at(i);
     if (iop->is_complete())
       continue;
     AbstractStream *stream = iop->stream();
@@ -49,8 +49,8 @@ bool IopGroup::wait_for_next(size_t *index_out) {
   if (select(high_fd_mark + 1, &reads, &writes, NULL, NULL) == -1)
     return false;
   // Scan through the out fd_set to identify the stream that became available.
-  for (size_t i = 0; i < ops_.size(); i++) {
-    Iop *iop = ops_[i];
+  for (size_t i = 0; i < ops()->size(); i++) {
+    Iop *iop = ops()->at(i);
     if (iop->is_complete())
       continue;
     AbstractStream *stream = iop->stream();

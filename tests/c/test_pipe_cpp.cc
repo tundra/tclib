@@ -68,9 +68,6 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_TRUE(step.initialize());
   NativeThread other(new_callback(do_test_steps, &step, a_pipe.out(), b_pipe.out()));
   ASSERT_TRUE(other.start());
-  std::vector<InStream*> a_and_b;
-  a_and_b.push_back(a);
-  a_and_b.push_back(b);
   size_t index = 100;
 
   // First step: a has input.
@@ -83,13 +80,16 @@ TEST(pipe_cpp, simple_multiplex) {
   IopGroup read_a_and_b;
   read_a_and_b.schedule(&read_a);
   read_a_and_b.schedule(&read_b);
+  ASSERT_EQ(2, read_a_and_b.pending_count());
 
   ASSERT_TRUE(read_a_and_b.wait_for_next(&index));
   ASSERT_EQ(index, 0);
   ASSERT_TRUE(read_a.has_succeeded());
   ASSERT_EQ(1, read_a.bytes_read());
   ASSERT_EQ('1', a_buf[0]);
+  ASSERT_EQ(1, read_a_and_b.pending_count());
   read_a.recycle();
+  ASSERT_EQ(2, read_a_and_b.pending_count());
 
   // Second step: b has input.
   index = 100;
@@ -99,7 +99,9 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_TRUE(read_b.has_succeeded());
   ASSERT_EQ(1, read_b.bytes_read());
   ASSERT_EQ('2', b_buf[0]);
+  ASSERT_EQ(1, read_a_and_b.pending_count());
   read_b.recycle();
+  ASSERT_EQ(2, read_a_and_b.pending_count());
 
   // Third step: both a and b.
   ASSERT_TRUE(step.release());
@@ -113,12 +115,16 @@ TEST(pipe_cpp, simple_multiplex) {
       ASSERT_TRUE(read_a.has_succeeded());
       ASSERT_EQ(1, read_a.bytes_read());
       ASSERT_EQ('3', a_buf[0]);
+      ASSERT_EQ(1, read_a_and_b.pending_count());
       read_a.recycle();
+      ASSERT_EQ(2, read_a_and_b.pending_count());
     } else {
       ASSERT_TRUE(read_b.has_succeeded());
       ASSERT_EQ(1, read_b.bytes_read());
       ASSERT_EQ('4', b_buf[0]);
+      ASSERT_EQ(1, read_a_and_b.pending_count());
       read_b.recycle();
+      ASSERT_EQ(2, read_a_and_b.pending_count());
     }
   }
 
@@ -129,6 +135,7 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_TRUE(read_b.is_complete());
   ASSERT_TRUE(read_b.has_succeeded());
   ASSERT_TRUE(read_b.at_eof());
+  ASSERT_EQ(1, read_a_and_b.pending_count());
 
   // Another successful write to a.
   ASSERT_TRUE(step.release());
@@ -137,7 +144,9 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_TRUE(read_a.has_succeeded());
   ASSERT_EQ(1, read_a.bytes_read());
   ASSERT_EQ('5', a_buf[0]);
+  ASSERT_EQ(0, read_a_and_b.pending_count());
   read_a.recycle();
+  ASSERT_EQ(1, read_a_and_b.pending_count());
 
   // Detect a being closed.
   ASSERT_TRUE(step.release());
@@ -146,6 +155,7 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_TRUE(read_a.is_complete());
   ASSERT_TRUE(read_a.has_succeeded());
   ASSERT_TRUE(read_a.at_eof());
+  ASSERT_EQ(0, read_a_and_b.pending_count());
 
   other.join();
 }

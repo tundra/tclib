@@ -152,14 +152,14 @@ bool NativePipe::open(uint32_t flags) {
   attrs.lpSecurityDescriptor = NULL;
 
   bool result = create_overlapped_pipe(
-      &this->pipe.read_,  // hReadPipe
-      &this->pipe.write_, // hWritePipe,
-      &attrs,             // lpPipeAttributes,
-      0);                 // nSize
+      &this->pipe_.read_,  // hReadPipe
+      &this->pipe_.write_, // hWritePipe,
+      &attrs,              // lpPipeAttributes,
+      0);                  // nSize
 
   if (result) {
-    in_ = new HandleStream(this->pipe.read_);
-    out_ = new HandleStream(this->pipe.write_);
+    in_ = new HandleStream(this->pipe_.read_);
+    out_ = new HandleStream(this->pipe_.write_);
   }
   return result;
 }

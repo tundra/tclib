@@ -60,6 +60,10 @@ size_t read_iop_bytes_read(read_iop_t *iop) {
   return static_cast<ReadIop*>(iop)->bytes_read();
 }
 
+bool read_iop_has_succeeded(read_iop_t *iop) {
+  return static_cast<ReadIop*>(iop)->has_succeeded();
+}
+
 bool read_iop_execute(read_iop_t *iop) {
   return static_cast<ReadIop*>(iop)->execute();
 }
@@ -74,19 +78,49 @@ void write_iop_dispose(write_iop_t *iop) {
   static_cast<WriteIop*>(iop)->~WriteIop();
 }
 
+bool write_iop_execute(write_iop_t *iop) {
+  return static_cast<WriteIop*>(iop)->execute();
+}
+
+size_t write_iop_bytes_written(write_iop_t *iop) {
+  return static_cast<WriteIop*>(iop)->bytes_written();
+}
+
+void iop_group_initialize(iop_group_t *raw_group) {
+  IopGroup *group = static_cast<IopGroup*>(raw_group);
+  new (group) IopGroup();
+}
+
+void iop_group_dispose(iop_group_t *group) {
+  static_cast<IopGroup*>(group)->~IopGroup();
+}
+
+void iop_group_schedule(iop_group_t *group, void *iop) {
+  static_cast<IopGroup*>(group)->schedule(static_cast<Iop*>(iop));
+}
+
+size_t iop_group_pending_count(iop_group_t *group) {
+  return static_cast<IopGroup*>(group)->pending_count();
+}
+
+bool iop_group_wait_for_next(iop_group_t *group, size_t *index_out) {
+  return static_cast<IopGroup*>(group)->wait_for_next(index_out);
+}
 
 IopGroup::IopGroup() {
   pending_count_ = 0;
+  voidp_vector_init(&ops_);
 }
 
 IopGroup::~IopGroup() {
   CHECK_EQ("disposing active group", 0, pending_count_);
+  voidp_vector_dispose(&ops_);
 }
 
 void IopGroup::schedule(Iop *iop) {
   CHECK_FALSE("scheduling complete iop", iop->is_complete());
   CHECK_TRUE("rescheduling iop", iop->header()->group_ == NULL);
-  ops_.push_back(iop);
+  ops()->push_back(iop);
   iop->header()->group_ = this;
   pending_count_++;
 }
