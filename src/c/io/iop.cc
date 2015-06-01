@@ -95,8 +95,12 @@ void iop_group_dispose(iop_group_t *group) {
   static_cast<IopGroup*>(group)->~IopGroup();
 }
 
-void iop_group_schedule(iop_group_t *group, void *iop) {
-  static_cast<IopGroup*>(group)->schedule(static_cast<Iop*>(iop));
+void iop_group_schedule_read(iop_group_t *group, read_iop_t *iop) {
+  static_cast<IopGroup*>(group)->schedule(static_cast<ReadIop*>(iop));
+}
+
+void iop_group_schedule_write(iop_group_t *group, write_iop_t *iop) {
+  static_cast<IopGroup*>(group)->schedule(static_cast<WriteIop*>(iop));
 }
 
 size_t iop_group_pending_count(iop_group_t *group) {

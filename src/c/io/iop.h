@@ -30,11 +30,6 @@ void iop_group_initialize(iop_group_t *group);
 // Releate the resources held by the given iop group.
 void iop_group_dispose(iop_group_t *group);
 
-// Add a read_iop_t or write_iop_t to this group. See the comment on IopGroup
-// for how to use this correctly. Only incomplete iops may be scheduled, also
-// once an iop has been scheduled it may not be completed synchronously.
-void iop_group_schedule(iop_group_t *group, void *iop);
-
 // Returns the number of iops in this group that haven't been completed yet.
 size_t iop_group_pending_count(iop_group_t *group);
 
@@ -100,6 +95,11 @@ bool read_iop_has_succeeded(read_iop_t *iop);
 // Perform this read operation synchronously.
 bool read_iop_execute(read_iop_t *iop);
 
+// Add a read to this group. See the comment on IopGroup for how to use this
+// correctly. Only incomplete iops may be scheduled, also once an iop has been
+// scheduled it may not be completed synchronously.
+void iop_group_schedule_read(iop_group_t *group, read_iop_t *iop);
+
 // Data associated with a write operation.
 typedef struct {
   iop_header_t header_;
@@ -124,5 +124,10 @@ bool write_iop_execute(write_iop_t *iop);
 
 // Returns the number of bytes written.
 size_t write_iop_bytes_written(write_iop_t *iop);
+
+// Add a read to this group. See the comment on IopGroup for how to use this
+// correctly. Only incomplete iops may be scheduled, also once an iop has been
+// scheduled it may not be completed synchronously.
+void iop_group_schedule_write(iop_group_t *group, write_iop_t *iop);
 
 #endif // _TCLIB_IOP_H

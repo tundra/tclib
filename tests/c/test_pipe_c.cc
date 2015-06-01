@@ -94,8 +94,8 @@ TEST(pipe_c, simple_multiplex) {
   read_iop_init(&read_b, b, b_buf, 256);
   iop_group_t read_a_and_b;
   iop_group_initialize(&read_a_and_b);
-  iop_group_schedule(&read_a_and_b, &read_a);
-  iop_group_schedule(&read_a_and_b, &read_b);
+  iop_group_schedule_read(&read_a_and_b, &read_a);
+  iop_group_schedule_read(&read_a_and_b, &read_b);
   ASSERT_EQ(2, iop_group_pending_count(&read_a_and_b));
 
   ASSERT_TRUE(iop_group_wait_for_next(&read_a_and_b, &index));
