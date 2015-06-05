@@ -4,40 +4,40 @@
 #include "boundbuf.h"
 #include "log.h"
 
-void bounded_buffer_init(void *raw_buf, size_t size, size_t capacity) {
-  CHECK_REL("buffer too small", size, >=, BOUNDED_BUFFER_SIZE(capacity));
-  memset(raw_buf, 0, BOUNDED_BUFFER_SIZE(capacity));
-  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
-  buf->capacity = capacity;
-  buf->occupied_count = 0;
-  buf->next_free = 0;
-  buf->next_occupied = 0;
+void generic_bounded_buffer_init(generic_bounded_buffer_t *generic,
+    opaque_t *data, size_t capacity) {
+  memset(data, 0, capacity * sizeof(opaque_t));
+  generic->capacity = capacity;
+  generic->occupied_count = 0;
+  generic->next_free = 0;
+  generic->next_occupied = 0;
 }
 
-bool bounded_buffer_try_offer(void *raw_buf, opaque_t value) {
-  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
-  if (buf->occupied_count == buf->capacity)
+bool generic_bounded_buffer_is_empty(generic_bounded_buffer_t *generic) {
+  return generic->occupied_count == 0;
+}
+
+bool generic_bounded_buffer_try_offer(generic_bounded_buffer_t *generic,
+    opaque_t *data, size_t capacity, opaque_t value) {
+  if (generic->occupied_count == generic->capacity)
     return false;
-  opaque_t *slot = &buf->data[buf->next_free];
+  opaque_t *slot = &data[generic->next_free];
   CHECK_TRUE("overwriting", opaque_is_null(*slot));
   *slot = value;
-  buf->next_free = (buf->next_free + 1) % buf->capacity;
-  buf->occupied_count++;
+  generic->next_free = (generic->next_free + 1) % generic->capacity;
+  generic->occupied_count++;
   return true;
 }
 
-bool bounded_buffer_try_take(void *raw_buf, opaque_t *value_out) {
-  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
-  if (buf->occupied_count == 0)
+bool generic_bounded_buffer_try_take(generic_bounded_buffer_t *generic,
+    opaque_t *data, size_t capacity, opaque_t *value_out) {
+  if (generic->occupied_count == 0)
     return false;
-  *value_out = buf->data[buf->next_occupied];
-  buf->data[buf->next_occupied] = opaque_null();
-  buf->next_occupied = (buf->next_occupied + 1) % buf->capacity;
-  buf->occupied_count--;
+  *value_out = data[generic->next_occupied];
+  data[generic->next_occupied] = opaque_null();
+  generic->next_occupied = (generic->next_occupied + 1) % generic->capacity;
+  generic->occupied_count--;
   return true;
 }
 
-bool bounded_buffer_is_empty(void *raw_buf) {
-  bounded_buffer_t *buf = (bounded_buffer_t*) raw_buf;
-  return buf->occupied_count == 0;
-}
+IMPLEMENT_BOUNDED_BUFFER(16)

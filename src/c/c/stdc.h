@@ -94,4 +94,8 @@ typedef byte_t *address_t;
 // Integer datatype large enough to allow address arithmetic.
 typedef size_t address_arith_t;
 
+// Evaluates the arguments and joins them together as strings.
+#define JOIN3(A, B, C) A##_##B##_##C
+#define JOIN2(A, B) A##_##B
+
 #endif // _STDC
