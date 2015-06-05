@@ -28,6 +28,7 @@ test_file_names = [
   "test_thread.cc",
   "test_tinymt.cc",
   "test_vector.cc",
+  "test_worklist.cc",
 ]
 
 # Compile a single test file, ensuring that the include paths are hooked up
