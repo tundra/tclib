@@ -53,8 +53,10 @@ typedef struct {                                                               \
 } bounded_buffer_t(EC, EW);                                                    \
 void __BBNAME__(EC, EW, init)(bounded_buffer_t(EC, EW) *buf);                  \
 bool __BBNAME__(EC, EW, is_empty)(bounded_buffer_t(EC, EW) *buf);              \
-bool __BBNAME__(EC, EW, try_offer)(bounded_buffer_t(EC, EW) *buf, opaque_t *values, size_t elmw); \
-bool __BBNAME__(EC, EW, try_take)(bounded_buffer_t(EC, EW) *buf, opaque_t *values_out, size_t elmw)
+bool __BBNAME__(EC, EW, try_offer)(bounded_buffer_t(EC, EW) *buf,              \
+    opaque_t *values, size_t elmw);                                            \
+bool __BBNAME__(EC, EW, try_take)(bounded_buffer_t(EC, EW) *buf,               \
+    opaque_t *values_out, size_t elmw)
 
 // Expands to the implementation of a bounded buffer of the given size.
 #define IMPLEMENT_BOUNDED_BUFFER(EC, EW)                                       \
@@ -64,16 +66,19 @@ void __BBNAME__(EC, EW, init)(bounded_buffer_t(EC, EW) *buf) {                 \
 bool __BBNAME__(EC, EW, is_empty)(bounded_buffer_t(EC, EW) *buf) {             \
   return generic_bounded_buffer_is_empty(&buf->generic);                       \
 }                                                                              \
-bool __BBNAME__(EC, EW, try_offer)(bounded_buffer_t(EC, EW) *buf, opaque_t *values, size_t elmw) {\
-  return generic_bounded_buffer_try_offer(&buf->generic, buf->data, values, elmw);\
+bool __BBNAME__(EC, EW, try_offer)(bounded_buffer_t(EC, EW) *buf,              \
+    opaque_t *values, size_t elmw) {                                           \
+  return generic_bounded_buffer_try_offer(&buf->generic, buf->data, values,    \
+      elmw);                                                                   \
 }                                                                              \
-bool __BBNAME__(EC, EW, try_take)(bounded_buffer_t(EC, EW) *buf, opaque_t *values_out, size_t elmw) { \
-  return generic_bounded_buffer_try_take(&buf->generic, buf->data, values_out, elmw);\
+bool __BBNAME__(EC, EW, try_take)(bounded_buffer_t(EC, EW) *buf,               \
+    opaque_t *values_out, size_t elmw) {                                       \
+  return generic_bounded_buffer_try_take(&buf->generic, buf->data, values_out, \
+      elmw);                                                                   \
 }
 
-// Initialize a bounded buffer that can hold up to the given number of elements.
-// The size is the size of the given buffer, it is used to sanity check whether
-// it's large enough.
+// Initialize a bounded buffer that can hold up to 'EC' elements where each
+// element is made up of 'EW' opaques.
 #define bounded_buffer_init(EC, EW) __BBNAME__(EC, EW, init)
 
 // Attempt to add a value in the next free slot of the given buffer. Returns
@@ -89,5 +94,6 @@ bool __BBNAME__(EC, EW, try_take)(bounded_buffer_t(EC, EW) *buf, opaque_t *value
 #define bounded_buffer_is_empty(EC, EW) __BBNAME__(EC, EW, is_empty)
 
 DECLARE_BOUNDED_BUFFER(16, 1);
+DECLARE_BOUNDED_BUFFER(256, 1);
 
 #endif // _TCLIB_BOUNDBUF_H

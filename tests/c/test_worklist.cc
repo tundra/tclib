@@ -7,39 +7,35 @@ BEGIN_C_INCLUDES
 #include "sync/worklist.h"
 END_C_INCLUDES
 
-#define kBufSize 100
+#define kSize 100
+#define kWidth 3
 
-DECLARE_BOUNDED_BUFFER(kBufSize);
+DECLARE_BOUNDED_BUFFER(kSize, kWidth);
+DECLARE_WORKLIST(kSize, kWidth);
 
 TEST(worklist, simple) {
-  bounded_buffer_t(kBufSize) buf;
-  bounded_buffer_init(kBufSize)(&buf);
-  for (size_t i = 0; i < kBufSize; i++)
-    ASSERT_TRUE(bounded_buffer_try_offer(kBufSize)(&buf, u2o(i)));
-  ASSERT_FALSE(bounded_buffer_try_offer(kBufSize)(&buf, u2o(100)));
-  for (size_t i = 0; i < kBufSize; i++) {
-    opaque_t val = opaque_null();
-    ASSERT_TRUE(bounded_buffer_try_take(kBufSize)(&buf, &val));
-    ASSERT_EQ(i, o2u(val));
-  }
-  ASSERT_FALSE(bounded_buffer_try_take(kBufSize)(&buf, NULL));
-  // Unaligned adding and removing.
-  size_t next_expected = 1001;
-  size_t next_to_add = 1001;
-  size_t occupancy = 0;
-  while (occupancy <= 93) {
-    for (size_t io = 0; io < 7; io++) {
-      ASSERT_TRUE(bounded_buffer_try_offer(kBufSize)(&buf, u2o(next_to_add)));
-      next_to_add++;
-      occupancy++;
-    }
-    for (size_t it = 0; it < 5; it++) {
-      opaque_t value;
-      ASSERT_TRUE(bounded_buffer_try_take(kBufSize)(&buf, &value));
-      ASSERT_EQ(next_expected, o2u(value));
-      next_expected++;
-      occupancy--;
-    }
-  }
+  worklist_t(kSize, kWidth) worklist;
+  ASSERT_TRUE(worklist_init(kSize, kWidth)(&worklist));
+  ASSERT_TRUE(worklist_is_empty(kSize, kWidth)(&worklist));
 
+  for (size_t i = 0; i < kSize; i++) {
+    opaque_t elms[kWidth] = {u2o(i), u2o(i + 13), u2o(i + 17)};
+    ASSERT_TRUE(worklist_schedule(kSize, kWidth)(&worklist, elms, kWidth, duration_unlimited()));
+  }
+  opaque_t elms[kWidth] = {opaque_null(), opaque_null(), opaque_null()};
+  ASSERT_FALSE(worklist_schedule(kSize, kWidth)(&worklist, elms, kWidth, duration_seconds(0.01)));
+
+  for (size_t i = 0; i < kSize; i++) {
+    opaque_t elms[kWidth];
+    ASSERT_TRUE(worklist_take(kSize, kWidth)(&worklist, elms, kWidth, duration_instant()));
+    ASSERT_EQ(i, o2u(elms[0]));
+    ASSERT_EQ(i + 13, o2u(elms[1]));
+    ASSERT_EQ(i + 17, o2u(elms[2]));
+  }
+  ASSERT_FALSE(worklist_take(kSize, kWidth)(&worklist, NULL, kWidth, duration_instant()));
+
+  worklist_dispose(kSize, kWidth)(&worklist);
 }
+
+IMPLEMENT_BOUNDED_BUFFER(kSize, kWidth);
+IMPLEMENT_WORKLIST(kSize, kWidth);

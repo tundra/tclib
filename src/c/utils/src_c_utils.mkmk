@@ -12,7 +12,7 @@ library_files = [
   "strbuf.c",
   "string.c",
   "tinymt.c",
-  "vector.cc",
+  "vector.cc"
 ]
 
 library = get_group("library")

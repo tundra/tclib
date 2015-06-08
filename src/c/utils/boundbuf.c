@@ -46,3 +46,4 @@ bool generic_bounded_buffer_try_take(generic_bounded_buffer_t *generic,
 }
 
 IMPLEMENT_BOUNDED_BUFFER(16, 1)
+IMPLEMENT_BOUNDED_BUFFER(256, 1)

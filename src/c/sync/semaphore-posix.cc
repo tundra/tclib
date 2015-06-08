@@ -27,6 +27,8 @@ bool NativeSemaphore::acquire(duration_t timeout) {
   int result;
   if (duration_is_unlimited(timeout)) {
     result = sem_wait(&sema);
+  } else if (duration_is_instant(timeout)) {
+    result = sem_trywait(&sema);
   } else {
     // Grab the current time.
     struct timespec current;
@@ -44,21 +46,15 @@ bool NativeSemaphore::acquire(duration_t timeout) {
   }
   if (result == 0)
     return true;
-  if (errno != ETIMEDOUT)
-    // Timing out is fine so only warn if it's a different error.
+  if (errno != ETIMEDOUT && errno != EAGAIN)
+    // Timing out or unavailability is fine so only warn if it's a different
+    // error.
     WARN("Waiting for semaphore failed: %i (error: %s)", result, strerror(errno));
   return false;
 }
 
 bool NativeSemaphore::try_acquire() {
-  int result = sem_trywait(&sema);
-  if (result == 0)
-    return true;
-  if (errno != EAGAIN)
-    // EAGAIN indicates that nothing went wrong as such, the semaphore is just
-    // zero.
-    WARN("Call to sem_trywait failed: %i (error: %i %s)", result, strerror(errno));
-  return false;
+  return acquire(duration_instant());
 }
 
 bool NativeSemaphore::release() {
