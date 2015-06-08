@@ -51,7 +51,9 @@ static inline double duration_to_seconds(duration_t duration) {
   return ((double) duration.millis) / 1000.0;
 }
 
-// Returns the number of milliseconds of this duration.
+// Returns the number of milliseconds of this duration. If the given duration is
+// unlimited or instant 0 will be returned (which means that you probably want
+// to test explicitly for unlimited).
 static inline uint64_t duration_to_millis(duration_t duration) {
   return duration.millis;
 }

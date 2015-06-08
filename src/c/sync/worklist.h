@@ -40,10 +40,10 @@ void generic_worklist_dispose(generic_worklist_t *generic);
 
 #define __WLNAME__(EC, EW, NAME) JOIN5(worklist, EC, by, EW, NAME)
 
-// Generic bounded buffer type.
+// Generic worklist type.
 #define worklist_t(EC, EW) __WLNAME__(EC, EW, t)
 
-// Expands to the the declaration of a bounded buffer of the given size.
+// Expands to the the declaration of a worklist with the given dimensions.
 #define DECLARE_WORKLIST(EC, EW)                                               \
 typedef struct {                                                               \
   generic_worklist_t generic;                                                  \
@@ -96,7 +96,9 @@ bool __WLNAME__(EC, EW, take)(worklist_t(EC, EW) *wl, opaque_t *values_out,    \
 // available to take otherwise false. Never blocks.
 #define worklist_take(EC, EW) __WLNAME__(EC, EW, take)
 
-// Are there any elements in the given worklist at this instant?
+// Are there any elements in the given worklist at this instant? Note that using
+// this together with take or schedule is a recipe for race conditions because
+// it is in no way synchronized.
 #define worklist_is_empty(EC, EW) __WLNAME__(EC, EW, is_empty)
 
 DECLARE_WORKLIST(16, 1);
