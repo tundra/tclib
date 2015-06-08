@@ -9,8 +9,9 @@
 
 // A circular bounded buffer that holds at most a fixed number of elements and
 // can yield them in first-in first-out order. Not thread safe out of the box.
-// Bounded buffers are generic on the buffer size so use bounded_buffer_t(N)
-// to refer to the type for a particular size.
+// Bounded buffers are generic on the size of the buffer (number of elements)
+// as well as the width of each element, so use bounded_buffer_t(EC, EW) to
+// refer to the type for a particular set of parameters.
 typedef struct {
   // The max number of elements this buffer will hold.
   size_t capacity;
@@ -20,69 +21,73 @@ typedef struct {
   size_t next_free;
   // Index of the next occupied slot to take a value from.
   size_t next_occupied;
+  // Number of opaques stored in each entry in the buffer.
+  size_t element_width;
 } generic_bounded_buffer_t;
 
 // See the non-generic version below.
 void generic_bounded_buffer_init(generic_bounded_buffer_t *generic,
-    opaque_t *data, size_t capacity);
+    opaque_t *data, size_t capacity, size_t width);
 
 // See the non-generic version below.
 bool generic_bounded_buffer_is_empty(generic_bounded_buffer_t *generic);
 
 // See the non-generic version below.
 bool generic_bounded_buffer_try_offer(generic_bounded_buffer_t *generic,
-    opaque_t *data, size_t capacity, opaque_t value);
+    opaque_t *data, opaque_t *values, size_t elmw);
 
 // See the non-generic version below.
 bool generic_bounded_buffer_try_take(generic_bounded_buffer_t *generic,
-    opaque_t *data, size_t capacity, opaque_t *value_out);
+    opaque_t *data, opaque_t *values_out, size_t elmw);
+
+#define __BBNAME__(EC, EW, NAME) JOIN5(bounded_buffer, EC, by, EW, NAME)
 
 // Generic bounded buffer type.
-#define bounded_buffer_t(N) JOIN3(bounded_buffer, N, t)
+#define bounded_buffer_t(EC, EW) __BBNAME__(EC, EW, t)
 
 // Expands to the the declaration of a bounded buffer of the given size.
-#define DECLARE_BOUNDED_BUFFER(N)                                              \
+#define DECLARE_BOUNDED_BUFFER(EC, EW)                                         \
 typedef struct {                                                               \
   generic_bounded_buffer_t generic;                                            \
-  opaque_t data[(N)];                                                          \
-} JOIN3(bounded_buffer, N, t);                                                 \
-void JOIN3(bounded_buffer, N, init)(bounded_buffer_t(N) *buf);                 \
-bool JOIN3(bounded_buffer, N, is_empty)(bounded_buffer_t(N) *buf);             \
-bool JOIN3(bounded_buffer, N, try_offer)(bounded_buffer_t(N) *buf, opaque_t value); \
-bool JOIN3(bounded_buffer, N, try_take)(bounded_buffer_t(N) *buf, opaque_t *value_out)
+  opaque_t data[(EC) * (EW)];                                                  \
+} bounded_buffer_t(EC, EW);                                                    \
+void __BBNAME__(EC, EW, init)(bounded_buffer_t(EC, EW) *buf);                  \
+bool __BBNAME__(EC, EW, is_empty)(bounded_buffer_t(EC, EW) *buf);              \
+bool __BBNAME__(EC, EW, try_offer)(bounded_buffer_t(EC, EW) *buf, opaque_t *values, size_t elmw); \
+bool __BBNAME__(EC, EW, try_take)(bounded_buffer_t(EC, EW) *buf, opaque_t *values_out, size_t elmw)
 
 // Expands to the implementation of a bounded buffer of the given size.
-#define IMPLEMENT_BOUNDED_BUFFER(N)                                            \
-void JOIN3(bounded_buffer, N, init)(bounded_buffer_t(N) *buf) {                \
-  generic_bounded_buffer_init(&buf->generic, buf->data, (N));                  \
+#define IMPLEMENT_BOUNDED_BUFFER(EC, EW)                                       \
+void __BBNAME__(EC, EW, init)(bounded_buffer_t(EC, EW) *buf) {                 \
+  generic_bounded_buffer_init(&buf->generic, buf->data, (EC), (EW));           \
 }                                                                              \
-bool JOIN3(bounded_buffer, N, is_empty)(bounded_buffer_t(N) *buf) {            \
+bool __BBNAME__(EC, EW, is_empty)(bounded_buffer_t(EC, EW) *buf) {             \
   return generic_bounded_buffer_is_empty(&buf->generic);                       \
 }                                                                              \
-bool JOIN3(bounded_buffer, N, try_offer)(bounded_buffer_t(N) *buf, opaque_t value) { \
-  return generic_bounded_buffer_try_offer(&buf->generic, buf->data, (N), value);\
+bool __BBNAME__(EC, EW, try_offer)(bounded_buffer_t(EC, EW) *buf, opaque_t *values, size_t elmw) {\
+  return generic_bounded_buffer_try_offer(&buf->generic, buf->data, values, elmw);\
 }                                                                              \
-bool JOIN3(bounded_buffer, N, try_take)(bounded_buffer_t(N) *buf, opaque_t *value_out) { \
-  return generic_bounded_buffer_try_take(&buf->generic, buf->data, (N), value_out); \
+bool __BBNAME__(EC, EW, try_take)(bounded_buffer_t(EC, EW) *buf, opaque_t *values_out, size_t elmw) { \
+  return generic_bounded_buffer_try_take(&buf->generic, buf->data, values_out, elmw);\
 }
 
 // Initialize a bounded buffer that can hold up to the given number of elements.
 // The size is the size of the given buffer, it is used to sanity check whether
 // it's large enough.
-#define bounded_buffer_init(N) JOIN3(bounded_buffer, N, init)
+#define bounded_buffer_init(EC, EW) __BBNAME__(EC, EW, init)
 
 // Attempt to add a value in the next free slot of the given buffer. Returns
 // true if successful.
-#define bounded_buffer_try_offer(N) JOIN3(bounded_buffer, N, try_offer)
+#define bounded_buffer_try_offer(EC, EW) __BBNAME__(EC, EW, try_offer)
 
 // Attempt to take a value from the next occupied slot in the given buffer.
 // Returns true if successful, in which case the element will be stored in the
 // out parameter.
-#define bounded_buffer_try_take(N) JOIN3(bounded_buffer, N, try_take)
+#define bounded_buffer_try_take(EC, EW) __BBNAME__(EC, EW, try_take)
 
 // Returns true if the given buffer has no elements.
-#define bounded_buffer_is_empty(N) JOIN3(bounded_buffer, N, is_empty)
+#define bounded_buffer_is_empty(EC, EW) __BBNAME__(EC, EW, is_empty)
 
-DECLARE_BOUNDED_BUFFER(16);
+DECLARE_BOUNDED_BUFFER(16, 1);
 
 #endif // _TCLIB_BOUNDBUF_H

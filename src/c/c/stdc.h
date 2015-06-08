@@ -50,6 +50,12 @@
 #  define IF_MACH(T, E) E
 #endif
 
+#ifdef ENABLE_CHECKS
+#  define IF_CHECKS(T, F) T
+#else
+#  define IF_CHECKS(T, F) F
+#endif
+
 // Define some expression macros for wordsize dependent code. The IS_..._BIT
 // macros should be set in some platform dependent way above.
 #ifdef IS_32_BIT
@@ -95,6 +101,8 @@ typedef byte_t *address_t;
 typedef size_t address_arith_t;
 
 // Evaluates the arguments and joins them together as strings.
+#define JOIN5(A, B, C, D, E) A##_##B##_##C##_##D##_##E
+#define JOIN4(A, B, C, D) A##_##B##_##C##_##D
 #define JOIN3(A, B, C) A##_##B##_##C
 #define JOIN2(A, B) A##_##B
 

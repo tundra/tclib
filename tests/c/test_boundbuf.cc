@@ -9,39 +9,44 @@ END_C_INCLUDES
 
 #define kBufSize 100
 
-DECLARE_BOUNDED_BUFFER(kBufSize);
+DECLARE_BOUNDED_BUFFER(kBufSize, 2);
 
 TEST(boundbuf, simple) {
-  bounded_buffer_t(kBufSize) buf;
-  bounded_buffer_init(kBufSize)(&buf);
-  for (size_t i = 0; i < kBufSize; i++)
-    ASSERT_TRUE(bounded_buffer_try_offer(kBufSize)(&buf, u2o(i)));
-  ASSERT_FALSE(bounded_buffer_try_offer(kBufSize)(&buf, u2o(100)));
+  bounded_buffer_t(kBufSize, 2) buf;
+  bounded_buffer_init(kBufSize, 2)(&buf);
   for (size_t i = 0; i < kBufSize; i++) {
-    opaque_t val = opaque_null();
-    ASSERT_TRUE(bounded_buffer_try_take(kBufSize)(&buf, &val));
-    ASSERT_EQ(i, o2u(val));
+    opaque_t elms[2] = {u2o(i + 8), u2o(i * 7)};
+    ASSERT_TRUE(bounded_buffer_try_offer(kBufSize, 2)(&buf, elms, 2));
   }
-  ASSERT_FALSE(bounded_buffer_try_take(kBufSize)(&buf, NULL));
+  opaque_t last_elms[2] = {u2o(0), u2o(0)};
+  ASSERT_FALSE(bounded_buffer_try_offer(kBufSize, 2)(&buf, last_elms, 2));
+  for (size_t i = 0; i < kBufSize; i++) {
+    opaque_t vals[2];
+    ASSERT_TRUE(bounded_buffer_try_take(kBufSize, 2)(&buf, vals, 2));
+    ASSERT_EQ(i + 8, o2u(vals[0]));
+    ASSERT_EQ(i * 7, o2u(vals[1]));
+  }
+  ASSERT_FALSE(bounded_buffer_try_take(kBufSize, 2)(&buf, NULL, 2));
   // Unaligned adding and removing.
   size_t next_expected = 1001;
   size_t next_to_add = 1001;
   size_t occupancy = 0;
   while (occupancy <= 93) {
     for (size_t io = 0; io < 7; io++) {
-      ASSERT_TRUE(bounded_buffer_try_offer(kBufSize)(&buf, u2o(next_to_add)));
+      opaque_t elms[2] = { u2o(next_to_add), u2o(next_to_add * 13) };
+      ASSERT_TRUE(bounded_buffer_try_offer(kBufSize, 2)(&buf, elms, 2));
       next_to_add++;
       occupancy++;
     }
     for (size_t it = 0; it < 5; it++) {
-      opaque_t value;
-      ASSERT_TRUE(bounded_buffer_try_take(kBufSize)(&buf, &value));
-      ASSERT_EQ(next_expected, o2u(value));
+      opaque_t values[2];
+      ASSERT_TRUE(bounded_buffer_try_take(kBufSize, 2)(&buf, values, 2));
+      ASSERT_EQ(next_expected, o2u(values[0]));
+      ASSERT_EQ(next_expected * 13, o2u(values[1]));
       next_expected++;
       occupancy--;
     }
   }
-
 }
 
-IMPLEMENT_BOUNDED_BUFFER(kBufSize);
+IMPLEMENT_BOUNDED_BUFFER(kBufSize, 2);
