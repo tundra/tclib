@@ -13,13 +13,17 @@ bool NativeMutex::platform_dispose() {
   return true;
 }
 
-bool NativeMutex::lock() {
-  EnterCriticalSection(get_platform_mutex(this));
-  return true;
-}
-
-bool NativeMutex::try_lock() {
-  return TryEnterCriticalSection(get_platform_mutex(this));
+bool NativeMutex::lock(Duration timeout) {
+  CRITICAL_SECTION *mutex = get_platform_mutex(this);
+  if (timeout.is_unlimited()) {
+    EnterCriticalSection(mutex);
+    return true;
+  } else if (timeout.is_instant()) {
+    return TryEnterCriticalSection(mutex);
+  } else {
+    CHECK_TRUE("nontrivial mutex timeout", false);
+    return false;
+  }
 }
 
 bool NativeMutex::unlock() {

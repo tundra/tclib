@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <errno.h>
 
+#include "utils/clock.hh"
+
 bool NativeCondition::platform_initialize() {
   int result = pthread_cond_init(&cond, NULL);
   if (result == 0)
@@ -20,8 +22,15 @@ bool NativeCondition::platform_dispose() {
   return false;
 }
 
-bool NativeCondition::wait(NativeMutex *mutex) {
-  int result = pthread_cond_wait(&cond, &mutex->mutex);
+bool NativeCondition::wait(NativeMutex *mutex, Duration timeout) {
+  int result;
+  if (timeout.is_unlimited()) {
+    result = pthread_cond_wait(&cond, &mutex->mutex);
+  } else {
+    NativeTime time = NativeTime::zero() + timeout;
+    struct timespec posix_time = time.to_posix();
+    result = pthread_cond_timedwait(&cond, &mutex->mutex, &posix_time);
+  }
   if (result == 0)
     return true;
   WARN("Call to pthread_cond_wait failed: %i (error: %s)", result, strerror(result));

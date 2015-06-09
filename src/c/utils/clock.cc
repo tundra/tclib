@@ -7,7 +7,7 @@ using namespace tclib;
 
 class SystemRealTimeClock : public RealTimeClock {
 public:
-  virtual uint64_t millis_since_epoch_utc();
+  virtual NativeTime time_since_epoch_utc();
 
   // Returns the singleton system real time clock instance.
   static SystemRealTimeClock *instance() { return &kInstance; }
@@ -25,12 +25,24 @@ RealTimeClock *RealTimeClock::system() {
   return SystemRealTimeClock::instance();
 }
 
+NativeTime::NativeTime(platform_time_t platform) {
+  time = platform;
+}
+
+NativeTime::NativeTime(native_time_t native) {
+  time = native.time;
+}
+
 real_time_clock_t *real_time_clock_system() {
   return RealTimeClock::system();
 }
 
-uint64_t real_time_clock_millis_since_epoch_utc(real_time_clock_t *clock) {
-  return static_cast<RealTimeClock*>(clock)->millis_since_epoch_utc();
+native_time_t real_time_clock_time_since_epoch_utc(real_time_clock_t *clock) {
+  return static_cast<RealTimeClock*>(clock)->time_since_epoch_utc();
+}
+
+uint64_t native_time_to_millis(native_time_t time) {
+  return NativeTime(time).to_millis();
 }
 
 #ifdef IS_GCC

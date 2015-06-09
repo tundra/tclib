@@ -30,3 +30,5 @@ typedef struct {
   void *read_;
   void *write_;
 } platform_pipe_t;
+
+typedef uint32_t platform_time_t;

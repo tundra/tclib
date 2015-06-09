@@ -55,6 +55,10 @@ bool NativeSemaphore::initialize() {
   return is_initialized;
 }
 
+bool NativeSemaphore::try_acquire() {
+  return acquire(Duration::instant());
+}
+
 void native_semaphore_construct(native_semaphore_t *sema) {
   new (sema) NativeSemaphore();
 }

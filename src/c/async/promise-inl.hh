@@ -210,7 +210,7 @@ void sync_promise_state_t<T, E>::release_waiter(NativeSemaphore *sema, I ignore)
 }
 
 template <typename T, typename E>
-bool sync_promise_state_t<T, E>::wait(duration_t timeout) {
+bool sync_promise_state_t<T, E>::wait(Duration timeout) {
   lock();
   if (promise_state_t<T, E>::state_ == promise_state_t<T, E>::psEmpty) {
     // If multiple threads end up waiting for this promise this gives each of

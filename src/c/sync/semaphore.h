@@ -36,7 +36,8 @@ bool native_semaphore_initialize(native_semaphore_t *sema);
 bool native_semaphore_acquire(native_semaphore_t *sema, duration_t timeout);
 
 // Attempt to acquire a permit from the given semaphore but will not wait if no
-// permits are available.
+// permits are available. Shorthand for native_semaphore_acquire(sema,
+// duration_instant()).
 bool native_semaphore_try_acquire(native_semaphore_t *sema);
 
 // Release a permit to the given semaphore.

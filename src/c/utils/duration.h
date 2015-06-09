@@ -31,6 +31,7 @@ static inline duration_t duration_unlimited() {
   return result;
 }
 
+// Returns the instant duration, that is, zero time.
 static inline duration_t duration_instant() {
   duration_t result = {false, 0};
   return result;

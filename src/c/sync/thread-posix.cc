@@ -38,7 +38,7 @@ native_thread_id_t NativeThread::get_current_id() {
 }
 
 bool NativeThread::yield() {
-  return pthread_yield() == 0;
+  return IF_MACH(sched_yield(), pthread_yield()) == 0;
 }
 
 bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {

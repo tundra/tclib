@@ -90,7 +90,7 @@ TEST(condition_cpp, wake_all) {
     ASSERT_TRUE(shared.mutex.lock());
     ASSERT_TRUE(shared.cond.wake_all());
     ASSERT_TRUE(shared.mutex.unlock());
-    ASSERT_FALSE(shared.released.acquire(duration_millis(10)));
+    ASSERT_FALSE(shared.released.acquire(Duration::millis(10)));
   }
   for (size_t i = 0; i < kWaiterCount; i++)
     waiters[i].join();

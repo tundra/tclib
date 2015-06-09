@@ -5,7 +5,9 @@
 #define _TCLIB_CONDITION_HH
 
 #include "c/stdc.h"
+
 #include "sync/mutex.hh"
+#include "utils/duration.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/condition.h"
@@ -29,7 +31,7 @@ public:
   // Block this condition on the given mutex and release the mutex (which must
   // be held exactly once by the calling thread) atomically. While blocked the
   // thread may wake up spuriously without being explicitly woken.
-  bool wait(NativeMutex *mutex);
+  bool wait(NativeMutex *mutex, Duration timeout = Duration::unlimited());
 
   // Wake at least one thread that is waiting on this condition, if any are
   // waiting, but not necessarily all of them.

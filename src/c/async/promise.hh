@@ -174,7 +174,7 @@ public:
   sync_promise_state_t() { mutex_.initialize(); }
   virtual bool lock() { return mutex_.lock(); }
   virtual bool unlock() { return mutex_.unlock(); }
-  bool wait(duration_t timeout);
+  bool wait(Duration timeout);
 protected:
   virtual size_t instance_size() { return sizeof(*this); }
 
@@ -202,7 +202,7 @@ public:
 
   // Blocks this thread until this promise has been fulfilled. Once this returns
   // you can use the peek_ methods to get the value/error.
-  bool wait(duration_t timeout = duration_unlimited()) { return state()->wait(timeout); }
+  bool wait(Duration timeout = Duration::unlimited()) { return state()->wait(timeout); }
 
 private:
   sync_promise_state_t<T, E> *state() { return static_cast<sync_promise_state_t<T, E>*>(promise_t<T, E>::state()); }

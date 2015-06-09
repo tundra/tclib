@@ -23,22 +23,22 @@ bool NativeMutex::platform_dispose() {
   return false;
 }
 
-bool NativeMutex::lock() {
-  int result = pthread_mutex_lock(&mutex);
+bool NativeMutex::lock(Duration timeout) {
+  int result;
+  if (timeout.is_unlimited()) {
+    result = pthread_mutex_lock(&mutex);
+  } else if (timeout.is_instant()) {
+    result = pthread_mutex_trylock(&mutex);
+  } else {
+    CHECK_TRUE("nontrivial timeout not supported", false);
+    return false;
+  }
   if (result == 0)
     return true;
-  WARN("Call to pthread_mutex_lock failed: %i (error: %s)", result, strerror(result));
-  return false;
-}
-
-bool NativeMutex::try_lock() {
-  int result = pthread_mutex_trylock(&mutex);
-  if (result == 0)
-    return true;
+  // Busy means that it's already held which is a normal result so don't warn
+  // on that.
   if (result != EBUSY)
-    // Busy means that it's already held which is a normal result so don't warn
-    // on that.
-    WARN("Call to pthread_mutex_trylock failed: %i (error: %s)", result, strerror(result));
+    WARN("Call to pthread_mutex_lock failed: %i (error: %s)", result, strerror(result));
   return false;
 }
 

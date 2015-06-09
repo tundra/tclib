@@ -195,7 +195,7 @@ TEST(promise_cpp, sync_wait) {
   ASSERT_TRUE(waiter.start());
   ASSERT_TRUE(about_to_wait.acquire());
   // Wait for a short time to give the waiter time to actually wait.
-  ASSERT_FALSE(has_waited.acquire(duration_seconds(0.01)));
+  ASSERT_FALSE(has_waited.acquire(Duration::seconds(0.01)));
   NativeThread fulfiller(new_callback(run_sync_fulfiller, promise_t<int>(p)));
   ASSERT_TRUE(fulfiller.start());
   ASSERT_TRUE(has_waited.acquire());

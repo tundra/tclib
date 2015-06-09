@@ -6,6 +6,8 @@
 
 #include "c/stdc.h"
 
+#include "utils/duration.hh"
+
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
 #include "sync/semaphore.h"
@@ -34,10 +36,10 @@ public:
 
   // Attempt to acquire a permit from this semaphore, blocking up to the given
   // duration if necessary.
-  bool acquire(duration_t timeout = duration_unlimited());
+  bool acquire(Duration timeout = Duration::unlimited());
 
   // Attempt to acquire a permit from this semaphore but will not wait if no
-  // permits are available.
+  // permits are available. Shorthand for acquire(duration_instant()).
   bool try_acquire();
 
   // Release a permit to this semaphore.

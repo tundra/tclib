@@ -3,7 +3,19 @@
 
 #include "c/winhdr.h"
 
-uint64_t SystemRealTimeClock::millis_since_epoch_utc() {
+uint64_t NativeTime::to_millis() {
+  return time;
+}
+
+NativeTime NativeTime::zero() {
+  return 0;
+}
+
+NativeTime NativeTime::operator+(duration_t duration) {
+  return time + duration_to_millis(duration);
+}
+
+NativeTime SystemRealTimeClock::time_since_epoch_utc() {
   SYSTEMTIME time;
   GetSystemTime(&time);
   uint64_t hr = time.wHour;

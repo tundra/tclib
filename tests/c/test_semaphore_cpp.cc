@@ -102,5 +102,5 @@ TEST(semaphore_cpp, waiters) {
 TEST(semaphore_cpp, timed_wait) {
   NativeSemaphore sema(0);
   ASSERT_TRUE(sema.initialize());
-  ASSERT_FALSE(sema.acquire(duration_millis(100)));
+  ASSERT_FALSE(sema.acquire(Duration::millis(100)));
 }

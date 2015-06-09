@@ -41,6 +41,10 @@ bool NativeMutex::initialize() {
   return is_initialized;
 }
 
+bool NativeMutex::try_lock() {
+  return lock(Duration::instant());
+}
+
 void native_mutex_construct(native_mutex_t *mutex) {
   new (mutex) NativeMutex();
 }

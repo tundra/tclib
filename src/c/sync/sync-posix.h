@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <time.h>
 
 typedef pthread_t native_thread_id_t;
 typedef pthread_t platform_thread_t;
@@ -21,3 +22,5 @@ typedef pid_t platform_process_t;
 #define kPlatformProcessInit 0
 
 typedef int platform_pipe_t[2];
+
+#define platform_time_t struct timespec

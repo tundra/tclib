@@ -9,3 +9,6 @@
 // This is yucky but this isn't a public header so I'll allow it.
 #define platform_semaphore_t mach_platform_semaphore_t
 typedef semaphore_t mach_platform_semaphore_t;
+
+#undef platform_time_t
+#define platform_time_t struct mach_timespec

@@ -9,7 +9,7 @@
 using namespace tclib;
 
 // Dummy state.
-class iop_group_state_t { };
+struct iop_group_state_t { };
 
 void Iop::platform_recycle() {
   // nothing to do

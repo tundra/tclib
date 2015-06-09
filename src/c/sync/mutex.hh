@@ -6,6 +6,8 @@
 
 #include "c/stdc.h"
 
+#include "utils/duration.hh"
+
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
 #include "sync/mutex.h"
@@ -28,10 +30,10 @@ public:
   // Lock this mutex. If it's already held by a different thread we'll wait for
   // it to be released. If it's already held by this thread that's fine, we'll
   // lock it again.
-  bool lock();
+  bool lock(Duration timeout = Duration::unlimited());
 
   // Lock this mutex. If it's already held don't wait but return false
-  // immediately.
+  // immediately. Shorthand for lock(Duration::instant()).
   bool try_lock();
 
   // Unlock this mutex. Only the thread that holds this mutex will be allowed
