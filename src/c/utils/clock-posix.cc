@@ -25,8 +25,8 @@ NativeTime NativeTime::operator+(duration_t duration) {
   uint64_t nsec = time.tv_nsec;
   duration_add_to_timespec(duration, &sec, &nsec);
   platform_time_t result;
-  result.tv_sec = sec;
-  result.tv_nsec = nsec;
+  result.tv_sec = static_cast<time_t>(sec);
+  result.tv_nsec = static_cast<long>(nsec);
   return result;
 }
 
