@@ -13,10 +13,6 @@ BEGIN_C_INCLUDES
 #include "utils/duration.h"
 END_C_INCLUDES
 
-#if !defined(IS_MSVC)
-#  include <time.h>
-#endif
-
 namespace tclib {
 
 class Duration : public duration_t {
@@ -33,6 +29,9 @@ public:
 
   // Is this duration the instant duration, that is, zero time?
   bool is_instant() { return duration_is_instant(*this); }
+
+  // How about that, another time type. Because two just isn't enough.
+  IF_GCC(struct timeval to_timeval() { return duration_to_timeval(*this); };,)
 
   // Returns the unlimited duration.
   static Duration unlimited() { return duration_unlimited(); }

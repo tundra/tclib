@@ -7,6 +7,7 @@
 #include "c/stdc.h"
 
 #include "c/stdvector.hh"
+#include "utils/duration.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
@@ -55,7 +56,7 @@ public:
   // scheduled it may not be completed synchronously.
   void schedule(Iop *iop);
 
-  // Wait for the next iop to complete, storing the index of the iop in the
+  // Wait for the next iop to complete, storing the extra data of the iop in the
   // given out parameter, and returns true. If waiting fails false is returned.
   // Note that wait will return true even if the iop fails; result of the op
   // will be stored in the op itself. The return value only indicates whether
@@ -64,34 +65,47 @@ public:
   //
   // See the class comment for details on the discipline you need to use when
   // calling this.
-  bool wait_for_next(size_t *index_out);
+  bool wait_for_next(Duration timeout, opaque_t *extra_out);
 
   // Returns the number of iops in this group that haven't been completed yet.
   size_t pending_count() { return pending_count_; }
 
   // Returns true iff this group has pending operations left.
-  bool has_pending() { return pending_count_ > 0; }
+  bool has_pending() { return pending_count() > 0; }
+
+private:
+  friend class Iop;
+
+  // Update the internal state after the given iop has been marked as complete.
+  void on_member_complete(Iop *iop);
+
+  // If the load factor of the ops array is too low run through and compact the
+  // values, overwriting null entries.
+  void maybe_garbage_collect_ops();
 
   std::vector<Iop*> *ops() { return static_cast<std::vector<Iop*>*>(ops_.delegate_); }
 };
 
 // Abstract I/O operation. There are iop subtypes for convenience but they can
 // safely be cast to the base Iop type, all the information is stored there.
-class Iop {
+class Iop : public iop_t {
 public:
   // Has this iop completed successfully. That is, this will return false either
   // if the op is not yet complete or it is complete but failed.
-  bool has_succeeded() { return header()->has_succeeded_; }
+  bool has_succeeded() { return has_succeeded_; }
 
   // Has this op completed, successfully or otherwise?
-  bool is_complete() { return header()->is_complete_; }
+  bool is_complete() { return is_complete_; }
 
   // Is this a read operation?
-  bool is_read() { return header()->type_ == ioRead; }
+  bool is_read() { return type_ == ioRead; }
+
+  // The extra data that was provided at initialization.
+  opaque_t extra() { return extra_; }
 
 protected:
   friend class IopGroup;
-  Iop(iop_type_t type);
+  Iop(iop_type_t type, opaque_t data);
   ~Iop();
 
   // Marks this iop as having completed.
@@ -103,21 +117,17 @@ protected:
   // Hook platforms can use to do platform-specific recycling.
   void platform_recycle();
 
-  // Returns this iop viewed as a C iop. This only works because of the way
-  // the iop structs are arranged so be careful with changing those.
-  iop_header_t *header() { return reinterpret_cast<iop_header_t*>(this); }
-
   // Returns this iop's group state, creating it if necessary.
   iop_group_state_t *get_or_create_group_state();
 
   // Returns this iop's group state if it has one, otherwise NULL.
-  iop_group_state_t *peek_group_state() { return header()->group_state_; }
+  iop_group_state_t *peek_group_state() { return group_state_; }
 
   // Returns this op viewed as a write op.
-  write_iop_t *as_write();
+  write_iop_state_t *as_write();
 
   // Returns this op viewed as a read op.
-  read_iop_t *as_read();
+  read_iop_state_t *as_read();
 
   // Returns the out stream for this op, which must be a write.
   OutStream *as_out();
@@ -150,9 +160,9 @@ protected:
 };
 
 // A write operation.
-class WriteIop : public Iop, public write_iop_t {
+class WriteIop : public Iop {
 public:
-  WriteIop(OutStream *out, const void *src, size_t src_size);
+  WriteIop(OutStream *out, const void *src, size_t src_size, opaque_t data = o0());
 
   // Perform this write operation synchronously.
   bool execute();
@@ -171,12 +181,16 @@ public:
 
   // Returns the number of bytes written.
   size_t bytes_written() { return as_write()->bytes_written_; }
+
+  static inline WriteIop *cast(write_iop_t *c_iop) {
+    return static_cast<WriteIop*>(&c_iop->iop);
+  }
 };
 
 // A read operation.
-class ReadIop : public Iop, public read_iop_t {
+class ReadIop : public Iop {
 public:
-  ReadIop(InStream *in, void *dest, size_t dest_size);
+  ReadIop(InStream *in, void *dest, size_t dest_size, opaque_t data = o0());
 
   // Perform this read operation synchronously.
   bool execute();
@@ -192,10 +206,15 @@ public:
   void recycle();
 
   // Returns the number of bytes read.
-  size_t bytes_read() { return bytes_read_; }
+  size_t bytes_read() { return as_read()->bytes_read_; }
 
   // Did this read hit the end of the input?
-  bool at_eof() { return at_eof_; }
+  bool at_eof() { return as_read()->at_eof_; }
+
+  // Returns the given iop viewed as the class type.
+  static inline ReadIop *cast(read_iop_t *c_iop) {
+    return static_cast<ReadIop*>(&c_iop->iop);
+  }
 };
 
 } // tclib

@@ -16,7 +16,7 @@ static opaque_t fail_to_unlock(opaque_t opaque_m0, opaque_t opaque_m1) {
   ASSERT_FALSE(native_mutex_checks_consistency() && native_mutex_unlock(m0));
   ASSERT_FALSE(native_mutex_try_lock(m1));
   ASSERT_FALSE(native_mutex_checks_consistency() && native_mutex_unlock(m1));
-  return opaque_null();
+  return o0();
 }
 
 static opaque_t do_lock(opaque_t opaque_m0, opaque_t opaque_m1) {
@@ -26,7 +26,7 @@ static opaque_t do_lock(opaque_t opaque_m0, opaque_t opaque_m1) {
   ASSERT_TRUE(native_mutex_lock(m1));
   ASSERT_TRUE(native_mutex_unlock(m0));
   ASSERT_TRUE(native_mutex_unlock(m1));
-  return opaque_null();
+  return o0();
 }
 
 TEST(mutex_c, simple) {

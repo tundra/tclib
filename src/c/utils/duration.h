@@ -63,4 +63,12 @@ static inline uint64_t duration_to_millis(duration_t duration) {
 // a duration to a posix timespec. For unlimited durations this does nothing.
 void duration_add_to_timespec(duration_t duration, uint64_t *sec, uint64_t *nsec);
 
+// Adds the given duration to a pair of sec/usec which is what you need to add
+// a duration to a posix timeval. For unlimited durations this does nothing.
+void duration_add_to_timeval(duration_t duration, uint64_t *sec, uint64_t *usec);
+
+// Return a timeval that represents the same period as the given duration. For
+// unlimited durations returns the zero timeval.
+IF_GCC(struct timeval duration_to_timeval(duration_t duration);,)
+
 #endif // _UTILS_DURATION_H

@@ -44,8 +44,8 @@ class StdioOpenFile : public FileHandle {
 public:
   explicit StdioOpenFile(FILE *file) : file_(file) { }
   virtual ~StdioOpenFile();
-  virtual bool read_sync(read_iop_t *op);
-  virtual bool write_sync(write_iop_t *op);
+  virtual bool read_sync(read_iop_state_t *op);
+  virtual bool write_sync(write_iop_state_t *op);
   virtual bool flush();
   virtual bool close();
 
@@ -64,16 +64,16 @@ bool StdioOpenFile::close() {
   return true;
 }
 
-bool StdioOpenFile::read_sync(read_iop_t *op) {
+bool StdioOpenFile::read_sync(read_iop_state_t *op) {
   size_t bytes_read = fread(op->dest_, 1, op->dest_size_, file_);
   bool at_eof = (bytes_read == 0) && feof(file_);
-  read_iop_deliver(op, bytes_read, at_eof);
+  read_iop_state_deliver(op, bytes_read, at_eof);
   return true;
 }
 
-bool StdioOpenFile::write_sync(write_iop_t *op) {
+bool StdioOpenFile::write_sync(write_iop_state_t *op) {
   size_t bytes_written = fwrite(op->src_, 1, op->src_size_, file_);
-  write_iop_deliver(op, bytes_written);
+  write_iop_state_deliver(op, bytes_written);
   return true;
 }
 

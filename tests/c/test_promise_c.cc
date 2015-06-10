@@ -13,7 +13,7 @@ static opaque_t count_and_check(opaque_t raw_counter, opaque_t raw_value) {
   ASSERT_EQ(kValue, o2u(raw_value));
   size_t *counter = (size_t*) o2p(raw_counter);
   (*counter)++;
-  return opaque_null();
+  return o0();
 }
 
 TEST(promise_c, simple_success) {

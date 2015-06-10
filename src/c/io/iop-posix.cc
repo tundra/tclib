@@ -21,7 +21,7 @@ bool Iop::finish_nonblocking() {
       : as_out()->write_sync(as_write());
 }
 
-bool IopGroup::wait_for_next(size_t *index_out) {
+bool IopGroup::wait_for_next(Duration timeout, opaque_t *extra_out) {
   // On posix waiting for the next iop is done by selecting for the next fd that
   // can be accessed without blocking and then executing the op that accesses
   // that one. This means that there is no actual parallelism in performing the
@@ -33,8 +33,9 @@ bool IopGroup::wait_for_next(size_t *index_out) {
   int high_fd_mark = 0;
   for (size_t i = 0; i < ops()->size(); i++) {
     Iop *iop = ops()->at(i);
-    if (iop->is_complete())
+    if (iop == NULL)
       continue;
+    CHECK_FALSE("complete iop member", iop->is_complete());
     AbstractStream *stream = iop->stream();
     naked_file_handle_t fd = stream->to_raw_handle();
     if (fd == AbstractStream::kNullNakedFileHandle) {
@@ -46,18 +47,26 @@ bool IopGroup::wait_for_next(size_t *index_out) {
     fd_set *set = iop->is_read() ? &reads : &writes;
     FD_SET(fd, set);
   }
-  if (select(high_fd_mark + 1, &reads, &writes, NULL, NULL) == -1)
+  struct timeval timeout_data;
+  struct timeval *timeout_ptr;
+  if (!timeout.is_unlimited()) {
+    timeout_data = timeout.to_timeval();
+    timeout_ptr = &timeout_data;
+  } else {
+    timeout_ptr = NULL;
+  }
+  if (select(high_fd_mark + 1, &reads, &writes, NULL, timeout_ptr) == -1)
     return false;
   // Scan through the out fd_set to identify the stream that became available.
   for (size_t i = 0; i < ops()->size(); i++) {
     Iop *iop = ops()->at(i);
-    if (iop->is_complete())
+    if (iop == NULL)
       continue;
     AbstractStream *stream = iop->stream();
     naked_file_handle_t fd = stream->to_raw_handle();
     fd_set *set = iop->is_read() ? &reads : &writes;
     if (FD_ISSET(fd, set)) {
-      *index_out = i;
+      *extra_out = iop->extra();
       bool result = iop->finish_nonblocking();
       iop->mark_complete(result);
       return true;

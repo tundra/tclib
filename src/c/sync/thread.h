@@ -32,4 +32,7 @@ native_thread_id_t native_thread_get_current_id();
 // Returns true iff the two thread ids correspond to the same thread.
 bool native_thread_ids_equal(native_thread_id_t a, native_thread_id_t b);
 
+// Sleep this thread for the given duration.
+bool native_thread_sleep(duration_t duration);
+
 #endif // _TCLIB_THREAD_H

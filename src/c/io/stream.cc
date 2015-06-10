@@ -81,12 +81,12 @@ ByteInStream::ByteInStream(const void *data, size_t size)
   , size_(size)
   , cursor_(0) { }
 
-bool ByteInStream::read_sync(read_iop_t *iop) {
+bool ByteInStream::read_sync(read_iop_state_t *iop) {
   size_t remaining = size_ - cursor_;
   size_t block = (iop->dest_size_ > remaining) ? remaining : iop->dest_size_;
   memcpy(iop->dest_, data_ + cursor_, block);
   cursor_ += block;
-  read_iop_deliver(iop, block, cursor_ == size_);
+  read_iop_state_deliver(iop, block, cursor_ == size_);
   return true;
 }
 
@@ -100,7 +100,7 @@ void byte_in_stream_destroy(in_stream_t *stream) {
 
 ByteOutStream::ByteOutStream() { }
 
-bool ByteOutStream::write_sync(write_iop_t *op) {
+bool ByteOutStream::write_sync(write_iop_state_t *op) {
   const byte_t *src = static_cast<const byte_t*>(op->src_);
   size_t size = op->src_size_;
   for (size_t i = 0; i < size; i++)

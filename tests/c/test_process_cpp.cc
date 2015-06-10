@@ -113,17 +113,19 @@ void RecordingProcess::complete() {
   static const size_t kStderrIndex = 2;
   IopGroup group;
   size_t stdin_cursor = 0;
-  WriteIop write_stdin(stdin_pipe_.out(), stdin_data_.memory, stdin_data_.size);
+  WriteIop write_stdin(stdin_pipe_.out(), stdin_data_.memory, stdin_data_.size,
+      u2o(0));
   group.schedule(&write_stdin);
   char stdout_buf[256];
-  ReadIop read_stdout(stdout_pipe_.in(), stdout_buf, 256);
+  ReadIop read_stdout(stdout_pipe_.in(), stdout_buf, 256, u2o(1));
   group.schedule(&read_stdout);
   char stderr_buf[256];
-  ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256);
+  ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256, u2o(2));
   group.schedule(&read_stderr);
   while (group.has_pending()) {
-    size_t index = 0;
-    ASSERT_TRUE(group.wait_for_next(&index));
+    opaque_t opaque_index = o0();
+    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
+    size_t index = o2u(opaque_index);
     if (index == kStdinIndex) {
       ASSERT_TRUE(write_stdin.has_succeeded());
       stdin_cursor += write_stdin.bytes_written();

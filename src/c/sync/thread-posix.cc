@@ -4,6 +4,7 @@
 #include <errno.h>
 
 #include "thread.hh"
+#include "utils/clock.hh"
 using namespace tclib;
 
 void *NativeThread::entry_point(void *arg) {
@@ -43,4 +44,9 @@ bool NativeThread::yield() {
 
 bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {
   return pthread_equal(a, b) != 0;
+}
+
+bool NativeThread::sleep(Duration duration) {
+  NativeTime native_duration = NativeTime::zero() + duration;
+  return nanosleep(&native_duration.to_platform(), NULL) == 0;
 }

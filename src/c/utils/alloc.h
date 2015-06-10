@@ -26,6 +26,9 @@ memory_block_t memory_block_empty();
 // struct.
 memory_block_t new_memory_block(void *memory, size_t size);
 
+// Fills this memory block's data with the given value.
+void memory_block_fill(memory_block_t block, byte_t value);
+
 // An allocator encapsulates a source of memory from the system.
 typedef struct {
   // Function to call to do allocation.

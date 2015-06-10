@@ -6,6 +6,7 @@
 
 #include "c/stdc.h"
 #include "io/stream.h"
+#include "utils/opaque.h"
 #include "utils/vector.h"
 
 // State used when issuing iops as a group. The actual contents of this is
@@ -42,32 +43,76 @@ size_t iop_group_pending_count(iop_group_t *group);
 //
 // See the comment on IopGroup for details on the discipline you need to use
 // when calling this.
-bool iop_group_wait_for_next(iop_group_t *group, size_t *index_out);
-
-// State shared between read and write iops.
-typedef struct {
-  iop_type_t type_;
-  bool is_complete_;
-  bool has_succeeded_;
-  iop_group_t *group_;
-  iop_group_state_t *group_state_;
-} iop_header_t;
+bool iop_group_wait_for_next(iop_group_t *group, duration_t timeout,
+    opaque_t *extra_out);
 
 // Data associated with a read operation.
 typedef struct {
-  iop_header_t header_;
   in_stream_t *in_;
   void *dest_;
   size_t dest_size_;
   size_t bytes_read_;
   bool at_eof_;
+} read_iop_state_t;
+
+// Data associated with a write operation.
+typedef struct {
+  out_stream_t *out_;
+  const void *src_;
+  size_t src_size_;
+  size_t bytes_written_;
+} write_iop_state_t;
+
+// A full read or write. To simplify the interface, that is, to avoid having
+// two paths for everything, an iop_t can hold both a read and write and can
+// be used without knowing which type it is in some circumstances. If you know
+// statically which kind of operation you're dealing with you can use read_iop_t
+// and write_iop_t instead.
+typedef struct {
+  iop_type_t type_;
+  bool is_complete_;
+  bool has_succeeded_;
+  iop_group_t *group_;
+  size_t group_index_;
+  iop_group_state_t *group_state_;
+  opaque_t extra_;
+  union {
+    read_iop_state_t as_read;
+    write_iop_state_t as_write;
+  } state;
+} iop_t;
+
+// Add an iop to this group. See the comment on IopGroup for how to use this
+// correctly. Only incomplete iops may be scheduled, also once an iop has been
+// scheduled it may not be completed synchronously.
+void iop_group_schedule(iop_group_t *group, iop_t *iop);
+
+// Initializes a generic iop to be a read.
+void iop_init_read(iop_t *iop, in_stream_t *in, void *dest, size_t dest_size,
+    opaque_t extra);
+
+// Initializes a generic iop to be a write.
+void iop_init_write(iop_t *iop, out_stream_t *out, const void *src,
+    size_t src_size, opaque_t extra);
+
+// Dispose of the given initialized iop.
+void iop_dispose(iop_t *iop);
+
+// Has this iop completed successfully? That is, this will return false either
+// if the op is not yet complete or it is complete but failed.
+bool iop_has_succeeded(iop_t *iop);
+
+// A read iop.
+typedef struct {
+  iop_t iop;
 } read_iop_t;
 
 // Initialize a read operation.
-void read_iop_init(read_iop_t *iop, in_stream_t *in, void *dest, size_t dest_size);
+void read_iop_init(read_iop_t *iop, in_stream_t *in, void *dest, size_t dest_size,
+    opaque_t extra);
 
 // Deliver the result of a read to a read iop.
-void read_iop_deliver(read_iop_t *iop, size_t bytes_read, bool at_eof);
+void read_iop_state_deliver(read_iop_state_t *iop, size_t bytes_read, bool at_eof);
 
 // Dispose the given initialized read.
 void read_iop_dispose(read_iop_t *iop);
@@ -88,33 +133,33 @@ bool read_iop_at_eof(read_iop_t *iop);
 // Returns the number of bytes read.
 size_t read_iop_bytes_read(read_iop_t *iop);
 
-// Has this iop completed successfully. That is, this will return false either
+// Returns the extra value that was provided when this iop was initialized.
+opaque_t read_iop_extra(read_iop_t *iop);
+
+// Has this iop completed successfully? That is, this will return false either
 // if the op is not yet complete or it is complete but failed.
 bool read_iop_has_succeeded(read_iop_t *iop);
 
 // Perform this read operation synchronously.
 bool read_iop_execute(read_iop_t *iop);
 
-// Add a read to this group. See the comment on IopGroup for how to use this
-// correctly. Only incomplete iops may be scheduled, also once an iop has been
-// scheduled it may not be completed synchronously.
+// Does the same as iop_group_schedule but takes a read directly.
 void iop_group_schedule_read(iop_group_t *group, read_iop_t *iop);
 
-// Data associated with a write operation.
+// Return the given read iop viewed as a generic iop.
+static inline iop_t *read_iop_upcast(read_iop_t *read_iop) { return &read_iop->iop; }
+
+// A write iop.
 typedef struct {
-  iop_header_t header_;
-  out_stream_t *out_;
-  const void *src_;
-  size_t src_size_;
-  size_t bytes_written_;
+  iop_t iop;
 } write_iop_t;
 
 // Initialize a write operation.
 void write_iop_init(write_iop_t *iop, out_stream_t *out, const void *src,
-    size_t src_size);
+    size_t src_size, opaque_t extra);
 
 // Deliver the result of a write to a write iop.
-void write_iop_deliver(write_iop_t *iop, size_t bytes_written);
+void write_iop_state_deliver(write_iop_state_t *iop, size_t bytes_written);
 
 // Dispose the given initialized write.
 void write_iop_dispose(write_iop_t *iop);
@@ -124,6 +169,12 @@ bool write_iop_execute(write_iop_t *iop);
 
 // Returns the number of bytes written.
 size_t write_iop_bytes_written(write_iop_t *iop);
+
+// Returns the extra value that was provided when this iop was initialized.
+opaque_t write_iop_extra(write_iop_t *iop);
+
+// Return the given write iop viewed as a generic iop.
+static inline iop_t *write_iop_upcast(write_iop_t* write_iop) { return &write_iop->iop; }
 
 // Add a read to this group. See the comment on IopGroup for how to use this
 // correctly. Only incomplete iops may be scheduled, also once an iop has been

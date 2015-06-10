@@ -155,7 +155,7 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_write(handle_t handle,
   return eoFailedImmediately;
 }
 
-bool IopGroup::wait_for_next(size_t *index_out) {
+bool IopGroup::wait_for_next(opaque_t *extra_out) {
   // Okay, so this is a little bit involved. It works like this.
   //
   // In the current set of ops there will be some that have already completed
@@ -177,7 +177,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
       continue;
     Iop::ensure_scheduled_outcome_t outcome = iop->ensure_scheduled();
     if (outcome == Iop::eoCompletedImmediately) {
-      *index_out = i;
+      *extra_out = iop->extra();
       return true;
     } else if (outcome == Iop::eoFailedImmediately) {
       return false;
@@ -202,7 +202,7 @@ bool IopGroup::wait_for_next(size_t *index_out) {
     if (iop->is_complete())
       continue;
     if (event == iop->peek_group_state()->event()) {
-      *index_out = i;
+      *extra_out = iop->extra();
       bool result = iop->finish_nonblocking();
       iop->mark_complete(result);
       return true;

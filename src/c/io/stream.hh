@@ -63,7 +63,7 @@ protected:
   friend class ReadIop;
 
   // Perform the given read synchronously.
-  virtual bool read_sync(read_iop_t *op) = 0;
+  virtual bool read_sync(read_iop_state_t *op) = 0;
 };
 
 class OutStream : public out_stream_t, public AbstractStream {
@@ -86,7 +86,7 @@ protected:
   friend class WriteIop;
 
   // Perform the given write synchronously.
-  virtual bool write_sync(write_iop_t *op) = 0;
+  virtual bool write_sync(write_iop_state_t *op) = 0;
 };
 
 // An io stream that reads data from a block of bytes and ignores writes.
@@ -95,7 +95,7 @@ public:
   ByteInStream(const void *data, size_t size);
 
 protected:
-  virtual bool read_sync(read_iop_t *op);
+  virtual bool read_sync(read_iop_state_t *op);
 
 private:
   const byte_t *data_;
@@ -116,7 +116,7 @@ public:
   std::vector<byte_t> &data() { return data_; }
 
 protected:
-  virtual bool write_sync(write_iop_t *op);
+  virtual bool write_sync(write_iop_state_t *op);
 
 private:
   std::vector<byte_t> data_;

@@ -79,3 +79,7 @@ native_thread_id_t native_thread_get_current_id() {
 bool native_thread_ids_equal(native_thread_id_t a, native_thread_id_t b) {
   return NativeThread::ids_equal(a, b);
 }
+
+bool native_thread_sleep(duration_t duration) {
+  return NativeThread::sleep(duration);
+}

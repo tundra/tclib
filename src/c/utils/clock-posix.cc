@@ -33,3 +33,13 @@ NativeTime NativeTime::operator+(duration_t duration) {
 platform_time_t NativeTime::to_posix() {
   return to_platform();
 }
+
+struct timeval duration_to_timeval(duration_t duration) {
+  uint64_t sec = 0;
+  uint64_t usec = 0;
+  duration_add_to_timeval(duration, &sec, &usec);
+  struct timeval result;
+  result.tv_sec = static_cast<time_t>(sec);
+  result.tv_usec = static_cast<suseconds_t>(usec);
+  return result;
+}

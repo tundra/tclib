@@ -45,6 +45,9 @@ public:
   // Yield execution to another thread.
   static bool yield();
 
+  // Sleep the current thread for the given duration.
+  static bool sleep(Duration duration);
+
 private:
   // Platform-specific start routine.
   bool platform_start();

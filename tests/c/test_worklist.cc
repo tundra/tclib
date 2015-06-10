@@ -23,7 +23,7 @@ TEST(worklist, simple) {
     ASSERT_TRUE(worklist_schedule(kSize, kWidth)(&worklist, elms, kWidth, duration_unlimited()));
     ASSERT_FALSE(worklist_is_empty(kSize, kWidth)(&worklist));
   }
-  opaque_t elms[kWidth] = {opaque_null(), opaque_null(), opaque_null()};
+  opaque_t elms[kWidth] = {o0(), o0(), o0()};
   ASSERT_FALSE(worklist_schedule(kSize, kWidth)(&worklist, elms, kWidth, duration_seconds(0.01)));
 
   for (size_t i = 0; i < kSize; i++) {

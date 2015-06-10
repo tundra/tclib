@@ -6,6 +6,7 @@
 #include "utils/log.h"
 
 static const uint8_t kMallocHeapMarker = 0xB0;
+static const uint8_t kMallocFreedMarker = 0xC0;
 
 memory_block_t memory_block_empty() {
   return new_memory_block(NULL, 0);
@@ -22,21 +23,28 @@ bool memory_block_is_empty(memory_block_t block) {
   return block.memory == NULL;
 }
 
+void memory_block_fill(memory_block_t block, byte_t value) {
+  memset(block.memory, value, block.size);
+}
+
 // Throws away the data argument and just calls malloc.
 static memory_block_t system_malloc_trampoline(void *data, size_t size) {
   CHECK_PTREQ("invalid system allocator", NULL, data);
-  void *result = malloc(size);
-  if (result == NULL) {
+  void *chunk = malloc(size);
+  if (chunk == NULL) {
     return memory_block_empty();
   } else {
-    memset(result, kMallocHeapMarker, size);
-    return new_memory_block(result, size);
+    memory_block_t result = new_memory_block(chunk, size);
+    memory_block_fill(result, kMallocHeapMarker);
+    return result;
   }
 }
 
 // Throws away the data argument and just calls free.
 static void system_free_trampoline(void *data, memory_block_t memory) {
   CHECK_PTREQ("invalid system allocator", NULL, data);
+  if (!memory_block_is_empty(memory))
+    memory_block_fill(memory, kMallocFreedMarker);
   free(memory.memory);
 }
 

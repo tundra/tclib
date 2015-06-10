@@ -66,7 +66,7 @@ TEST(stream, byte_in_stream_c) {
   in_stream_t *in = byte_in_stream_open(data, 12);
   byte_t buf[4] = {0, 0, 0, 0};
   read_iop_t iop;
-  read_iop_init(&iop, in, buf, 1);
+  read_iop_init(&iop, in, buf, 1, o0());
   ASSERT_FALSE(read_iop_at_eof(&iop));
   ASSERT_TRUE(read_iop_execute(&iop));
   ASSERT_EQ(1, read_iop_bytes_read(&iop));
@@ -121,7 +121,7 @@ TEST(stream, byte_in_stream_c) {
 TEST(stream, byte_out_stream) {
   ByteOutStream out;
   byte_t data[4] = {11, 0, 0, 0};
-  WriteIop iop(&out, data, 1);
+  WriteIop iop(&out, data, 1, o0());
   ASSERT_TRUE(iop.execute());
   ASSERT_EQ(1, iop.bytes_written());
   ASSERT_EQ(1, out.size());
