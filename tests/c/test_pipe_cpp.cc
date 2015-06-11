@@ -196,7 +196,7 @@ static void group_read_streams(NativePipe *pipes) {
   while (group.has_pending()) {
     opaque_t opaque_index = o0();
     ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    size_t index = o2u(opaque_index);
+    uint64_t index = o2u(opaque_index);
     ReadIop *iop = iops[index];
     if (iop->at_eof()) {
       ASSERT_EQ(kValueCount, next_value[index]);
@@ -242,7 +242,7 @@ static void *async_read_streams(NativePipe *pipes, size_t own_index,
   while (group.has_pending()) {
     opaque_t opaque_index = o0();
     ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    size_t index = o2u(opaque_index);
+    uint64_t index = o2u(opaque_index);
     NativeThread::yield(); // Just so no one thread hogs the input.
     ReadIop *iop = iops[index];
     if (!iop->at_eof()) {
@@ -301,7 +301,7 @@ static void *run_sibling(OutStream *out, InStream *in) {
   while (live_streams > 0) {
     opaque_t opaque_index = o0();
     ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    size_t index = o2u(opaque_index);
+    uint64_t index = o2u(opaque_index);
     if (index == 0) {
       // Read succeeded.
       if (next_value_in == (limit + 1)) {

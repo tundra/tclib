@@ -55,3 +55,8 @@ bool NativeThread::yield() {
 bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {
   return a == b;
 }
+
+bool NativeThread::sleep(Duration duration) {
+  Sleep(duration.to_winapi_millis());
+  return true;
+}

@@ -36,6 +36,9 @@
 #  define IF_GCC(T, E) T
 #endif
 
+#define ONLY_MSVC(E) IF_MSVC(E, )
+#define ONLY_GCC(E) IF_GCC(E, )
+
 #ifndef PRIi64
 #  define PRIi64 "li"
 #endif

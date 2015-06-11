@@ -69,6 +69,6 @@ void duration_add_to_timeval(duration_t duration, uint64_t *sec, uint64_t *usec)
 
 // Return a timeval that represents the same period as the given duration. For
 // unlimited durations returns the zero timeval.
-IF_GCC(struct timeval duration_to_timeval(duration_t duration);,)
+ONLY_GCC(struct timeval duration_to_timeval(duration_t duration);)
 
 #endif // _UTILS_DURATION_H

@@ -45,7 +45,7 @@ void iop_group_state_t::recycle() {
 
 iop_group_state_t *Iop::get_or_create_group_state() {
   if (peek_group_state() == NULL)
-    header()->group_state_ = new iop_group_state_t();
+    group_state_ = new iop_group_state_t();
   return peek_group_state();
 }
 
@@ -68,9 +68,9 @@ bool Iop::finish_nonblocking() {
       false);         // bWait
   if (is_read()) {
     bool at_eof = !result && (bytes_xferred == 0);
-    read_iop_deliver(as_read(), bytes_xferred, at_eof);
+    read_iop_state_deliver(as_read(), bytes_xferred, at_eof);
   } else {
-    write_iop_deliver(as_write(), bytes_xferred);
+    write_iop_state_deliver(as_write(), bytes_xferred);
   }
   return true;
 }
@@ -95,7 +95,7 @@ Iop::ensure_scheduled_outcome_t Iop::ensure_scheduled() {
 }
 
 Iop::ensure_scheduled_outcome_t Iop::schedule_read(handle_t handle,
-    read_iop_t *read_iop) {
+    read_iop_state_t *read_iop) {
   iop_group_state_t *group_state = peek_group_state();
   dword_t bytes_read = 0;
   OVERLAPPED *overlapped = group_state->overlapped();
@@ -110,7 +110,7 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_read(handle_t handle,
     // succeed it will have read something, if it can't read the call will fail
     // or block. That's the assumption.
     CHECK_TRUE("successful empty read", bytes_read > 0);
-    read_iop_deliver(read_iop, bytes_read, false);
+    read_iop_state_deliver(read_iop, bytes_read, false);
     mark_complete(true);
     return eoCompletedImmediately;
   } else if (GetLastError() == ERROR_IO_PENDING) {
@@ -119,7 +119,7 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_read(handle_t handle,
     group_state->has_been_scheduled_ = true;
     return eoScheduled;
   } else {
-    read_iop_deliver(read_iop, bytes_read, true);
+    read_iop_state_deliver(read_iop, bytes_read, true);
     mark_complete(true);
     // Scheduling went wrong for some reason; bail.
     return eoCompletedImmediately;
@@ -127,7 +127,7 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_read(handle_t handle,
 }
 
 Iop::ensure_scheduled_outcome_t Iop::schedule_write(handle_t handle,
-    write_iop_t *write_iop) {
+    write_iop_state_t *write_iop) {
   iop_group_state_t *group_state = peek_group_state();
   dword_t bytes_written = 0;
   OVERLAPPED *overlapped = group_state->overlapped();
@@ -138,7 +138,7 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_write(handle_t handle,
       &bytes_written,                             // lpNumberOfBytesWritten
       overlapped);                                // lpOverlapped
   if (result) {
-    write_iop_deliver(write_iop, bytes_written);
+    write_iop_state_deliver(write_iop, bytes_written);
     mark_complete(true);
     return eoCompletedImmediately;
   } else if (GetLastError() == ERROR_IO_PENDING) {
@@ -147,7 +147,7 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_write(handle_t handle,
     group_state->has_been_scheduled_ = true;
     return eoScheduled;
   } else {
-    write_iop_deliver(write_iop, bytes_written);
+    write_iop_state_deliver(write_iop, bytes_written);
     mark_complete(true);
     // Scheduling went wrong for some reason; bail.
     return eoCompletedImmediately;
@@ -155,7 +155,7 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_write(handle_t handle,
   return eoFailedImmediately;
 }
 
-bool IopGroup::wait_for_next(opaque_t *extra_out) {
+bool IopGroup::wait_for_next(Duration timeout, opaque_t *extra_out) {
   // Okay, so this is a little bit involved. It works like this.
   //
   // In the current set of ops there will be some that have already completed
@@ -168,12 +168,10 @@ bool IopGroup::wait_for_next(opaque_t *extra_out) {
   // If we get past this point none of the ops will have completed immediately
   // and any incomplete ones will have been started.
 
-  size_t count = ops()->size();
-  CHECK_TRUE("multiplexing too much", count <= MAXIMUM_WAIT_OBJECTS);
   std::vector<handle_t> events;
-  for (size_t i = 0; i < count; i++) {
+  for (size_t i = 0; i < ops()->size(); i++) {
     Iop *iop = ops()->at(i);
-    if (iop->is_complete())
+    if (iop == NULL)
       continue;
     Iop::ensure_scheduled_outcome_t outcome = iop->ensure_scheduled();
     if (outcome == Iop::eoCompletedImmediately) {
@@ -185,11 +183,13 @@ bool IopGroup::wait_for_next(opaque_t *extra_out) {
       events.push_back(iop->peek_group_state()->event());
     }
   }
+  size_t count = events.size();
+  CHECK_TRUE("multiplexing too much", count <= MAXIMUM_WAIT_OBJECTS);
   dword_t result = WaitForMultipleObjects(
       static_cast<dword_t>(events.size()), // nCount
       events.data(),                       // lpHandles
       false,                               // bWaitAll
-      INFINITE);                           // dwMilliseconds
+      timeout.to_winapi_millis());         // dwMilliseconds
   // Thanks for the brilliant insight MSVC that WAIT_OBJECT_0 is 0 but maybe
   // I'd like to use a symbolic constant rather than inline that fact.
   dword_t lemme_use_wait_object_0 = WAIT_OBJECT_0;
@@ -197,9 +197,9 @@ bool IopGroup::wait_for_next(opaque_t *extra_out) {
     return false;
   size_t index = result - WAIT_OBJECT_0;
   handle_t event = events[index];
-  for (size_t i = 0; i < count; i++) {
+  for (size_t i = 0; i < ops()->size(); i++) {
     Iop *iop = ops()->at(i);
-    if (iop->is_complete())
+    if (iop == NULL)
       continue;
     if (event == iop->peek_group_state()->event()) {
       *extra_out = iop->extra();

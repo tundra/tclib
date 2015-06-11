@@ -150,10 +150,12 @@ protected:
   ensure_scheduled_outcome_t ensure_scheduled();
 
   // Schedules a read. Not used on all platforms.
-  ensure_scheduled_outcome_t schedule_read(handle_t handle, read_iop_t *read_iop);
+  ensure_scheduled_outcome_t schedule_read(handle_t handle,
+      read_iop_state_t *read_iop);
 
   // Schedules a write. Not used on all platforms.
-  ensure_scheduled_outcome_t schedule_write(handle_t handle, write_iop_t *write_iop);
+  ensure_scheduled_outcome_t schedule_write(handle_t handle,
+      write_iop_state_t *write_iop);
 
   // Perform this iop which has already been scheduled by an iop group.
   bool finish_nonblocking();

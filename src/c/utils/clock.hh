@@ -28,7 +28,7 @@ public:
   // Wonderfully, mach uses two different kinds of time: mach_timespec and
   // timespec. In case we definitely, positively, need the plain timespec this
   // is what you should call instead of to_platform.
-  IF_GCC(struct timespec to_posix();,)
+  ONLY_GCC(struct timespec to_posix();)
 
   // Returns the number of milliseconds represented by the given native time
   // object.

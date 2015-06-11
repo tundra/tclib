@@ -13,8 +13,8 @@ class HandleStream : public InStream, public OutStream {
 public:
   explicit HandleStream(handle_t handle);
   virtual ~HandleStream();
-  virtual bool read_sync(read_iop_t *op);
-  virtual bool write_sync(write_iop_t *op);
+  virtual bool read_sync(read_iop_state_t *op);
+  virtual bool write_sync(write_iop_state_t *op);
   virtual bool flush();
   virtual bool close();
   virtual naked_file_handle_t to_raw_handle();
@@ -35,7 +35,7 @@ HandleStream::~HandleStream() {
   close();
 }
 
-bool HandleStream::read_sync(read_iop_t *op) {
+bool HandleStream::read_sync(read_iop_state_t *op) {
   dword_t bytes_read = 0;
   // Because this handle can be read both sync and async we make it overlapped,
   // and then we have to always provide an overlapped struct when reading even
@@ -59,11 +59,11 @@ bool HandleStream::read_sync(read_iop_t *op) {
     }
   }
   at_eof = at_eof || (!result && (bytes_read == 0));
-  read_iop_deliver(op, bytes_read, at_eof);
+  read_iop_state_deliver(op, bytes_read, at_eof);
   return true;
 }
 
-bool HandleStream::write_sync(write_iop_t *op) {
+bool HandleStream::write_sync(write_iop_state_t *op) {
   dword_t bytes_written = 0;
   bool result = WriteFile(
     handle_,                             // hFile
@@ -80,7 +80,7 @@ bool HandleStream::write_sync(write_iop_t *op) {
           true);          // bWait
     }
   }
-  write_iop_deliver(op, bytes_written);
+  write_iop_state_deliver(op, bytes_written);
   return result;
 }
 

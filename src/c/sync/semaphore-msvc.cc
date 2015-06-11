@@ -28,8 +28,7 @@ bool NativeSemaphore::platform_dispose() {
 }
 
 bool NativeSemaphore::acquire(Duration timeout) {
-  dword_t millis = timeout.is_unlimited() ? INFINITE : timeout.to_millis();
-  dword_t result = WaitForSingleObject(sema, millis);
+  dword_t result = WaitForSingleObject(sema, timeout.to_winapi_millis());
   if (result == WAIT_OBJECT_0)
     return true;
   if (result == WAIT_FAILED)

@@ -16,8 +16,7 @@ bool NativeCondition::platform_dispose() {
 bool NativeCondition::wait(NativeMutex *mutex, Duration timeout) {
   PCONDITION_VARIABLE cond = get_platform_condition(this);
   PCRITICAL_SECTION cs = get_platform_mutex(mutex);
-  dword_t millis = timeout.is_unlimited() ? INFINITE : timeout.to_millis();
-  if (SleepConditionVariableCS(cond, cs, millis))
+  if (SleepConditionVariableCS(cond, cs, timeout.to_winapi_millis()))
     return true;
   WARN("Call to SleepConditionVariableCS failed: %i", GetLastError());
   return false;

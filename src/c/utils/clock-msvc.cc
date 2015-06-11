@@ -3,6 +3,8 @@
 
 #include "c/winhdr.h"
 
+#include "utils/duration.hh"
+
 uint64_t NativeTime::to_millis() {
   return time;
 }
@@ -23,4 +25,8 @@ NativeTime SystemRealTimeClock::time_since_epoch_utc() {
   uint64_t sc = time.wSecond + (60 * mn);
   uint64_t ms = time.wMilliseconds + (1000 * sc);
   return ms;
+}
+
+uint32_t Duration::to_winapi_millis() {
+  return is_unlimited() ? INFINITE : to_millis();
 }

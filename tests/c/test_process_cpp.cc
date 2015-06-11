@@ -114,18 +114,18 @@ void RecordingProcess::complete() {
   IopGroup group;
   size_t stdin_cursor = 0;
   WriteIop write_stdin(stdin_pipe_.out(), stdin_data_.memory, stdin_data_.size,
-      u2o(0));
+      u2o(kStdinIndex));
   group.schedule(&write_stdin);
   char stdout_buf[256];
-  ReadIop read_stdout(stdout_pipe_.in(), stdout_buf, 256, u2o(1));
+  ReadIop read_stdout(stdout_pipe_.in(), stdout_buf, 256, u2o(kStdoutIndex));
   group.schedule(&read_stdout);
   char stderr_buf[256];
-  ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256, u2o(2));
+  ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256, u2o(kStderrIndex));
   group.schedule(&read_stderr);
   while (group.has_pending()) {
     opaque_t opaque_index = o0();
     ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    size_t index = o2u(opaque_index);
+    uint64_t index = o2u(opaque_index);
     if (index == kStdinIndex) {
       ASSERT_TRUE(write_stdin.has_succeeded());
       stdin_cursor += write_stdin.bytes_written();

@@ -31,7 +31,11 @@ public:
   bool is_instant() { return duration_is_instant(*this); }
 
   // How about that, another time type. Because two just isn't enough.
-  IF_GCC(struct timeval to_timeval() { return duration_to_timeval(*this); };,)
+  ONLY_GCC(struct timeval to_timeval() { return duration_to_timeval(*this); };)
+
+  // Returns this duration converted to milliseconds expected by the windows
+  // apis, where the unlimited duration is represented by INFINITE.
+  ONLY_MSVC(uint32_t to_winapi_millis();)
 
   // Returns the unlimited duration.
   static Duration unlimited() { return duration_unlimited(); }
