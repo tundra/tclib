@@ -36,8 +36,11 @@
 #  define IF_GCC(T, E) T
 #endif
 
+// Convenience macros because the empty argument thing looks bad.
 #define ONLY_MSVC(E) IF_MSVC(E, )
+#define UNLESS_MSVC(E) IF_MSVC(, E)
 #define ONLY_GCC(E) IF_GCC(E, )
+#define UNLESS_GCC(E) IF_GCC(, E)
 
 #ifndef PRIi64
 #  define PRIi64 "li"

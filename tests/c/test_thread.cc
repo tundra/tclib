@@ -3,6 +3,7 @@
 
 #include "test/unittest.hh"
 #include "sync/thread.hh"
+#include "utils/clock.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/thread.h"
@@ -64,4 +65,12 @@ TEST(thread, cpp_equality) {
   NativeThread thread(new_callback(&check_thread_not_equal, current));
   thread.start();
   thread.join();
+}
+
+TEST(thread, sleep) {
+  RealTimeClock *clock = RealTimeClock::system();
+  uint64_t start = clock->time_since_epoch_utc().to_millis();
+  NativeThread::sleep(Duration::millis(150));
+  uint64_t end = clock->time_since_epoch_utc().to_millis();
+  ASSERT_REL(end - start, >=, 150);
 }

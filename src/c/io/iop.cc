@@ -164,20 +164,29 @@ void IopGroup::schedule(Iop *iop) {
   pending_count_++;
 }
 
-void IopGroup::maybe_garbage_collect_ops() {
-  if (pending_count_ == 0 || pending_count_ * 4 >= ops()->size())
+void IopGroup::maybe_compact_ops() {
+  if (pending_count_ == 0 && !ops()->empty()) {
+    // If we reach zero pending compacting is trivial.
+    ops()->clear();
     return;
-  size_t live_seen = 0;
+  }
+  // Check the load factor.
+  double factor = static_cast<double>(pending_count_) / static_cast<double>(ops()->size());
+  if (factor > 0.3)
+    return;
+  // Load factor is too low, compact.
+  size_t pending_seen = 0;
   for (size_t i = 0; i < ops()->size(); i++) {
     Iop *op = ops()->at(i);
     if (op != NULL) {
       CHECK_EQ("unaligned op", i, op->group_index_);
-      op->group_index_ = live_seen;
-      ops()->at(live_seen) = op;
-      live_seen++;
+      op->group_index_ = pending_seen;
+      // Note that this may overwrite an op with itself, which is fine.
+      ops()->at(pending_seen) = op;
+      pending_seen++;
     }
   }
-  CHECK_EQ("pending unaligned", pending_count_, live_seen);
+  CHECK_EQ("pending unaligned", pending_count_, pending_seen);
   ops()->resize(pending_count_);
 }
 
@@ -188,7 +197,7 @@ void IopGroup::on_member_complete(Iop *iop) {
   ops()->at(index) = NULL;
   iop->group_index_ = 0;
   pending_count_--;
-  maybe_garbage_collect_ops();
+  maybe_compact_ops();
 }
 
 write_iop_state_t *Iop::as_write() {

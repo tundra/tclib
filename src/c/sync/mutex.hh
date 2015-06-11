@@ -29,7 +29,8 @@ public:
 
   // Lock this mutex. If it's already held by a different thread we'll wait for
   // it to be released. If it's already held by this thread that's fine, we'll
-  // lock it again.
+  // lock it again. Note that unly the unlimited and instant timeouts are valid
+  // since there's no support for other timeouts on windows or mach.
   bool lock(Duration timeout = Duration::unlimited());
 
   // Lock this mutex. If it's already held don't wait but return false

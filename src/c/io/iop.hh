@@ -53,7 +53,11 @@ public:
 
   // Add an iop to this group. See the class comment for how to use this
   // correctly. Only incomplete iops may be scheduled, also once an iop has been
-  // scheduled it may not be completed synchronously.
+  // scheduled it may not be completed synchronously. As soon as an iop has
+  // completed the group will no longer use it so it is safe to dispose it. If
+  // you recycle an iop that has been scheduled once it will be reinserted in
+  // the group it was initially in, so you can't use an iop with multiple
+  // groups.
   void schedule(Iop *iop);
 
   // Wait for the next iop to complete, storing the extra data of the iop in the
@@ -81,7 +85,7 @@ private:
 
   // If the load factor of the ops array is too low run through and compact the
   // values, overwriting null entries.
-  void maybe_garbage_collect_ops();
+  void maybe_compact_ops();
 
   std::vector<Iop*> *ops() { return static_cast<std::vector<Iop*>*>(ops_.delegate_); }
 };
@@ -105,7 +109,7 @@ public:
 
 protected:
   friend class IopGroup;
-  Iop(iop_type_t type, opaque_t data);
+  Iop(iop_type_t type, opaque_t extra);
   ~Iop();
 
   // Marks this iop as having completed.

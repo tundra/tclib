@@ -22,6 +22,12 @@ typedef enum {
 // IopGroup for details.
 typedef struct {
   size_t pending_count_;
+  // This vector holds pointers to the individual iops. When an iop completes
+  // its entry in the vector gets NULL'ed out so the group will ignore it but
+  // without requiring the vector to be compacted immediately, which would be
+  // expensive. New ops are added at the end, including ops that get recycled,
+  // so for each op that gets executed and recycled the ops vector grows. To
+  // limit this we compact the vector when the load factor becomes too low.
   voidp_vector_t ops_;
 } iop_group_t;
 
