@@ -48,7 +48,7 @@ test_library.add_dependency(get_external('src', 'c', 'io', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'sync', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'async', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'library'))
-test_library.add_dependency(get_external('src', 'c', 'test', 'stderr-fail'))
+test_library.add_dependency(get_external('src', 'c', 'test', 'log-fail'))
 
 # Compile the test source files.
 for test_file_name in test_file_names:

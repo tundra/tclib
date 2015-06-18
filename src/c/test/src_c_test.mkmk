@@ -14,13 +14,13 @@ for filename in library_files:
   library.add_member(object)
 
 stderr_fail_files = [
-  "stderr-fail.cc",
+  "log-fail.cc",
 ]
-stderr_fail = get_group("stderr-fail")
+log_fail = get_group("log-fail")
 for filename in stderr_fail_files:
   source = c.get_source_file(filename)
   source.add_include(get_root().get_child('src', 'c'))
   object = source.get_object()
-  stderr_fail.add_member(object)
+  log_fail.add_member(object)
 
 add_alias("testlib", library)

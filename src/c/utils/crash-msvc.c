@@ -9,7 +9,6 @@ void initialize_crash_handler() {
   SymInitialize(GetCurrentProcess(), NULL, true);
 }
 
-// Print a stack trace if the platform supports it.
 void print_stack_trace(out_stream_t *out, int signum) {
   handle_t process = GetCurrentProcess();
   if (!SymRefreshModuleList(process)) {

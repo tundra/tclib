@@ -58,8 +58,9 @@ abort_o *set_global_abort(abort_o *value) {
   return result;
 }
 
-void abort_message_init(abort_message_t *message, const char *file, int line,
-    int condition_cause, const char *text) {
+void abort_message_init(abort_message_t *message, uint32_t destination,
+    const char *file, int line, int condition_cause, const char *text) {
+  message->destination = destination;
   message->file = file;
   message->line = line;
   message->condition_cause = condition_cause;
@@ -81,7 +82,7 @@ static void vcheck_fail(const char *file, int line, int condition_cause,
   utf8_t str = string_buffer_flush(&buf);
   // Print the formatted error message.
   abort_message_t message;
-  abort_message_init(&message, file, line, condition_cause, str.chars);
+  abort_message_init(&message, lsStderr, file, line, condition_cause, str.chars);
   abort_call(get_global_abort(), &message);
   string_buffer_dispose(&buf);
 }

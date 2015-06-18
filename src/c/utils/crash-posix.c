@@ -32,7 +32,9 @@ static void uninstall_signals() {
 static void crash_handler(int signum) {
   uninstall_signals();
   file_system_t *fs = file_system_native();
-  print_stack_trace(file_system_stderr(fs), signum);
+  out_stream_t *out = file_system_stderr(fs);
+  print_stack_trace(out, signum);
+  out_stream_flush(out);
   propagate_condition(signum);
 }
 

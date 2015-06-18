@@ -13,6 +13,7 @@
 
 // Data used to construct the message displayed when the runtime aborts.
 typedef struct {
+  uint32_t destination; // this is really a log_stream_t
   const char *file;
   int line;
   int condition_cause;
@@ -20,8 +21,8 @@ typedef struct {
 } abort_message_t;
 
 // Initializes the fields of an abort message.
-void abort_message_init(abort_message_t *message, const char *file, int line,
-    int condition_cause, const char *text);
+void abort_message_init(abort_message_t *message, uint32_t destination,
+    const char *file, int line, int condition_cause, const char *text);
 
 INTERFACE(abort_o);
 

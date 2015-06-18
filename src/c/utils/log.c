@@ -81,7 +81,15 @@ static bool default_log(log_o *log, log_entry_t *entry) {
   out_stream_t *dest = (entry->destination == lsStderr)
       ? file_system_stderr(file_system_native())
       : file_system_stdout(file_system_native());
-  if (entry->file == NULL) {
+  if (entry->behavior == lbAbort) {
+    // If we're aborting then abort takes care of printing the message -- we'll
+    // actually get back here in a few calls but the behavior will have been
+    // changed to continue and then we'll fall through to the other cases.
+    abort_message_t message;
+    abort_message_init(&message, entry->destination, entry->file, entry->line,
+        0, entry->message.chars);
+    abort_call(get_global_abort(), &message);
+  } else if (entry->file == NULL) {
     // This is typically used for testing where including the filename and line
     // makes the output unpredictable.
     out_stream_printf(dest, "%s: %s\n",
@@ -92,11 +100,6 @@ static bool default_log(log_o *log, log_entry_t *entry) {
         get_log_level_char(entry->level), entry->timestamp.chars);
   }
   out_stream_flush(dest);
-  if (entry->behavior == lbAbort) {
-    abort_message_t message;
-    abort_message_init(&message, entry->file, entry->line, 0, entry->message.chars);
-    abort_call(get_global_abort(), &message);
-  }
   return true;
 }
 
