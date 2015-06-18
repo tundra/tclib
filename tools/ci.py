@@ -122,7 +122,7 @@ class Ci(object):
     command = " &&  ".join(commands)
     logging.info("Running [%s]", command)
     if self.is_windows():
-      subprocess.check_call(command, shell=True)
+      subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
     else:
       subprocess.check_call(["bash", "-c", command])
 
