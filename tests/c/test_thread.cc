@@ -72,5 +72,6 @@ TEST(thread, sleep) {
   uint64_t start = clock->time_since_epoch_utc().to_millis();
   NativeThread::sleep(Duration::millis(150));
   uint64_t end = clock->time_since_epoch_utc().to_millis();
-  ASSERT_REL(end - start, >=, 150);
+  ASSERT_REL(end - start, >=, 125);
+  ASSERT_REL(end - start, <, 175);
 }
