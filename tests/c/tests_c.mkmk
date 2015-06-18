@@ -40,6 +40,7 @@ def compile_test_file(source):
 
 durian_main = c.get_executable("durian")
 durian_main.add_object(compile_test_file(c.get_source_file("durian.cc")))
+get_group("durian_main").add_dependency(durian_main)
 
 # Create a group containing the test files along with the runtime library.
 test_library = get_group("library")
