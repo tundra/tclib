@@ -33,10 +33,10 @@ typedef enum {
 // value will be.
 #define ENUM_LOG_LEVELS(C)                                                     \
   C(Info,    I, 1, lsStdout, lbContinue)                                       \
-  C(Warning, W, 2, lsStdout, lbContinue)                                       \
-  C(Error,   E, 3, lsStdout, lbContinue)                                       \
-  C(Fatal,   F, 4, lsStdout, lbAbort)                                          \
-  C(Hest,    H, 5, lsStdout, lbContinue)
+  C(Warning, W, 2, lsStderr, lbContinue)                                       \
+  C(Error,   E, 3, lsStderr, lbContinue)                                       \
+  C(Fatal,   F, 4, lsStderr, lbAbort)                                          \
+  C(Hest,    H, 5, lsStderr, lbContinue)
 
 // Special log topics that can be turned on and off statically and dynamically.
 // These are useful if you want to instrument particular areas of the code but
