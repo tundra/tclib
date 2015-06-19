@@ -72,5 +72,7 @@ TEST(thread, sleep) {
   uint64_t start = clock->time_since_epoch_utc().to_millis();
   NativeThread::sleep(Duration::millis(150));
   uint64_t end = clock->time_since_epoch_utc().to_millis();
-  ASSERT_REL(end - start, >=, 150);
+  // There seems to be some difference between the clock that's sleeping and the
+  // real time clock on windows so allow the duration to be smaller there.
+  ASSERT_REL(end - start, >=, IF_MSVC(100, 150));
 }
