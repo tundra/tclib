@@ -1,6 +1,14 @@
 # Copyright 2014 the Neutrino authors (see AUTHORS).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+(get_library_info("threads")
+  .add_platform("posix", includes=[], libs=["pthread"])
+  .add_platform("windows", includes=[], libs=[]));
+
+(get_library_info("realtime")
+  .add_platform("posix", includes=[], libs=["rt"])
+  .add_platform("windows", includes=[], libs=[]));
+
 include('test', 'src_c_test.mkmk')
 include('utils', 'src_c_utils.mkmk')
 include('sync', 'src_c_sync.mkmk')
