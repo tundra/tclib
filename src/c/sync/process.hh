@@ -15,6 +15,8 @@ BEGIN_C_INCLUDES
 #include "sync/process.h"
 END_C_INCLUDES
 
+struct stream_redirect_t { };
+
 namespace tclib {
 
 class NativePipe;
@@ -23,7 +25,7 @@ class NativePipe;
 // implementations and patterns of use are somewhat platform dependent so read
 // the platform-independent documentation with a grain of salt, you kind of have
 // to know what's going on on the platform to know how it really works.
-class StreamRedirect {
+class StreamRedirect : public stream_redirect_t {
 public:
   // No-op destructor.
   virtual ~StreamRedirect() { }
@@ -48,7 +50,6 @@ public:
 // pipe will be dead.
 class PipeRedirect : public StreamRedirect {
 public:
-  typedef enum { pdIn, pdOut } pipe_direction_t;
   explicit PipeRedirect(NativePipe *pipe, pipe_direction_t direction);
   virtual naked_file_handle_t remote_handle();
   virtual bool prepare_launch();
@@ -98,19 +99,19 @@ public:
   // Sets the stream to use as standard input for the running process. Must be
   // called before starting the process.
   void set_stdin(StreamRedirect *redirect) {
-    stdin_ = redirect;
+    stdin_redir_ = redirect;
   }
 
   // Sets the stream to use as standard output for the running process. Must be
   // called before starting the process.
   void set_stdout(StreamRedirect *redirect) {
-    stdout_ = redirect;
+    stdout_redir_ = redirect;
   }
 
   // Sets the stream to use as standard error for the running process. Must be
   // called before starting the process.
   void set_stderr(StreamRedirect *redirect) {
-    stderr_ = redirect;
+    stderr_redir_ = redirect;
   }
 
   // Wait for this process, which must already have been started, to complete.
@@ -124,18 +125,18 @@ public:
 private:
   friend class NativeProcessStart;
 
+  StreamRedirect *stdin_redir() { return static_cast<StreamRedirect*>(stdin_redir_); }
+  StreamRedirect *stdout_redir() { return static_cast<StreamRedirect*>(stdout_redir_); }
+  StreamRedirect *stderr_redir() { return static_cast<StreamRedirect*>(stderr_redir_); }
+
+  // Extra bindings to add to the subprocess' environment.
+  std::vector<std::string> *env() { return static_cast<std::vector<std::string>*>(env_); }
+
   // Platform-specific initialization.
   void platform_initialize();
 
   // Platform-specific destruction.
   void platform_dispose();
-
-  // Extra bindings to add to the subprocess' environment.
-  std::vector<std::string> env_;
-
-  StreamRedirect *stdin_;
-  StreamRedirect *stdout_;
-  StreamRedirect *stderr_;
 };
 
 } // namespace tclib

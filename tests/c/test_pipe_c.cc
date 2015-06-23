@@ -83,7 +83,7 @@ TEST(pipe_c, simple_multiplex) {
       p2o(&step), p2o(native_pipe_out(&a_pipe)), p2o(native_pipe_out(&b_pipe)));
   native_thread_t *other = native_thread_new(do_test_steps_callback);
   ASSERT_TRUE(native_thread_start(other));
-  opaque_t opaque_index = u2o(100);
+  iop_t *next = NULL;
 
   ASSERT_TRUE(native_semaphore_release(&step));
   char a_buf[256];
@@ -100,8 +100,8 @@ TEST(pipe_c, simple_multiplex) {
   ASSERT_EQ(2, iop_group_pending_count(&read_a_and_b));
 
   ASSERT_TRUE(iop_group_wait_for_next(&read_a_and_b, duration_unlimited(),
-      &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 0);
+      &next));
+  ASSERT_EQ(o2u(iop_extra(next)), 0);
   ASSERT_TRUE(read_iop_has_succeeded(&read_a));
   ASSERT_EQ(1, read_iop_bytes_read(&read_a));
   ASSERT_EQ('1', a_buf[0]);
@@ -109,11 +109,11 @@ TEST(pipe_c, simple_multiplex) {
   read_iop_recycle_same_state(&read_a);
   ASSERT_EQ(2, iop_group_pending_count(&read_a_and_b));
 
-  opaque_index = u2o(100);
+  next = NULL;
   ASSERT_TRUE(native_semaphore_release(&step));
   ASSERT_TRUE(iop_group_wait_for_next(&read_a_and_b, duration_unlimited(),
-      &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 1);
+      &next));
+  ASSERT_EQ(o2u(iop_extra(next)), 1);
   ASSERT_TRUE(read_iop_has_succeeded(&read_b));
   ASSERT_EQ(1, read_iop_bytes_read(&read_b));
   ASSERT_EQ('2', b_buf[0]);
@@ -123,8 +123,8 @@ TEST(pipe_c, simple_multiplex) {
 
   ASSERT_TRUE(native_semaphore_release(&step));
   ASSERT_TRUE(iop_group_wait_for_next(&read_a_and_b, duration_unlimited(),
-      &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 1);
+      &next));
+  ASSERT_EQ(o2u(iop_extra(next)), 1);
   ASSERT_TRUE(read_iop_has_succeeded(&read_b));
   ASSERT_EQ(0, read_iop_bytes_read(&read_b));
   ASSERT_TRUE(read_iop_at_eof(&read_b));
@@ -132,8 +132,8 @@ TEST(pipe_c, simple_multiplex) {
 
   ASSERT_TRUE(native_semaphore_release(&step));
   ASSERT_TRUE(iop_group_wait_for_next(&read_a_and_b, duration_unlimited(),
-      &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 0);
+      &next));
+  ASSERT_EQ(o2u(iop_extra(next)), 0);
   ASSERT_TRUE(read_iop_has_succeeded(&read_a));
   ASSERT_EQ(1, read_iop_bytes_read(&read_a));
   ASSERT_EQ('3', a_buf[0]);
@@ -143,8 +143,8 @@ TEST(pipe_c, simple_multiplex) {
 
   ASSERT_TRUE(native_semaphore_release(&step));
   ASSERT_TRUE(iop_group_wait_for_next(&read_a_and_b, duration_unlimited(),
-      &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 0);
+      &next));
+  ASSERT_EQ(o2u(iop_extra(next)), 0);
   ASSERT_TRUE(read_iop_has_succeeded(&read_a));
   ASSERT_EQ(0, read_iop_bytes_read(&read_a));
   ASSERT_TRUE(read_iop_at_eof(&read_a));

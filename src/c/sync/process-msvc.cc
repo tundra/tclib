@@ -140,15 +140,15 @@ bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
 bool NativeProcessStart::configure_standard_streams() {
   bool has_redirected = false;
 
-  if (!maybe_redirect_standard_stream("stdin", process_->stdin_,
+  if (!maybe_redirect_standard_stream("stdin", process_->stdin_redir(),
       &startup_info_.hStdInput, &has_redirected))
     return false;
 
-  if (!maybe_redirect_standard_stream("stdout", process_->stdout_,
+  if (!maybe_redirect_standard_stream("stdout", process_->stdout_redir(),
       &startup_info_.hStdOutput, &has_redirected))
     return false;
 
-  if (!maybe_redirect_standard_stream("stderr", process_->stderr_,
+  if (!maybe_redirect_standard_stream("stderr", process_->stderr_redir(),
       &startup_info_.hStdError, &has_redirected))
     return false;
 
@@ -159,14 +159,14 @@ bool NativeProcessStart::configure_standard_streams() {
 }
 
 bool NativeProcessStart::configure_sub_environment() {
-  if (process_->env_.empty())
+  if (process_->env()->empty())
     // If we don't want the environment to change we just leave new_env_ empty
     // and launch will do the right thing.
     return true;
 
   // Copy the new variables also.
-  for (size_t i = process_->env_.size(); i > 0; i--) {
-    std::string entry = process_->env_[i - 1];
+  for (size_t i = process_->env()->size(); i > 0; i--) {
+    std::string entry = process_->env()->at(i - 1);
     string_buffer_append(&new_env_buf_, new_string(entry.c_str(), entry.length()));
     string_buffer_putc(&new_env_buf_, '\0');
   }
@@ -225,9 +225,9 @@ bool NativeProcessStart::maybe_close_standard_stream(StreamRedirect *stream) {
 bool NativeProcessStart::post_launch() {
   // Close the parent's clone of the stdout handle since it belongs to the
   // child now.
-  return maybe_close_standard_stream(process_->stdin_)
-      && maybe_close_standard_stream(process_->stdout_)
-      && maybe_close_standard_stream(process_->stderr_);
+  return maybe_close_standard_stream(process_->stdin_redir())
+      && maybe_close_standard_stream(process_->stdout_redir())
+      && maybe_close_standard_stream(process_->stderr_redir());
 }
 
 bool PipeRedirect::prepare_launch() {

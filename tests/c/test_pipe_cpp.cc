@@ -68,7 +68,7 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_TRUE(step.initialize());
   NativeThread other(new_callback(do_test_steps, &step, a_pipe.out(), b_pipe.out()));
   ASSERT_TRUE(other.start());
-  opaque_t opaque_index = o0();
+  Iop *next = NULL;
 
   // First step: a has input.
   ASSERT_TRUE(step.release());
@@ -82,8 +82,8 @@ TEST(pipe_cpp, simple_multiplex) {
   read_a_and_b.schedule(&read_b);
   ASSERT_EQ(2, read_a_and_b.pending_count());
 
-  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 0);
+  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &next));
+  ASSERT_EQ(o2u(next->extra()), 0);
   ASSERT_TRUE(read_a.has_succeeded());
   ASSERT_EQ(1, read_a.bytes_read());
   ASSERT_EQ('1', a_buf[0]);
@@ -92,10 +92,10 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_EQ(2, read_a_and_b.pending_count());
 
   // Second step: b has input.
-  opaque_index = o0();
+  next = NULL;
   ASSERT_TRUE(step.release());
-  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 1);
+  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &next));
+  ASSERT_EQ(o2u(next->extra()), 1);
   ASSERT_TRUE(read_b.has_succeeded());
   ASSERT_EQ(1, read_b.bytes_read());
   ASSERT_EQ('2', b_buf[0]);
@@ -106,12 +106,12 @@ TEST(pipe_cpp, simple_multiplex) {
   // Third step: both a and b.
   ASSERT_TRUE(step.release());
   for (int i = 0; i < 2; i++) {
-    opaque_t new_index = o0();
-    ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &new_index));
-    ASSERT_TRUE(i == 0 || o2u(new_index) != o2u(opaque_index));
-    opaque_index = new_index;
-    ASSERT_TRUE(o2u(opaque_index) <= 1);
-    if (o2u(opaque_index) == 0) {
+    Iop *new_next = NULL;
+    ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &new_next));
+    ASSERT_TRUE(i == 0 || o2u(new_next->extra()) != o2u(next->extra()));
+    next = new_next;
+    ASSERT_TRUE(o2u(next->extra()) <= 1);
+    if (o2u(next->extra()) == 0) {
       ASSERT_TRUE(read_a.has_succeeded());
       ASSERT_EQ(1, read_a.bytes_read());
       ASSERT_EQ('3', a_buf[0]);
@@ -130,8 +130,8 @@ TEST(pipe_cpp, simple_multiplex) {
 
   // Detect b being closed.
   ASSERT_TRUE(step.release());
-  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &opaque_index));
-  ASSERT_EQ(1, o2u(opaque_index));
+  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &next));
+  ASSERT_EQ(1, o2u(next->extra()));
   ASSERT_TRUE(read_b.is_complete());
   ASSERT_TRUE(read_b.has_succeeded());
   ASSERT_TRUE(read_b.at_eof());
@@ -139,8 +139,8 @@ TEST(pipe_cpp, simple_multiplex) {
 
   // Another successful write to a.
   ASSERT_TRUE(step.release());
-  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &opaque_index));
-  ASSERT_EQ(o2u(opaque_index), 0);
+  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &next));
+  ASSERT_EQ(o2u(next->extra()), 0);
   ASSERT_TRUE(read_a.has_succeeded());
   ASSERT_EQ(1, read_a.bytes_read());
   ASSERT_EQ('5', a_buf[0]);
@@ -150,8 +150,8 @@ TEST(pipe_cpp, simple_multiplex) {
 
   // Detect a being closed.
   ASSERT_TRUE(step.release());
-  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &opaque_index));
-  ASSERT_EQ(0, o2u(opaque_index));
+  ASSERT_TRUE(read_a_and_b.wait_for_next(Duration::unlimited(), &next));
+  ASSERT_EQ(0, o2u(next->extra()));
   ASSERT_TRUE(read_a.is_complete());
   ASSERT_TRUE(read_a.has_succeeded());
   ASSERT_TRUE(read_a.at_eof());
@@ -194,9 +194,9 @@ static void group_read_streams(NativePipe *pipes) {
   }
   int read_count = 0;
   while (group.has_pending()) {
-    opaque_t opaque_index = o0();
-    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    uint64_t index = o2u(opaque_index);
+    Iop *next = NULL;
+    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &next));
+    uint64_t index = o2u(next->extra());
     ReadIop *iop = iops[index];
     if (iop->at_eof()) {
       ASSERT_EQ(kValueCount, next_value[index]);
@@ -240,9 +240,9 @@ static void *async_read_streams(NativePipe *pipes, size_t own_index,
   }
   int read_count = 0;
   while (group.has_pending()) {
-    opaque_t opaque_index = o0();
-    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    uint64_t index = o2u(opaque_index);
+    Iop *next = NULL;
+    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &next));
+    uint64_t index = o2u(next->extra());
     NativeThread::yield(); // Just so no one thread hogs the input.
     ReadIop *iop = iops[index];
     if (!iop->at_eof()) {
@@ -299,9 +299,9 @@ static void *run_sibling(OutStream *out, InStream *in) {
   group.schedule(&write_iop);
   int live_streams = 2;
   while (live_streams > 0) {
-    opaque_t opaque_index = o0();
-    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    uint64_t index = o2u(opaque_index);
+    Iop *next = NULL;
+    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &next));
+    uint64_t index = o2u(next->extra());
     if (index == 0) {
       // Read succeeded.
       if (next_value_in == (limit + 1)) {

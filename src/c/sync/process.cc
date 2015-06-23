@@ -11,21 +11,24 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-NativeProcess::NativeProcess()
-  : stdin_(NULL)
-  , stdout_(NULL)
-  , stderr_(NULL) {
+NativeProcess::NativeProcess() {
+  stdin_redir_ = NULL;
+  stdout_redir_ = NULL;
+  stderr_redir_ = NULL;
 #if defined(kPlatformProcessInit)
   process = kPlatformProcessInit;
 #endif
   state = nsInitial;
   result = -1;
+  env_ = new std::vector<std::string>();
   platform_initialize();
 }
 
 NativeProcess::~NativeProcess() {
   if (state != nsInitial)
     platform_dispose();
+  delete env();
+  env_ = NULL;
 }
 
 bool NativeProcess::set_env(const char *key, const char *value) {
@@ -34,7 +37,7 @@ bool NativeProcess::set_env(const char *key, const char *value) {
   string_buffer_printf(&buf, "%s=%s", key, value);
   utf8_t raw_binding = string_buffer_flush(&buf);
   std::string binding(raw_binding.chars, raw_binding.size);
-  env_.push_back(binding);
+  env()->push_back(binding);
   string_buffer_dispose(&buf);
   return true;
 }
@@ -53,6 +56,48 @@ AbstractStream *PipeRedirect::remote_side() {
 
 AbstractStream *PipeRedirect::local_side() {
   return is_output() ? static_cast<AbstractStream*>(pipe_->in()) : pipe_->out();
+}
+
+bool native_process_initialize(native_process_t *process) {
+  new (process) NativeProcess();
+  return true;
+}
+
+void native_process_dispose(native_process_t *process) {
+  static_cast<NativeProcess*>(process)->~NativeProcess();
+}
+
+void native_process_set_stdin(native_process_t *process, stream_redirect_t *value) {
+  static_cast<NativeProcess*>(process)->set_stdin(static_cast<StreamRedirect*>(value));
+}
+
+void native_process_set_stdout(native_process_t *process, stream_redirect_t *value) {
+  static_cast<NativeProcess*>(process)->set_stdout(static_cast<StreamRedirect*>(value));
+}
+
+void native_process_set_stderr(native_process_t *process, stream_redirect_t *value) {
+  static_cast<NativeProcess*>(process)->set_stderr(static_cast<StreamRedirect*>(value));
+}
+
+bool native_process_start(native_process_t *process, const char *executable,
+    size_t argc, const char **argv) {
+  return static_cast<NativeProcess*>(process)->start(executable, argc, argv);
+}
+
+bool native_process_wait(native_process_t *process) {
+  return static_cast<NativeProcess*>(process)->wait();
+}
+
+int native_process_exit_code(native_process_t *process) {
+  return static_cast<NativeProcess*>(process)->exit_code();
+}
+
+stream_redirect_t *stream_redirect_from_pipe(native_pipe_t *pipe, pipe_direction_t dir) {
+  return new PipeRedirect(static_cast<NativePipe*>(pipe), dir);
+}
+
+void stream_redirect_destroy(stream_redirect_t *value) {
+  delete static_cast<StreamRedirect*>(value);
 }
 
 #ifdef IS_GCC

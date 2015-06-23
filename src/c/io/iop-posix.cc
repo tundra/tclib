@@ -2,6 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include <sys/select.h>
+#include <errno.h>
 
 #include "sync/thread.hh"
 
@@ -21,7 +22,7 @@ bool Iop::finish_nonblocking() {
       : as_out()->write_sync(as_write());
 }
 
-bool IopGroup::wait_for_next(Duration timeout, opaque_t *extra_out) {
+bool IopGroup::wait_for_next(Duration timeout, Iop **iop_out) {
   // On posix waiting for the next iop is done by selecting for the next fd that
   // can be accessed without blocking and then executing the op that accesses
   // that one. This means that there is no actual parallelism in performing the
@@ -55,8 +56,10 @@ bool IopGroup::wait_for_next(Duration timeout, opaque_t *extra_out) {
   } else {
     timeout_ptr = NULL;
   }
-  if (select(high_fd_mark + 1, &reads, &writes, NULL, timeout_ptr) == -1)
+  if (select(high_fd_mark + 1, &reads, &writes, NULL, timeout_ptr) == -1) {
+    WARN("Call to select failed: %s", strerror(errno));
     return false;
+  }
   // Scan through the out fd_set to identify the stream that became available.
   for (size_t i = 0; i < ops()->size(); i++) {
     Iop *iop = ops()->at(i);
@@ -66,7 +69,7 @@ bool IopGroup::wait_for_next(Duration timeout, opaque_t *extra_out) {
     naked_file_handle_t fd = stream->to_raw_handle();
     fd_set *set = iop->is_read() ? &reads : &writes;
     if (FD_ISSET(fd, set)) {
-      *extra_out = iop->extra();
+      *iop_out = iop;
       bool result = iop->finish_nonblocking();
       iop->mark_complete(result);
       return true;

@@ -81,9 +81,9 @@ public:
 };
 
 RecordingProcess::RecordingProcess()
-  : stdin_redirect_(&stdin_pipe_, PipeRedirect::pdIn)
-  , stdout_redirect_(&stdout_pipe_, PipeRedirect::pdOut)
-  , stderr_redirect_(&stderr_pipe_, PipeRedirect::pdOut)
+  : stdin_redirect_(&stdin_pipe_, pdIn)
+  , stdout_redirect_(&stdout_pipe_, pdOut)
+  , stderr_redirect_(&stderr_pipe_, pdOut)
   , stdin_data_(memory_block_empty())
   , stdout_str_(NULL)
   , stderr_str_(NULL) {
@@ -123,9 +123,9 @@ void RecordingProcess::complete() {
   ReadIop read_stderr(stderr_pipe_.in(), stderr_buf, 256, u2o(kStderrIndex));
   group.schedule(&read_stderr);
   while (group.has_pending()) {
-    opaque_t opaque_index = o0();
-    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &opaque_index));
-    uint64_t index = o2u(opaque_index);
+    Iop *next = NULL;
+    ASSERT_TRUE(group.wait_for_next(Duration::unlimited(), &next));
+    uint64_t index = o2u(next->extra());
     if (index == kStdinIndex) {
       ASSERT_TRUE(write_stdin.has_succeeded());
       stdin_cursor += write_stdin.bytes_written();

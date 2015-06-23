@@ -69,7 +69,7 @@ public:
   //
   // See the class comment for details on the discipline you need to use when
   // calling this.
-  bool wait_for_next(Duration timeout, opaque_t *extra_out);
+  bool wait_for_next(Duration timeout, Iop **iop_out);
 
   // Returns the number of iops in this group that haven't been completed yet.
   size_t pending_count() { return pending_count_; }

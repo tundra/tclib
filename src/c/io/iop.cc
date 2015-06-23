@@ -60,6 +60,18 @@ bool iop_has_succeeded(iop_t *iop) {
   return iop->has_succeeded_;
 }
 
+opaque_t iop_extra(iop_t *iop) {
+  return iop->extra_;
+}
+
+void iop_recycle_same_state(iop_t *iop) {
+  if (iop->type_ == ioRead) {
+    read_iop_recycle_same_state((read_iop_t*) iop);
+  } else {
+    write_iop_recycle_same_state((write_iop_t*) iop);
+  }
+}
+
 void read_iop_dispose(read_iop_t *iop) {
   iop_dispose(read_iop_upcast(iop));
 }
@@ -111,6 +123,10 @@ bool write_iop_execute(write_iop_t *iop) {
   return WriteIop::cast(iop)->execute();
 }
 
+void write_iop_recycle_same_state(write_iop_t *iop) {
+  return WriteIop::cast(iop)->recycle();
+}
+
 size_t write_iop_bytes_written(write_iop_t *iop) {
   return WriteIop::cast(iop)->bytes_written();
 }
@@ -141,8 +157,11 @@ size_t iop_group_pending_count(iop_group_t *group) {
 }
 
 bool iop_group_wait_for_next(iop_group_t *group, duration_t timeout,
-    opaque_t *extra_out) {
-  return static_cast<IopGroup*>(group)->wait_for_next(timeout, extra_out);
+    iop_t **iop_out) {
+  Iop *cpp_iop_out = NULL;
+  bool result = static_cast<IopGroup*>(group)->wait_for_next(timeout, &cpp_iop_out);
+  *iop_out = cpp_iop_out;
+  return result;
 }
 
 IopGroup::IopGroup() {

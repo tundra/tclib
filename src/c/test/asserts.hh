@@ -21,9 +21,23 @@ void fail(const char *file, int line, const char *fmt, ...);
   if (!(__a__ REL __b__))                                                      \
     fail(__FILE__, __LINE__,                                                   \
         "Assertion failed: " #A " " #REL " " #B ".\n"                          \
-        "  Left: %lli\n"                                                       \
-        "  Right: %lli",                                                       \
+        "  Left: %" PRIi64 "\n"                                                \
+        "  Right: %" PRIi64 "\n",                                              \
         __a__, __b__);                                                         \
+} while (false)
+
+// Fails unless the given relation holds between the two values.
+#define ASSERT_REL_WITH_HINT(HINT, A, REL, B) do {                             \
+  int64_t __a__ = static_cast<int64_t>(A);                                     \
+  int64_t __b__ = static_cast<int64_t>(B);                                     \
+  int64_t __hint__ = static_cast<int64_t>(HINT);                               \
+  if (!(__a__ REL __b__))                                                      \
+    fail(__FILE__, __LINE__,                                                   \
+        "Assertion failed: " #A " " #REL " " #B ".\n"                          \
+        "  Left: %" PRIi64 "\n"                                                \
+        "  Right: %" PRIi64 "\n"                                               \
+        "  Hint: %" PRIi64,                                                    \
+        __a__, __b__, __hint__);                                               \
 } while (false)
 
 // Fails unless the two values are equal.
@@ -44,6 +58,8 @@ static int64_t ptr_to_int_bit_cast(void *value) {
 
 // Fails unless the condition is true.
 #define ASSERT_TRUE(COND) ASSERT_EQ(COND, true)
+
+#define ASSERT_TRUE_WITH_HINT(HINT, COND) ASSERT_REL_WITH_HINT((HINT), (COND), ==, true)
 
 // Fails unless the condition is false.
 #define ASSERT_FALSE(COND) ASSERT_EQ(COND, false)

@@ -12,6 +12,7 @@
 // State used when issuing iops as a group. The actual contents of this is
 // platform dependent.
 typedef struct iop_group_state_t iop_group_state_t;
+typedef struct iop_t iop_t;
 
 // Marker indicating the type of an iop.
 typedef enum {
@@ -50,7 +51,7 @@ size_t iop_group_pending_count(iop_group_t *group);
 // See the comment on IopGroup for details on the discipline you need to use
 // when calling this.
 bool iop_group_wait_for_next(iop_group_t *group, duration_t timeout,
-    opaque_t *extra_out);
+    iop_t **iop_out);
 
 // Data associated with a read operation.
 typedef struct {
@@ -74,7 +75,7 @@ typedef struct {
 // be used without knowing which type it is in some circumstances. If you know
 // statically which kind of operation you're dealing with you can use read_iop_t
 // and write_iop_t instead.
-typedef struct {
+struct iop_t {
   iop_type_t type_;
   bool is_complete_;
   bool has_succeeded_;
@@ -86,7 +87,7 @@ typedef struct {
     read_iop_state_t as_read;
     write_iop_state_t as_write;
   } state;
-} iop_t;
+};
 
 // Add an iop to this group. See the comment on IopGroup for how to use this
 // correctly. Only incomplete iops may be scheduled, also once an iop has been
@@ -107,6 +108,13 @@ void iop_dispose(iop_t *iop);
 // Has this iop completed successfully? That is, this will return false either
 // if the op is not yet complete or it is complete but failed.
 bool iop_has_succeeded(iop_t *iop);
+
+// The extra data that was provided at initialization.
+opaque_t iop_extra(iop_t *iop);
+
+// Reuse this iop struct to perform another operation using the same data as
+// was used last time the op was performed.
+void iop_recycle_same_state(iop_t *iop);
 
 // A read iop.
 typedef struct {
@@ -172,6 +180,12 @@ void write_iop_dispose(write_iop_t *iop);
 
 // Perform this write operation synchronously.
 bool write_iop_execute(write_iop_t *iop);
+
+// Reuse this iop struct to perform another write of the same data to the
+// same output stream. This op must have completed before this can be
+// called, otherwise if a pending write is still ongoing this can corrupt the
+// pending state.
+void write_iop_recycle_same_state(write_iop_t *iop);
 
 // Returns the number of bytes written.
 size_t write_iop_bytes_written(write_iop_t *iop);
