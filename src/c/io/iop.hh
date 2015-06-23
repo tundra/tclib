@@ -60,11 +60,11 @@ public:
   // groups.
   void schedule(Iop *iop);
 
-  // Wait for the next iop to complete, storing the extra data of the iop in the
-  // given out parameter, and returns true. If waiting fails false is returned.
-  // Note that wait will return true even if the iop fails; result of the op
-  // will be stored in the op itself. The return value only indicates whether
-  // we successfully waited for an op to complete, not whether it completed
+  // Wait for the next iop to complete, storing the the iop in the given out
+  // parameter, and returns true. If waiting fails false is returned. Note that
+  // wait will return true even if the iop fails; result of the op will be
+  // stored in the op itself. The return value only indicates whether we
+  // successfully waited for an op to complete, not whether it completed
   // successfully.
   //
   // See the class comment for details on the discipline you need to use when

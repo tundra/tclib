@@ -41,12 +41,11 @@ void iop_group_dispose(iop_group_t *group);
 // Returns the number of iops in this group that haven't been completed yet.
 size_t iop_group_pending_count(iop_group_t *group);
 
-// Wait for the next iop to complete, storing the index of the iop in the
-// given out parameter, and returns true. If waiting fails false is returned.
-// Note that wait will return true even if the iop fails; result of the op
-// will be stored in the op itself. The return value only indicates whether
-// we successfully waited for an op to complete, not whether it completed
-// successfully.
+// Wait for the next iop to complete, storing the iop in the given out
+// parameter, and returns true. If waiting fails false is returned. Note that
+// wait will return true even if the iop fails; result of the op will be stored
+// in the op itself. The return value only indicates whether we successfully
+// waited for an op to complete, not whether it completed successfully.
 //
 // See the comment on IopGroup for details on the discipline you need to use
 // when calling this.
