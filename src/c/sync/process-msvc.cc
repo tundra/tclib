@@ -275,7 +275,7 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
       && start.post_launch();
 }
 
-bool NativeProcess::wait() {
+bool NativeProcess::wait_sync() {
   if (state == nsCouldntCreate) {
     // If we didn't even manage to create the child process waiting for it to
     // terminate trivially succeeds.

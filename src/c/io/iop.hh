@@ -20,6 +20,7 @@ namespace tclib {
 class AbstractStream;
 class InStream;
 class Iop;
+class NativeProcess;
 class OutStream;
 
 // A set of iops that are executed asynchronously, in parallel. The discipline
@@ -104,6 +105,8 @@ public:
   // Is this a read operation?
   bool is_read() { return type_ == ioRead; }
 
+  bool is_write() { return type_ == ioWrite; }
+
   // The extra data that was provided at initialization.
   opaque_t extra() { return extra_; }
 
@@ -186,7 +189,7 @@ public:
   void recycle();
 
   // Returns the number of bytes written.
-  size_t bytes_written() { return as_write()->bytes_written_; }
+  size_t bytes_written() { return as_write()->bytes_written; }
 
   static inline WriteIop *cast(write_iop_t *c_iop) {
     return static_cast<WriteIop*>(&c_iop->iop);
@@ -221,6 +224,16 @@ public:
   static inline ReadIop *cast(read_iop_t *c_iop) {
     return static_cast<ReadIop*>(&c_iop->iop);
   }
+};
+
+// Iop that waits for a process to complete. The process must already have been
+// started. Returns true iff waiting succeeded.
+class ProcessWaitIop : public Iop {
+public:
+  ProcessWaitIop(NativeProcess *process, opaque_t extra);
+
+  // Perform this wait operation synchronously.
+  bool execute();
 };
 
 } // tclib

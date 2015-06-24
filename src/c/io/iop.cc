@@ -4,6 +4,7 @@
 #include "io/iop.hh"
 
 #include "io/stream.hh"
+#include "sync/process.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/log.h"
@@ -17,7 +18,7 @@ void read_iop_state_deliver(read_iop_state_t *iop, size_t bytes_read, bool at_eo
 }
 
 void write_iop_state_deliver(write_iop_state_t *iop, size_t bytes_written) {
-  iop->bytes_written_ = bytes_written;
+  iop->bytes_written = bytes_written;
 }
 
 Iop::Iop(iop_type_t type, opaque_t extra) {
@@ -49,10 +50,16 @@ void read_iop_init(read_iop_t *iop, in_stream_t *in, void *dest, size_t dest_siz
 }
 
 void iop_dispose(iop_t *iop) {
-  if (iop->type_ == ioRead) {
-    static_cast<ReadIop*>(iop)->~ReadIop();
-  } else {
-    static_cast<WriteIop*>(iop)->~WriteIop();
+  switch (iop->type_) {
+    case ioRead:
+      static_cast<ReadIop*>(iop)->~ReadIop();
+      break;
+    case ioWrite:
+      static_cast<WriteIop*>(iop)->~WriteIop();
+      break;
+    case ioProcessWait:
+      static_cast<ProcessWaitIop*>(iop)->~ProcessWaitIop();
+      break;
   }
 }
 
@@ -65,10 +72,16 @@ opaque_t iop_extra(iop_t *iop) {
 }
 
 void iop_recycle_same_state(iop_t *iop) {
-  if (iop->type_ == ioRead) {
-    read_iop_recycle_same_state((read_iop_t*) iop);
-  } else {
-    write_iop_recycle_same_state((write_iop_t*) iop);
+  switch (iop->type_) {
+    case ioRead:
+      read_iop_recycle_same_state((read_iop_t*) iop);
+      break;
+    case ioWrite:
+      write_iop_recycle_same_state((write_iop_t*) iop);
+      break;
+    default:
+      UNREACHABLE("recycling non-recyclable");
+      break;
   }
 }
 
@@ -220,7 +233,7 @@ void IopGroup::on_member_complete(Iop *iop) {
 }
 
 write_iop_state_t *Iop::as_write() {
-  CHECK_FALSE("read as write", is_read());
+  CHECK_TRUE("read as write", is_write());
   return &state.as_write;
 }
 
@@ -234,7 +247,7 @@ InStream *Iop::as_in() {
 }
 
 OutStream *Iop::as_out() {
-  return static_cast<OutStream*>(as_write()->out_);
+  return static_cast<OutStream*>(as_write()->out);
 }
 
 AbstractStream *Iop::stream() {
@@ -277,7 +290,7 @@ void ReadIop::recycle() {
 
 WriteIop::WriteIop(OutStream *out, const void *src, size_t src_size, opaque_t extra)
   : Iop(ioWrite, extra) {
-  state.as_write.out_ = out;
+  state.as_write.out = out;
   recycle(src, src_size);
 }
 
@@ -291,13 +304,29 @@ bool WriteIop::execute() {
 
 void WriteIop::recycle(const void *src, size_t src_size) {
   Iop::recycle();
-  state.as_write.src_ = src;
-  state.as_write.src_size_ = src_size;
-  state.as_write.bytes_written_ = 0;
+  state.as_write.src = src;
+  state.as_write.src_size = src_size;
+  state.as_write.bytes_written = 0;
 }
 
 void WriteIop::recycle() {
-  recycle(state.as_write.src_, state.as_write.src_size_);
+  recycle(state.as_write.src, state.as_write.src_size);
+}
+
+ProcessWaitIop::ProcessWaitIop(NativeProcess *process, opaque_t extra)
+  : Iop(ioProcessWait, extra) {
+  state.as_process_wait.process = process;
+  recycle();
+}
+
+bool ProcessWaitIop::execute() {
+  bool result = static_cast<NativeProcess*>(state.as_process_wait.process)->wait_sync();
+  is_complete_ = true;
+  return result;
+}
+
+bool native_process_wait(native_process_t *process) {
+  return static_cast<NativeProcess*>(process)->wait_sync();
 }
 
 #ifdef IS_GCC

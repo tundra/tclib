@@ -8,6 +8,7 @@ library_files = [
   "clock.cc",
   "crash.c",
   "duration.c",
+  "lifetime.c",
   "log.c",
   "strbuf.c",
   "string.c",

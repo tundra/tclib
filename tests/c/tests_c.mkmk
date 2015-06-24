@@ -12,6 +12,7 @@ test_file_names = [
   "test_condition_cpp.cc",
   "test_duration.cc",
   "test_intex_cpp.cc",
+  "test_lifetime.cc",
   "test_mutex_c.cc",
   "test_mutex_cpp.cc",
   "test_ook.cc",

@@ -8,6 +8,7 @@ BEGIN_C_INCLUDES
 #include "test/realtime.h"
 #include "utils/alloc.h"
 #include "utils/crash.h"
+#include "utils/lifetime.h"
 END_C_INCLUDES
 
 #ifdef IS_GCC
@@ -146,6 +147,8 @@ void TestCaseInfo::validate_all() {
 int main(int argc, char *argv[]) {
   limited_allocator_t allocator;
   limited_allocator_install(&allocator, 100 * 1024 * 1024);
+  lifetime_t lifetime;
+  ASSERT_TRUE(lifetime_begin_default(&lifetime));
   install_crash_handler();
   tclib::OutStream *out = tclib::FileSystem::native()->std_out();
   double duration;
@@ -164,6 +167,7 @@ int main(int argc, char *argv[]) {
     unit_test_selector_t selector;
     duration = TestCaseInfo::run_tests(&selector, out);
   }
+  lifetime_end_default(&lifetime);
   size_t column = out->printf("  all tests passed");
   TestCaseInfo::print_time(out, column, duration);
   // Return a successful error code only if there were no allocator leaks.

@@ -8,6 +8,7 @@
 #include "io/stream.h"
 #include "utils/opaque.h"
 #include "utils/vector.h"
+#include "sync/process.h"
 
 // State used when issuing iops as a group. The actual contents of this is
 // platform dependent.
@@ -16,7 +17,9 @@ typedef struct iop_t iop_t;
 
 // Marker indicating the type of an iop.
 typedef enum {
-  ioRead, ioWrite
+  ioRead,
+  ioWrite,
+  ioProcessWait
 } iop_type_t;
 
 // A group of iops that can be executed in parallel. See the class comment on
@@ -63,11 +66,18 @@ typedef struct {
 
 // Data associated with a write operation.
 typedef struct {
-  out_stream_t *out_;
-  const void *src_;
-  size_t src_size_;
-  size_t bytes_written_;
+  out_stream_t *out;
+  const void *src;
+  size_t src_size;
+  size_t bytes_written;
 } write_iop_state_t;
+
+// Data associated with a process-wait operation.
+typedef struct {
+  native_process_t *process;
+  bool has_terminated;
+  int exit_code;
+} process_wait_iop_state_t;
 
 // A full read or write. To simplify the interface, that is, to avoid having
 // two paths for everything, an iop_t can hold both a read and write and can
@@ -85,6 +95,7 @@ struct iop_t {
   union {
     read_iop_state_t as_read;
     write_iop_state_t as_write;
+    process_wait_iop_state_t as_process_wait;
   } state;
 };
 

@@ -56,6 +56,7 @@ bool IopGroup::wait_for_next(Duration timeout, Iop **iop_out) {
   } else {
     timeout_ptr = NULL;
   }
+  errno = 0;
   if (select(high_fd_mark + 1, &reads, &writes, NULL, timeout_ptr) == -1) {
     WARN("Call to select failed: %s", strerror(errno));
     return false;

@@ -123,13 +123,16 @@ public:
     stderr_ = redirect;
   }
 
-  // Wait for this process, which must already have been started, to complete.
-  // Returns true iff waiting succeeded. The process must have been started.
-  bool wait();
+  // Wait synchronously for this process to terminate.
+  bool wait_sync();
 
   // Returns the process' exit code. The process must have been started and
   // waited on.
   int exit_code();
+
+  // Called asynchronously when the system notices that the process is done
+  // running.
+  ONLY_GCC(bool handle_sigchld(int code);)
 
 private:
   class PlatformData;

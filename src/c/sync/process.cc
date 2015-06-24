@@ -73,10 +73,6 @@ bool native_process_start(native_process_t *process, const char *executable,
   return static_cast<NativeProcess*>(process)->start(executable, argc, argv);
 }
 
-bool native_process_wait(native_process_t *process) {
-  return static_cast<NativeProcess*>(process)->wait();
-}
-
 int native_process_exit_code(native_process_t *process) {
   return static_cast<NativeProcess*>(process)->exit_code();
 }

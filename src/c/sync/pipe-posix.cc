@@ -30,14 +30,18 @@ FdStream::~FdStream() {
 }
 
 bool FdStream::read_sync(read_iop_state_t *op) {
-  ssize_t bytes_read = read(fd_, op->dest_, op->dest_size_);
-  bool at_eof = (bytes_read == 0) && !((errno == EINTR) || (errno == EAGAIN));
+  ssize_t bytes_read = 0;
+  do {
+    errno = 0;
+    bytes_read = read(fd_, op->dest_, op->dest_size_);
+  } while (bytes_read == 0 && errno == EINTR);
+  bool at_eof = (bytes_read == 0) && (errno != EAGAIN);
   read_iop_state_deliver(op, bytes_read, at_eof);
   return true;
 }
 
 bool FdStream::write_sync(write_iop_state_t *op) {
-  size_t bytes_written = write(fd_, op->src_, op->src_size_);
+  size_t bytes_written = write(fd_, op->src, op->src_size);
   write_iop_state_deliver(op, bytes_written);
   return true;
 }
@@ -58,6 +62,7 @@ naked_file_handle_t FdStream::to_raw_handle() {
 }
 
 bool NativePipe::open(uint32_t flags) {
+  errno = 0;
   int result = ::pipe(this->pipe_);
   if (result == 0) {
     in_ = new FdStream(this->pipe_[0]);

@@ -133,8 +133,8 @@ Iop::ensure_scheduled_outcome_t Iop::schedule_write(handle_t handle,
   OVERLAPPED *overlapped = group_state->overlapped();
   bool result = WriteFile(
       handle,                                     // hFile
-      write_iop->src_,                            // lpBuffer
-      static_cast<dword_t>(write_iop->src_size_), // nNumberOfBytesToWrite
+      write_iop->src,                             // lpBuffer
+      static_cast<dword_t>(write_iop->src_size),  // nNumberOfBytesToWrite
       &bytes_written,                             // lpNumberOfBytesWritten
       overlapped);                                // lpOverlapped
   if (result) {

@@ -27,6 +27,7 @@ bool NativeSemaphore::platform_dispose() {
 
 bool NativeSemaphore::acquire(Duration timeout) {
   int result;
+  errno = 0;
   if (timeout.is_unlimited()) {
     result = sem_wait(&sema);
   } else if (timeout.is_instant()) {

@@ -101,11 +101,11 @@ void byte_in_stream_destroy(in_stream_t *stream) {
 ByteOutStream::ByteOutStream() { }
 
 bool ByteOutStream::write_sync(write_iop_state_t *op) {
-  const byte_t *src = static_cast<const byte_t*>(op->src_);
-  size_t size = op->src_size_;
+  const byte_t *src = static_cast<const byte_t*>(op->src);
+  size_t size = op->src_size;
   for (size_t i = 0; i < size; i++)
     data_.push_back(src[i]);
-  op->bytes_written_ = size;
+  op->bytes_written = size;
   return true;
 }
 

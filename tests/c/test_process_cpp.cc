@@ -1,10 +1,13 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "test/unittest.hh"
-#include "sync/process.hh"
+#include "io/iop.hh"
 #include "sync/pipe.hh"
+#include "sync/process.hh"
+#include "test/unittest.hh"
 #include "utils/callback.hh"
+
+#include "sync/thread.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/strbuf.h"
@@ -16,7 +19,8 @@ using namespace tclib;
 TEST(process_cpp, exec_missing) {
   NativeProcess process;
   ASSERT_TRUE(process.start("test_process_cpp_exec_fail_missing_executable", 0, NULL));
-  ASSERT_TRUE(process.wait());
+  ProcessWaitIop wait(&process, o0());
+  ASSERT_TRUE(wait.execute());
   ASSERT_TRUE(process.exit_code() != 0);
 }
 
@@ -157,7 +161,8 @@ void RecordingProcess::complete() {
   }
   // We know the process has completed but still need to call wait for the
   // state to be updated.
-  wait();
+  ProcessWaitIop wait_iop(this, o0());
+  ASSERT_TRUE(wait_iop.execute());
   stdout_str_ = string_buffer_flush(&stdout_buf_).chars;
   stderr_str_ = string_buffer_flush(&stderr_buf_).chars;
 }
@@ -229,6 +234,7 @@ TEST(process_cpp, return_value) {
   RecordingProcess process;
   const char *argv[2] = {"--exit-code", "66"};
   ASSERT_TRUE(process.start(get_durian_main(), 2, argv));
+  NativeThread::sleep(Duration::seconds(1));
   process.complete();
   ASSERT_EQ(66, process.exit_code());
   ASSERT_EQ(3, process.read_argc());

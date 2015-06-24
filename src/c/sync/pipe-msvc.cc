@@ -67,8 +67,8 @@ bool HandleStream::write_sync(write_iop_state_t *op) {
   dword_t bytes_written = 0;
   bool result = WriteFile(
     handle_,                             // hFile
-    op->src_,                            // lpBuffer
-    static_cast<dword_t>(op->src_size_), // nNumberOfBytesToWrite
+    op->src,                             // lpBuffer
+    static_cast<dword_t>(op->src_size),  // nNumberOfBytesToWrite
     &bytes_written,                      // lpNumberOfBytesWritten
     &overlapped_);                       // lpOverlapped
   if (!result) {
