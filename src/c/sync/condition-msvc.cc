@@ -18,7 +18,8 @@ bool NativeCondition::wait(NativeMutex *mutex, Duration timeout) {
   PCRITICAL_SECTION cs = get_platform_mutex(mutex);
   if (SleepConditionVariableCS(cond, cs, timeout.to_winapi_millis()))
     return true;
-  WARN("Call to SleepConditionVariableCS failed: %i", GetLastError());
+  if (GetLastError() != ERROR_TIMEOUT)
+    WARN("Call to SleepConditionVariableCS failed: %i", GetLastError());
   return false;
 }
 

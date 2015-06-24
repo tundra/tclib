@@ -18,7 +18,7 @@ public:
   std::vector<size_t> order;
 };
 
-static void *run_thread(TestData *data, size_t value) {
+static void *run_simple_thread(TestData *data, size_t value) {
   ASSERT_TRUE(data->intex.lock_when() == value);
   data->order.push_back(value);
   ASSERT_TRUE(data->intex.unlock());
@@ -34,7 +34,7 @@ TEST(intex_cpp, simple) {
   // Spin off N threads each blocking on different values for the intex.
   NativeThread threads[kThreadCount];
   for (size_t i = 0; i < kThreadCount; i++) {
-    threads[i].set_callback(new_callback(run_thread, &data, i + 1));
+    threads[i].set_callback(new_callback(run_simple_thread, &data, i + 1));
     ASSERT_TRUE(threads[i].start());
   }
 
@@ -59,4 +59,46 @@ TEST(intex_cpp, simple) {
   // Check that the threads were released in the expected order.
   for (size_t i = 0; i < kThreadCount; i++)
     ASSERT_EQ(i + 1, data.order[i]);
+}
+
+TEST(intex_cpp, drawbridge_simple) {
+  Drawbridge bridge;
+  ASSERT_TRUE(bridge.initialize());
+  ASSERT_FALSE(bridge.pass(Duration::instant()));
+  ASSERT_TRUE(bridge.lower());
+  ASSERT_TRUE(bridge.pass(Duration::instant()));
+}
+
+static void *run_drawbridge_thread(Drawbridge *bridge, NativeSemaphore *count) {
+  ASSERT_TRUE(bridge->pass());
+  ASSERT_TRUE(count->release());
+  return NULL;
+}
+
+TEST(intex_cpp, drawbridge_multi) {
+  Drawbridge bridge(Drawbridge::dsRaised);
+  ASSERT_TRUE(bridge.initialize());
+  NativeSemaphore count(0);
+  ASSERT_TRUE(count.initialize());
+
+  // Spin off N threads all waiting to pass the drawbridge.
+  NativeThread threads[kThreadCount];
+  for (size_t i = 0; i < kThreadCount; i++) {
+    threads[i].set_callback(new_callback(run_drawbridge_thread, &bridge, &count));
+    ASSERT_TRUE(threads[i].start());
+  }
+
+  // Wait a while to give them a better chance to block.
+  ASSERT_TRUE(NativeThread::sleep(Duration::millis(10)));
+
+  // Check that none of the waiters have passed the bridge yet.
+  ASSERT_FALSE(count.acquire(Duration::instant()));
+
+  // Lower and watch them pass.
+  ASSERT_TRUE(bridge.lower());
+  for (size_t i = 0; i < kThreadCount; i++)
+    ASSERT_TRUE(count.acquire());
+
+  for (size_t i = 0; i < kThreadCount; i++)
+    threads[i].join();
 }

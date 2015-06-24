@@ -39,7 +39,7 @@ public:
 
   // Wait for this intex to become available, then acquires it regardless of
   // its value.
-  bool lock();
+  bool lock(Duration timeout = Duration::unlimited());
 
   // Releases this intex which must already be held.
   bool unlock();
@@ -57,31 +57,34 @@ private:
   // Lock this intex conditionally on the type of condition given as a template
   // argument.
   template <typename C>
-  bool lock_cond(uint64_t target);
+  bool lock_cond(Duration timeout, uint64_t target);
 
   class Dispatcher {
   public:
     // Wait for the value to become equal to another value.
-    bool operator==(uint64_t value) { return intex_->lock_cond<Eq>(value); }
+    bool operator==(uint64_t value) { return intex_->lock_cond<Eq>(timeout_, value); }
 
     // Wait for the value to become different from another value.
-    bool operator!=(uint64_t value) { return intex_->lock_cond<Neq>(value); }
+    bool operator!=(uint64_t value) { return intex_->lock_cond<Neq>(timeout_, value); }
 
     // Wait for the value to become less than another value.
-    bool operator<(uint64_t value) { return intex_->lock_cond<Lt>(value); }
+    bool operator<(uint64_t value) { return intex_->lock_cond<Lt>(timeout_, value); }
 
     // Wait for the value to become less than or equal to another value.
-    bool operator<=(uint64_t value) { return intex_->lock_cond<Leq>(value); }
+    bool operator<=(uint64_t value) { return intex_->lock_cond<Leq>(timeout_, value); }
 
     // Wait for the value to become greater than another value.
-    bool operator>(uint64_t value) { return intex_->lock_cond<Gt>(value); }
+    bool operator>(uint64_t value) { return intex_->lock_cond<Gt>(timeout_, value); }
 
     // Wait for the value to become greater than or equal to another value.
-    bool operator>=(uint64_t value) { return intex_->lock_cond<Geq>(value); }
+    bool operator>=(uint64_t value) { return intex_->lock_cond<Geq>(timeout_, value); }
 
-    explicit Dispatcher(Intex *intex) : intex_(intex) { }
+    explicit Dispatcher(Intex *intex, Duration timeout)
+      : intex_(intex)
+      , timeout_(timeout) { }
 
     Intex *intex_;
+    Duration timeout_;
   };
 
   volatile uint64_t value_;
@@ -98,23 +101,57 @@ public:
   // This involves a bit of operator overloading magic but the assumption is
   // that having the actual relation you're waiting for is less error prone than
   // having to map the operators to different alnum-named methods.
-  inline Dispatcher lock_when() {
-    return Dispatcher(this);
+  inline Dispatcher lock_when(Duration timeout = Duration::unlimited()) {
+    return Dispatcher(this, timeout);
   }
 };
 
 template <typename C>
-bool Intex::lock_cond(uint64_t target) {
-  if (!guard_.lock())
+bool Intex::lock_cond(Duration timeout, uint64_t target) {
+  if (!guard_.lock(timeout))
     return false;
   // We now have to lock, now spin around waiting for the value to become what
   // we're waiting for.
   while (!C::eval(value_, target)) {
-    if (!cond_.wait(&guard_))
+    if (!cond_.wait(&guard_, timeout)) {
+      guard_.unlock();
       return false;
+    }
   }
   return true;
 }
+
+// A drawbridge is a simple wrapper around an intex. It allows threads to be
+// blocked on a boolean condition: whether the bridge is lowered or raised.
+// While it is raised callers to pass will block and wait until it gets lowered.
+class Drawbridge {
+public:
+  enum state_t {
+    dsRaised,
+    dsLowered
+  };
+
+  // Construct this drawbridge. Note that initialize must be called before it
+  // can be used. By default a drawbridge starts out raised.
+  Drawbridge(state_t init_state = dsRaised);
+
+  // Initialize the internal state of this drawbridge.
+  bool initialize();
+
+  // Block this drawbridge so no more threads can pass it. Raising an already
+  // raised drawbridge has no effect.
+  bool raise(Duration timeout = Duration::unlimited());
+
+  // Unblock this drawbridge so threads are free to pass it. Lowering an already
+  // lowered drawbridge has no effect.
+  bool lower(Duration timeout = Duration::unlimited());
+
+  // Wait for this drawbridge to be lowered, then pass it.
+  bool pass(Duration timeout = Duration::unlimited());
+
+private:
+  Intex intex_;
+};
 
 } // namespace tclib
 

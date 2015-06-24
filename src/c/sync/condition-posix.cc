@@ -27,9 +27,11 @@ bool NativeCondition::wait(NativeMutex *mutex, Duration timeout) {
   if (timeout.is_unlimited()) {
     result = pthread_cond_wait(&cond, &mutex->mutex);
   } else {
-    NativeTime time = NativeTime::zero() + timeout;
+    NativeTime time = RealTimeClock::system()->time_since_epoch_utc() + timeout;
     struct timespec posix_time = time.to_posix();
     result = pthread_cond_timedwait(&cond, &mutex->mutex, &posix_time);
+    if (result == ETIMEDOUT)
+      return false;
   }
   if (result == 0)
     return true;
