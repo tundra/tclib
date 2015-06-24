@@ -15,10 +15,10 @@ public:
   TestData() : count(0) { }
   Intex intex;
   NativeSemaphore count;
-  std::vector<uint64_t> order;
+  std::vector<size_t> order;
 };
 
-static void *run_thread(TestData *data, uint64_t value) {
+static void *run_thread(TestData *data, size_t value) {
   ASSERT_TRUE(data->intex.lock_when() == value);
   data->order.push_back(value);
   ASSERT_TRUE(data->intex.unlock());
@@ -33,7 +33,7 @@ TEST(intex_cpp, simple) {
 
   // Spin off N threads each blocking on different values for the intex.
   NativeThread threads[kThreadCount];
-  for (uint64_t i = 0; i < kThreadCount; i++) {
+  for (size_t i = 0; i < kThreadCount; i++) {
     threads[i].set_callback(new_callback(run_thread, &data, i + 1));
     ASSERT_TRUE(threads[i].start());
   }
@@ -57,6 +57,6 @@ TEST(intex_cpp, simple) {
   }
 
   // Check that the threads were released in the expected order.
-  for (uint64_t i = 0; i < kThreadCount; i++)
+  for (size_t i = 0; i < kThreadCount; i++)
     ASSERT_EQ(i + 1, data.order[i]);
 }
