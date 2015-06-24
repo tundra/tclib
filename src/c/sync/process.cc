@@ -1,8 +1,9 @@
 //- Copyright 2015 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "sync/process.hh"
 #include "sync/pipe.hh"
+#include "sync/process.hh"
+#include "utils/alloc.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/log.h"
@@ -11,24 +12,13 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-NativeProcess::NativeProcess() {
-  stdin_redir_ = NULL;
-  stdout_redir_ = NULL;
-  stderr_redir_ = NULL;
-#if defined(kPlatformProcessInit)
-  process = kPlatformProcessInit;
-#endif
+NativeProcess::NativeProcess()
+  : platform_data_(NULL)
+  , stdin_(NULL)
+  , stdout_(NULL)
+  , stderr_(NULL) {
   state = nsInitial;
   result = -1;
-  env_ = new std::vector<std::string>();
-  platform_initialize();
-}
-
-NativeProcess::~NativeProcess() {
-  if (state != nsInitial)
-    platform_dispose();
-  delete env();
-  env_ = NULL;
 }
 
 bool NativeProcess::set_env(const char *key, const char *value) {
@@ -37,7 +27,7 @@ bool NativeProcess::set_env(const char *key, const char *value) {
   string_buffer_printf(&buf, "%s=%s", key, value);
   utf8_t raw_binding = string_buffer_flush(&buf);
   std::string binding(raw_binding.chars, raw_binding.size);
-  env()->push_back(binding);
+  env_.push_back(binding);
   string_buffer_dispose(&buf);
   return true;
 }
@@ -58,13 +48,12 @@ AbstractStream *PipeRedirect::local_side() {
   return is_output() ? static_cast<AbstractStream*>(pipe_->in()) : pipe_->out();
 }
 
-bool native_process_initialize(native_process_t *process) {
-  new (process) NativeProcess();
-  return true;
+native_process_t *native_process_new() {
+  return new (kDefaultAlloc) NativeProcess();
 }
 
-void native_process_dispose(native_process_t *process) {
-  static_cast<NativeProcess*>(process)->~NativeProcess();
+void native_process_destroy(native_process_t *process) {
+  default_delete_concrete(static_cast<NativeProcess*>(process));
 }
 
 void native_process_set_stdin(native_process_t *process, stream_redirect_t *value) {
@@ -107,3 +96,8 @@ void stream_redirect_destroy(stream_redirect_t *value) {
 #ifdef IS_MSVC
 #include "process-msvc.cc"
 #endif
+
+NativeProcess::~NativeProcess() {
+  delete platform_data_;
+  platform_data_ = NULL;
+}

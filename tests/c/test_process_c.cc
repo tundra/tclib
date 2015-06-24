@@ -22,20 +22,19 @@ static const char *get_durian_main() {
 
 TEST(process_c, return_value) {
   // Create a subprocess with out and err redirected.
-  native_process_t process;
-  ASSERT_TRUE(native_process_initialize(&process));
+  native_process_t *process = native_process_new();
   native_pipe_t stdout_pipe;
   ASSERT_TRUE(native_pipe_open(&stdout_pipe));
   stream_redirect_t *stdout_redir = stream_redirect_from_pipe(&stdout_pipe, pdOut);
-  native_process_set_stdout(&process, stdout_redir);
+  native_process_set_stdout(process, stdout_redir);
   native_pipe_t stderr_pipe;
   ASSERT_TRUE(native_pipe_open(&stderr_pipe));
   stream_redirect_t *stderr_redir = stream_redirect_from_pipe(&stderr_pipe, pdOut);
-  native_process_set_stderr(&process, stderr_redir);
+  native_process_set_stderr(process, stderr_redir);
 
   // Launch the process.
   const char *argv[2] = {"--exit-code", "77"};
-  ASSERT_TRUE(native_process_start(&process, get_durian_main(), 2, argv));
+  ASSERT_TRUE(native_process_start(process, get_durian_main(), 2, argv));
 
   // Consume all the output, otherwise the process may block waiting to be able
   // to write.
@@ -60,13 +59,13 @@ TEST(process_c, return_value) {
   iop_group_dispose(&group);
 
   // Join with the process and check that it ran as expected.
-  ASSERT_TRUE(native_process_wait(&process));
-  ASSERT_EQ(77, native_process_exit_code(&process));
+  ASSERT_TRUE(native_process_wait(process));
+  ASSERT_EQ(77, native_process_exit_code(process));
 
   // Clean up.
   stream_redirect_destroy(stderr_redir);
   stream_redirect_destroy(stdout_redir);
   native_pipe_dispose(&stdout_pipe);
   native_pipe_dispose(&stderr_pipe);
-  native_process_dispose(&process);
+  native_process_destroy(process);
 }

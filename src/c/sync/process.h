@@ -10,30 +10,13 @@
 
 typedef struct stream_redirect_t stream_redirect_t;
 
-// Current running state of a native process. Used to control internal behavior.
-typedef enum {
-  nsInitial,
-  nsRunning,
-  nsCouldntCreate,
-  nsComplete
-} native_process_state_t;
+typedef struct native_process_t native_process_t;
 
-// Opaque process type.
-typedef struct {
-  native_process_state_t state;
-  int result;
-  platform_process_t process;
-  stream_redirect_t *stdin_redir_;
-  stream_redirect_t *stdout_redir_;
-  stream_redirect_t *stderr_redir_;
-  void *env_;
-} native_process_t;
+// Create and initialize a new native process.
+native_process_t *native_process_new();
 
-// Create a new uninitialized process.
-bool native_process_initialize(native_process_t *process);
-
-// Free any system resources allocated to create the give process.
-void native_process_dispose(native_process_t *process);
+// Dispose and free a process created using native_process_new.
+void native_process_destroy(native_process_t *process);
 
 // Sets the stream to redirect this process' stdin to.
 void native_process_set_stdin(native_process_t *process, stream_redirect_t *value);

@@ -441,15 +441,3 @@ TEST(process_cpp, stdin) {
   // Printing adds a newline.
   ASSERT_C_STREQ(STDIN_MESSAGE, process.err());
 }
-
-#if defined(IS_MSVC)
-#  include "c/winhdr.h"
-#endif
-
-TEST(process_cpp, msvc_sizes) {
-#if defined(IS_MSVC)
-  // If this fails it should be easy to fix, just bump up the size of the
-  // platform process type.
-  ASSERT_REL(sizeof(platform_process_t), >=, sizeof(PROCESS_INFORMATION));
-#endif
-}

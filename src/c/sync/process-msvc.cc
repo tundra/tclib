@@ -9,22 +9,26 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-void NativeProcess::platform_initialize() {
-  PROCESS_INFORMATION *info = get_platform_process(this);
-  ZeroMemory(info, sizeof(*info));
-  info->hProcess = INVALID_HANDLE_VALUE;
-  info->hThread = INVALID_HANDLE_VALUE;
+class NativeProcess::PlatformData {
+public:
+  PlatformData();
+  ~PlatformData();
+public:
+  PROCESS_INFORMATION info;
+};
+
+NativeProcess::PlatformData::PlatformData() {
+  ZeroMemory(&info, sizeof(info));
+  info.hProcess = INVALID_HANDLE_VALUE;
+  info.hThread = INVALID_HANDLE_VALUE;
 }
 
-void NativeProcess::platform_dispose() {
-  PROCESS_INFORMATION *info = get_platform_process(this);
-  if (info->hProcess != INVALID_HANDLE_VALUE)
-    CloseHandle(info->hProcess);
-  if (info->hThread != INVALID_HANDLE_VALUE)
-    CloseHandle(info->hThread);
-  // This is not to actually reinitialize the process, just to clear the process
-  // info.
-  platform_initialize();
+NativeProcess::PlatformData::~PlatformData() {
+  if (info.hProcess != INVALID_HANDLE_VALUE)
+    CloseHandle(info.hProcess);
+  if (info.hThread != INVALID_HANDLE_VALUE)
+    CloseHandle(info.hThread);
+  ZeroMemory(&info, sizeof(info));
 }
 
 namespace tclib {
@@ -140,15 +144,15 @@ bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
 bool NativeProcessStart::configure_standard_streams() {
   bool has_redirected = false;
 
-  if (!maybe_redirect_standard_stream("stdin", process_->stdin_redir(),
+  if (!maybe_redirect_standard_stream("stdin", process_->stdin_,
       &startup_info_.hStdInput, &has_redirected))
     return false;
 
-  if (!maybe_redirect_standard_stream("stdout", process_->stdout_redir(),
+  if (!maybe_redirect_standard_stream("stdout", process_->stdout_,
       &startup_info_.hStdOutput, &has_redirected))
     return false;
 
-  if (!maybe_redirect_standard_stream("stderr", process_->stderr_redir(),
+  if (!maybe_redirect_standard_stream("stderr", process_->stderr_,
       &startup_info_.hStdError, &has_redirected))
     return false;
 
@@ -159,14 +163,14 @@ bool NativeProcessStart::configure_standard_streams() {
 }
 
 bool NativeProcessStart::configure_sub_environment() {
-  if (process_->env()->empty())
+  if (process_->env_.empty())
     // If we don't want the environment to change we just leave new_env_ empty
     // and launch will do the right thing.
     return true;
 
   // Copy the new variables also.
-  for (size_t i = process_->env()->size(); i > 0; i--) {
-    std::string entry = process_->env()->at(i - 1);
+  for (size_t i = process_->env_.size(); i > 0; i--) {
+    std::string entry = process_->env_[i - 1];
     string_buffer_append(&new_env_buf_, new_string(entry.c_str(), entry.length()));
     string_buffer_putc(&new_env_buf_, '\0');
   }
@@ -191,21 +195,21 @@ bool NativeProcessStart::launch(const char *executable) {
 
   // Create the child process.
   bool code = CreateProcess(
-    executable,                  // lpApplicationName
-    cmdline_chars,               // lpCommandLine
-    NULL,                        // lpProcessAttributes
-    NULL,                        // lpThreadAttributes
-    true,                        // bInheritHandles
-    0,                           // dwCreationFlags
-    env,                         // lpEnvironment
-    NULL,                        // lpCurrentDirectory
-    &startup_info_,              // lpStartupInfo
-    get_platform_process(process_)); // lpProcessInformation
+    executable,                       // lpApplicationName
+    cmdline_chars,                    // lpCommandLine
+    NULL,                             // lpProcessAttributes
+    NULL,                             // lpThreadAttributes
+    true,                             // bInheritHandles
+    0,                                // dwCreationFlags
+    env,                              // lpEnvironment
+    NULL,                             // lpCurrentDirectory
+    &startup_info_,                   // lpStartupInfo
+    &process_->platform_data_->info); // lpProcessInformation
 
   if (code) {
-    process_->state = nsRunning;
+    process_->state = NativeProcess::nsRunning;
   } else {
-    process_->state = nsCouldntCreate;
+    process_->state = NativeProcess::nsCouldntCreate;
     process_->result = GetLastError();
   }
 
@@ -225,9 +229,9 @@ bool NativeProcessStart::maybe_close_standard_stream(StreamRedirect *stream) {
 bool NativeProcessStart::post_launch() {
   // Close the parent's clone of the stdout handle since it belongs to the
   // child now.
-  return maybe_close_standard_stream(process_->stdin_redir())
-      && maybe_close_standard_stream(process_->stdout_redir())
-      && maybe_close_standard_stream(process_->stderr_redir());
+  return maybe_close_standard_stream(process_->stdin_)
+      && maybe_close_standard_stream(process_->stdout_)
+      && maybe_close_standard_stream(process_->stderr_);
 }
 
 bool PipeRedirect::prepare_launch() {
@@ -262,6 +266,7 @@ bool PipeRedirect::child_side_close() {
 
 bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
   CHECK_EQ("starting process already running", nsInitial, state);
+  platform_data_ = new NativeProcess::PlatformData();
   NativeProcessStart start(this);
   start.build_cmdline(executable, argc, argv);
   return start.configure_standard_streams()
@@ -280,7 +285,7 @@ bool NativeProcess::wait() {
 
   // First, wait for the process to terminate.
   CHECK_EQ("waiting for process not running", nsRunning, state);
-  PROCESS_INFORMATION *info = get_platform_process(this);
+  PROCESS_INFORMATION *info = &platform_data_->info;
   dword_t wait_result = WaitForSingleObject(info->hProcess, INFINITE);
   if (wait_result == WAIT_FAILED) {
     WARN("Call to WaitForSingleObject failed: %i", GetLastError());

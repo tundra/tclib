@@ -16,6 +16,7 @@ BEGIN_C_INCLUDES
 END_C_INCLUDES
 
 struct stream_redirect_t { };
+struct native_process_t { };
 
 namespace tclib {
 
@@ -74,6 +75,14 @@ private:
 // An os-native process.
 class NativeProcess: public native_process_t {
 public:
+  // Current running state of a native process. Used to control internal behavior.
+  typedef enum {
+    nsInitial,
+    nsRunning,
+    nsCouldntCreate,
+    nsComplete
+  } state_t;
+
   // Create a new uninitialized process.
   NativeProcess();
 
@@ -99,19 +108,19 @@ public:
   // Sets the stream to use as standard input for the running process. Must be
   // called before starting the process.
   void set_stdin(StreamRedirect *redirect) {
-    stdin_redir_ = redirect;
+    stdin_ = redirect;
   }
 
   // Sets the stream to use as standard output for the running process. Must be
   // called before starting the process.
   void set_stdout(StreamRedirect *redirect) {
-    stdout_redir_ = redirect;
+    stdout_ = redirect;
   }
 
   // Sets the stream to use as standard error for the running process. Must be
   // called before starting the process.
   void set_stderr(StreamRedirect *redirect) {
-    stderr_redir_ = redirect;
+    stderr_ = redirect;
   }
 
   // Wait for this process, which must already have been started, to complete.
@@ -123,20 +132,16 @@ public:
   int exit_code();
 
 private:
+  class PlatformData;
   friend class NativeProcessStart;
 
-  StreamRedirect *stdin_redir() { return static_cast<StreamRedirect*>(stdin_redir_); }
-  StreamRedirect *stdout_redir() { return static_cast<StreamRedirect*>(stdout_redir_); }
-  StreamRedirect *stderr_redir() { return static_cast<StreamRedirect*>(stderr_redir_); }
-
-  // Extra bindings to add to the subprocess' environment.
-  std::vector<std::string> *env() { return static_cast<std::vector<std::string>*>(env_); }
-
-  // Platform-specific initialization.
-  void platform_initialize();
-
-  // Platform-specific destruction.
-  void platform_dispose();
+  state_t state;
+  int result;
+  PlatformData *platform_data_;
+  StreamRedirect *stdin_;
+  StreamRedirect *stdout_;
+  StreamRedirect *stderr_;
+  std::vector<std::string> env_;
 };
 
 } // namespace tclib
