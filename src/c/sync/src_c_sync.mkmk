@@ -3,6 +3,7 @@
 
 library_files = [
   "condition.cc",
+  "intex.cc",
   "mutex.cc",
   "pipe.cc",
   "process.cc",
