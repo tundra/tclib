@@ -42,7 +42,7 @@ TEST(intex_cpp, simple) {
   // block.
   ASSERT_TRUE(NativeThread::sleep(Duration::millis(10)));
 
-  for (uint64_t i = 0; i < kThreadCount; i++) {
+  for (size_t i = 0; i < kThreadCount; i++) {
     // Acquire the intex, regardless of its value.
     ASSERT_TRUE(data.intex.lock());
     ASSERT_EQ(i, data.order.size());
