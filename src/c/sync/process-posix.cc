@@ -75,6 +75,10 @@ private:
   // Entry-point for the signal dispatcher thread.
   void *run_signal_dispatcher();
 
+  // Fetch notifications for any terminated children and notify the
+  // corresponding process objects.
+  bool dispatch_pending_terminations();
+
   // Installs child signal handlers.
   void install_signal_handler();
 
@@ -109,7 +113,9 @@ private:
   // Mapping from pid to process.
   ProcessMap children_;
 
-  // Mutex that guards the shutdown flag and the pending signals.
+  // Mutex that guards the shutdown flag and children map. This isn't used by
+  // incoming signals, only by the dispatcher thread itself and other threads
+  // adding new processes.
   NativeMutex guard_;
 
   // Gets set to true when the dispatcher should stop running.
@@ -123,11 +129,6 @@ private:
   // shutdown is false this will be released every time a signal is added to the
   // pending list.
   NativeSemaphore action_count_;
-
-  struct pending_signal_t { pid_t pid; int code; };
-
-  // Signals waiting to be processed.
-  std::vector<pending_signal_t> pending_signals_;
 };
 
 class NativeProcess::PlatformData {
@@ -328,17 +329,12 @@ bool NativeProcess::wait_sync() {
   return passed;
 }
 
-bool NativeProcess::handle_sigchld(int code) {
-  errno = 0;
-  if (waitpid(this->platform_data_->pid, &this->result, WNOHANG) == -1) {
-    WARN("Failed to waitpid: %s", strerror(errno));
-    return false;
-  }
-  if (!platform_data_->exited.lower()) {
+bool NativeProcess::mark_terminated(int result) {
+  this->result = result;
+  bool lowered = platform_data_->exited.lower();
+  if (!lowered)
     WARN("Failed to lower drawbridge for %lli", this->platform_data_->pid);
-    return false;
-  }
-  return true;
+  return lowered;
 }
 
 int NativeProcess::exit_code() {
@@ -347,14 +343,12 @@ int NativeProcess::exit_code() {
 }
 
 bool ProcessRegistry::handle_signal(int signum, siginfo_t *info, void *context) {
-  if (!guard_.lock())
-    return false;
-  pending_signal_t signal = {info->si_pid, info->si_code};
-  pending_signals_.push_back(signal);
-  bool result = action_count_.release();
-  // We need to always unlock the guard whether or not we succeeded in releasing
-  // the action count.
-  return guard_.unlock() && result;
+  // Handling a signal is very easy: we just tell the dispatcher thread that
+  // there is work to do and it will process any pending terminations. We don't
+  // use the info at all because it can actually be misleading. Because SIGCHLDs
+  // don't queue any signal may represent multiple children terminating and the
+  // child that happens to be mentioned in the info is just one of them.
+  return action_count_.release();
 }
 
 bool ProcessRegistry::add(pid_t pid, NativeProcess *child) {
@@ -409,30 +403,48 @@ void *ProcessRegistry::run_signal_dispatcher() {
     if (shutdown_)
       break;
     // Acquire the guard since we're touching the state.
-    guard_.lock();
-    CHECK_FALSE("empty signals", pending_signals_.empty());
-    pending_signal_t signal = pending_signals_.back();
-    pending_signals_.pop_back();
-    ProcessMap::iterator iter = children_.find(signal.pid);
-    if (iter == children_.end()) {
-      // No corresponding child; nothing to do.
-      guard_.unlock();
-    } else {
-      NativeProcess *child = iter->second;
-      // Unlock the guard while dispatching the signal since we don't want other
-      // signals arriving in the meantime to have to wait.
-      guard_.unlock();
-      bool do_erase = child->handle_sigchld(signal.code);
-      if (do_erase) {
-        // The signal handler instructed us to remove the child so do that while
-        // holding the lock again.
-        guard_.lock();
-        children_.erase(signal.pid);
-        guard_.unlock();
-      }
-    }
+    dispatch_pending_terminations();
   }
   return NULL;
+}
+
+bool ProcessRegistry::dispatch_pending_terminations() {
+  while (true) {
+    int result = 0;
+    errno = 0;
+    // Wait for any child to terminate. This may or may not be the child we
+    // were notified about, it doesn't make a difference: we know that one
+    // has terminated and if others have too we might as well deal with those
+    // at the same time.
+    pid_t next = waitpid(-1, &result, WNOHANG);
+    if (next == -1)
+      break;
+    // Get the child out of the mapping.
+    if (!guard_.lock()) {
+      WARN("Failed to lock process registry guard");
+      return false;
+    }
+    ProcessMap::iterator iter = children_.find(next);
+    if (iter == children_.end()) {
+      // We don't know about this child; just skip it and keep going.
+      if (!guard_.unlock()) {
+        WARN("Failed to unlock process registry guard");
+        return false;
+      }
+      continue;
+    }
+    // We know this process. First remove it from the children map while we hold
+    // the lock.
+    NativeProcess *process = iter->second;
+    children_.erase(next);
+    if (!guard_.unlock()) {
+      WARN("Failed to unlock process registry guard");
+      return false;
+    }
+    // Finally mark the process without holding any locks.
+    process->mark_terminated(result);
+  }
+  return true;
 }
 
 ProcessRegistry::ProcessRegistry()

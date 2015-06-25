@@ -56,10 +56,20 @@ bool IopGroup::wait_for_next(Duration timeout, Iop **iop_out) {
   } else {
     timeout_ptr = NULL;
   }
-  errno = 0;
-  if (select(high_fd_mark + 1, &reads, &writes, NULL, timeout_ptr) == -1) {
-    WARN("Call to select failed: %s", strerror(errno));
-    return false;
+  while (true) {
+    errno = 0;
+    if (select(high_fd_mark + 1, &reads, &writes, NULL, timeout_ptr) != -1)
+      // Select succeeded so we can continue.
+      break;
+    if (errno == EINTR) {
+      // Select failed because it was interrupted so just try loop around and
+      // try again.
+      continue;
+    } else {
+      // Select failed for some other reason; bail out.
+      WARN("Call to select failed: %s", strerror(errno));
+      return false;
+    }
   }
   // Scan through the out fd_set to identify the stream that became available.
   for (size_t i = 0; i < ops()->size(); i++) {

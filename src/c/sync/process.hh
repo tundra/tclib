@@ -132,7 +132,7 @@ public:
 
   // Called asynchronously when the system notices that the process is done
   // running.
-  ONLY_GCC(bool handle_sigchld(int code);)
+  ONLY_GCC(bool mark_terminated(int result);)
 
 private:
   class PlatformData;
