@@ -448,7 +448,8 @@ TEST(process_cpp, stdin) {
   ASSERT_C_STREQ(STDIN_MESSAGE, process.err());
 }
 
-#define kProcessCount IF_MSVC(16, 256)
+// Processes are a bit more expensive on windows.
+#define kProcessCount IF_MSVC(64, 256)
 
 TEST(process_cpp, terminate_avalanche) {
   // Spin off N children all eventually blocking to read from stdin.
@@ -474,10 +475,11 @@ TEST(process_cpp, terminate_avalanche) {
   for (size_t i = 0; i < kProcessCount; i++)
     ASSERT_TRUE(stdins[i].out()->close());
 
-  // Now all the processes should terminate.
+  // Now all the processes should terminate. If this deadlocks it's typically
+  // a sign that a process termination gets lost in the flood; that's what this
+  // test is for.
   for (size_t i = 0; i < kProcessCount; i++) {
-    fprintf(stderr, ".");
-    fflush(stderr);
     ASSERT_TRUE(processes[i].wait_sync());
+    ASSERT_EQ(88, processes[i].exit_code());
   }
 }
