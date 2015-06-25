@@ -51,11 +51,13 @@ public:
 // pipe will be dead.
 class PipeRedirect : public StreamRedirect {
 public:
-  explicit PipeRedirect(NativePipe *pipe, pipe_direction_t direction);
+  PipeRedirect(NativePipe *pipe, pipe_direction_t direction);
+  PipeRedirect();
   virtual naked_file_handle_t remote_handle();
   virtual bool prepare_launch();
   virtual bool parent_side_close();
   virtual bool child_side_close();
+  void set_pipe(NativePipe *pipe, pipe_direction_t direction);
 
 private:
   NativePipe *pipe_;
@@ -124,7 +126,7 @@ public:
   }
 
   // Wait synchronously for this process to terminate.
-  bool wait_sync();
+  bool wait_sync(Duration timeout = Duration::unlimited());
 
   // Returns the process' exit code. The process must have been started and
   // waited on.

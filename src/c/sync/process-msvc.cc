@@ -275,7 +275,7 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
       && start.post_launch();
 }
 
-bool NativeProcess::wait_sync() {
+bool NativeProcess::wait_sync(Duration timeout) {
   if (state == nsCouldntCreate) {
     // If we didn't even manage to create the child process waiting for it to
     // terminate trivially succeeds.
@@ -286,8 +286,10 @@ bool NativeProcess::wait_sync() {
   // First, wait for the process to terminate.
   CHECK_EQ("waiting for process not running", nsRunning, state);
   PROCESS_INFORMATION *info = &platform_data_->info;
-  dword_t wait_result = WaitForSingleObject(info->hProcess, INFINITE);
-  if (wait_result == WAIT_FAILED) {
+  dword_t wait_result = WaitForSingleObject(info->hProcess, timeout.to_winapi_millis());
+  if (wait_result == WAIT_TIMEOUT) {
+    return false;
+  } else if (wait_result == WAIT_FAILED) {
     WARN("Call to WaitForSingleObject failed: %i", GetLastError());
     return false;
   }

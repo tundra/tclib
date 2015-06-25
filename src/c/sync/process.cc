@@ -36,6 +36,15 @@ PipeRedirect::PipeRedirect(NativePipe *pipe, pipe_direction_t direction)
   : pipe_(pipe)
   , direction_(direction) { }
 
+PipeRedirect::PipeRedirect()
+  : pipe_(NULL)
+  , direction_(pdOut) { }
+
+void PipeRedirect::set_pipe(NativePipe *pipe, pipe_direction_t direction) {
+  pipe_ = pipe;
+  direction_ = direction;
+}
+
 naked_file_handle_t PipeRedirect::remote_handle() {
   return remote_side()->to_raw_handle();
 }

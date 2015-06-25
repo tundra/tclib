@@ -320,10 +320,10 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
   return result;
 }
 
-bool NativeProcess::wait_sync() {
+bool NativeProcess::wait_sync(Duration timeout) {
   CHECK_EQ("waiting for process not running", nsRunning, state);
   // Once the process terminates the drawbridge will be lowered.
-  bool passed = platform_data_->exited.pass();
+  bool passed = platform_data_->exited.pass(timeout);
   if (passed)
     this->state = nsComplete;
   return passed;

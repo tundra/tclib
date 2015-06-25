@@ -447,3 +447,37 @@ TEST(process_cpp, stdin) {
   // Printing adds a newline.
   ASSERT_C_STREQ(STDIN_MESSAGE, process.err());
 }
+
+#define kProcessCount IF_MSVC(16, 256)
+
+TEST(process_cpp, terminate_avalanche) {
+  // Spin off N children all eventually blocking to read from stdin.
+  NativeProcess processes[kProcessCount];
+  NativePipe stdins[kProcessCount];
+  PipeRedirect redirects[kProcessCount];
+  const char *argv[4] = {"--exit-code", "88", "--echo-stdin", "--quiet"};
+  for (size_t i = 0; i < kProcessCount; i++) {
+    ASSERT_TRUE(stdins[i].open(NativePipe::pfInherit));
+    redirects[i].set_pipe(&stdins[i], pdIn);
+    processes[i].set_stdin(&redirects[i]);
+    ASSERT_TRUE(processes[i].start(get_durian_main(), 4, argv));
+  }
+
+  // Sleep a little bit to let them all start.
+  ASSERT_TRUE(NativeThread::sleep(Duration::millis(50)));
+
+  // Check that as far as we know they're still all running.
+  for (size_t i = 0; i < kProcessCount; i++)
+    ASSERT_FALSE(processes[i].wait_sync(Duration::instant()));
+
+  // Close the stdins; this should cause the processes to exit.
+  for (size_t i = 0; i < kProcessCount; i++)
+    ASSERT_TRUE(stdins[i].out()->close());
+
+  // Now all the processes should terminate.
+  for (size_t i = 0; i < kProcessCount; i++) {
+    fprintf(stderr, ".");
+    fflush(stderr);
+    ASSERT_TRUE(processes[i].wait_sync());
+  }
+}

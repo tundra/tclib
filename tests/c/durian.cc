@@ -11,16 +11,14 @@
 extern char **environ;
 
 int main(int argc, char *argv[]) {
-  printf("ARGC: {%i}\n", argc);
-  for (int i = 0; i < argc; i++)
-    printf("ARGV[%i]: {%s}\n", i, argv[i]);
-  for (char **ep = environ; *ep; ep++)
-    printf("ENV: {%s}\n", *ep);
   int exit_code = 0;
+  bool quiet = false;
   for (int i = 0; i < argc; ) {
     const char *next = argv[i++];
     if (strcmp(next, "--exit-code") == 0) {
       exit_code = atoi(argv[i++]);
+    } else if (strcmp(next, "--quiet") == 0) {
+      quiet = true;
     } else if (strcmp(next, "--getenv") == 0) {
       const char *key = argv[i++];
       const char *value = getenv(key);
@@ -43,6 +41,13 @@ int main(int argc, char *argv[]) {
       fflush(stderr);
       exit(1);
     }
+  }
+  if (!quiet) {
+    printf("ARGC: {%i}\n", argc);
+    for (int i = 0; i < argc; i++)
+      printf("ARGV[%i]: {%s}\n", i, argv[i]);
+    for (char **ep = environ; *ep; ep++)
+      printf("ENV: {%s}\n", *ep);
   }
   return exit_code;
 }
