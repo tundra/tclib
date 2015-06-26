@@ -46,14 +46,18 @@ private:
 // The registry works as follows. The first time you create a process the
 // registry gets created. It schedules cleanup using the default lifetime so you
 // need one of those. When a child signal is received it immediately passes it
-// on to a helper thread which it owns. The helper thread resolves which process
-// object corresponds to the child and passes the message on to that. The reason
-// for dispatching from a helper thread is that unless we want to severely
-// restrict actions you can perform in response to a process terminating we
-// can't let the thread that receives the raw signal be the one that performs
-// those actions because we have no control over the state of that thread when
-// the signal is received and will almost certainly get all sorts of unpleasant
-// concurrency behavior, not limited to deadlocks.
+// on to a helper thread which it owns. The helper thread processes all
+// children that have died, including but not limited to the one that caused the
+// signal. SIGCHLD doesn't queue so we have to assume that any one signal can
+// covers multiple children that terminated but whose signals were lost behind
+// the one we're now processing.
+//
+// The reason for dispatching from a helper thread is that unless we want to
+// severely restrict actions you can perform in response to a process
+// terminating we can't let the thread that receives the raw signal be the one
+// that performs those actions because we have no control over the state of that
+// thread when the signal is received and will almost certainly get all sorts of
+// unpleasant concurrency behavior, not limited to deadlocks.
 class ProcessRegistry {
 public:
   // Returns the singleton process registry instance, creating it if necessary.
@@ -101,10 +105,12 @@ private:
 
   // Ensures that install gets called exactly once. This means that you can't
   // create a process registry more than once in the lifetime of the parent
-  // process.
+  // process. If this turns out to be a problem that's fixable.
   static pthread_once_t install_once_;
 
-  // The current process registry or NULL initially.
+  // The current process registry or NULL initially. If there's a crash because
+  // this was NULL unexpectedly it may be because the registry has been
+  // uninstalled and attempted to be reinstalled.
   static ProcessRegistry *current_;
 
   // Record of the signal handler that was active before we installed ours.
@@ -124,10 +130,9 @@ private:
   // Handle for the signal dispatcher thread.
   NativeThread dispatcher_;
 
-  // Number of actions for the dispatcher to perform. An action can either be
-  // to shut down or to process a pending signal, in particular as long as
-  // shutdown is false this will be released every time a signal is added to the
-  // pending list.
+  // Number of actions for the dispatcher to perform. If shutdown_ is true the
+  // action will be to clean up and leave, otherwise it will be to process
+  // child terminations.
   NativeSemaphore action_count_;
 };
 
@@ -383,9 +388,6 @@ void ProcessRegistry::uninstall_signal_handler() {
 }
 
 opaque_t ProcessRegistry::uninstall() {
-  size_t child_count = current_->children_.size();
-  if (child_count > 0)
-    WARN("Exiting with %lli live child processes.", child_count);
   delete current_;
   current_ = NULL;
   return o0();
@@ -411,7 +413,6 @@ void *ProcessRegistry::run_signal_dispatcher() {
 bool ProcessRegistry::dispatch_pending_terminations() {
   while (true) {
     int result = 0;
-    errno = 0;
     // Wait for any child to terminate. This may or may not be the child we
     // were notified about, it doesn't make a difference: we know that one
     // has terminated and if others have too we might as well deal with those
@@ -458,6 +459,8 @@ ProcessRegistry::ProcessRegistry()
 }
 
 ProcessRegistry::~ProcessRegistry() {
+  if (!children_.empty())
+    WARN("Exiting with %lli live child processes.", children_.size());
   uninstall_signal_handler();
   guard_.lock();
   shutdown_ = true;
