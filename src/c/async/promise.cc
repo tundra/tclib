@@ -36,6 +36,10 @@ bool opaque_promise_is_resolved(opaque_promise_t *promise) {
   return uncloak(promise).is_resolved();
 }
 
+opaque_t opaque_promise_peek_value(opaque_promise_t *promise, opaque_t otherwise) {
+  return uncloak(promise).peek_value(otherwise);
+}
+
 bool opaque_promise_fulfill(opaque_promise_t *promise, opaque_t value) {
   return uncloak(promise).fulfill(value);
 }
@@ -45,19 +49,39 @@ bool opaque_promise_fail(opaque_promise_t *promise, opaque_t error) {
 }
 
 static void opaque_promise_callback_trampoline(unary_callback_t *callback,
-    opaque_t value) {
+    ownership_mode_t ownership, opaque_t value) {
   unary_callback_call(callback, value);
+  if (ownership == omTakeOwnership)
+    callback_destroy(callback);
 }
 
-void opaque_promise_on_success(opaque_promise_t *promise, unary_callback_t *callback) {
+void opaque_promise_on_success(opaque_promise_t *promise, unary_callback_t *callback,
+    ownership_mode_t ownership) {
   uncloak(promise).on_success(new_callback(opaque_promise_callback_trampoline,
-      callback));
+      callback, ownership));
 }
 
-void opaque_promise_on_failure(opaque_promise_t *promise, unary_callback_t *callback) {
+void opaque_promise_on_failure(opaque_promise_t *promise, unary_callback_t *callback,
+    ownership_mode_t ownership) {
   uncloak(promise).on_failure(new_callback(opaque_promise_callback_trampoline,
-      callback));
+      callback, ownership));
 }
+
+static opaque_t opaque_promise_then_trampoline(unary_callback_t *callback,
+    ownership_mode_t ownership, opaque_t value) {
+  opaque_t result = unary_callback_call(callback, value);
+  if (ownership == omTakeOwnership)
+    callback_destroy(callback);
+  return result;
+}
+
+opaque_promise_t *opaque_promise_then(opaque_promise_t *promise,
+    unary_callback_t *callback, ownership_mode_t ownership) {
+  naked_opaque_promise_t result = uncloak(promise).then(
+      new_callback(opaque_promise_then_trampoline, callback, ownership));
+  return clone_and_cloak(result);
+}
+
 
 void opaque_promise_destroy(opaque_promise_t *raw_promise) {
   tclib::default_delete_concrete(reinterpret_cast<naked_opaque_promise_t*>(raw_promise));
