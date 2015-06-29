@@ -15,9 +15,11 @@ public:
   ~PlatformData();
 public:
   PROCESS_INFORMATION info;
+  handle_t wait_handle;
 };
 
-NativeProcess::PlatformData::PlatformData() {
+NativeProcess::PlatformData::PlatformData()
+  : wait_handle(INVALID_HANDLE_VALUE) {
   ZeroMemory(&info, sizeof(info));
   info.hProcess = INVALID_HANDLE_VALUE;
   info.hThread = INVALID_HANDLE_VALUE;
@@ -29,6 +31,33 @@ NativeProcess::PlatformData::~PlatformData() {
   if (info.hThread != INVALID_HANDLE_VALUE)
     CloseHandle(info.hThread);
   ZeroMemory(&info, sizeof(info));
+  if (wait_handle != INVALID_HANDLE_VALUE) {
+    if (!UnregisterWaitEx(wait_handle, NULL)) {
+      // There is a race condition here because the wait callback it invoked
+      // from a different thread and we have no guarantee of when that might
+      // finish. So it's a possibility that we'll dispose the platform data
+      // while control is still in the callback. In that case UnregisterWaitEx
+      // will "fail" with ERROR_IO_PENDING but it's my understanding that the
+      // wait will still be unregistered after the callback has returned.
+      dword_t err = GetLastError();
+      if (err != ERROR_IO_PENDING)
+        WARN("Call to UnregisterWaitEx failed: %i", err);
+    }
+    wait_handle = INVALID_HANDLE_VALUE;
+  }
+}
+
+void NativeProcess::mark_terminated(bool timer_or_wait_fired) {
+  dword_t exit_code = 0;
+  if (!GetExitCodeProcess(
+      platform_data_->info.hProcess, // hProcess
+      &exit_code)) { // lpExitCode
+    WARN("Call to GetExitCodeProcess failed: %i", GetLastError());
+  }
+  if (exit_code == STILL_ACTIVE)
+    WARN("Marking still active process as terminated.");
+  exit_code_.fulfill(exit_code);
+  exited_.lower();
 }
 
 namespace tclib {
@@ -187,14 +216,19 @@ bool NativeProcessStart::configure_sub_environment() {
   return true;
 }
 
+static void CALLBACK mark_terminated_bridge(void *context, BOOLEAN timer_or_wait_fired) {
+  static_cast<NativeProcess*>(context)->mark_terminated(timer_or_wait_fired);
+}
+
 bool NativeProcessStart::launch(const char *executable) {
   char *cmdline_chars = const_cast<char*>(cmdline_.chars);
   void *env = NULL;
   if (!string_is_empty(new_env_))
     env = static_cast<void*>(const_cast<char*>(new_env_.chars));
 
+  NativeProcess::PlatformData *data = process_->platform_data_;
   // Create the child process.
-  bool code = CreateProcess(
+  bool created = CreateProcess(
     executable,                       // lpApplicationName
     cmdline_chars,                    // lpCommandLine
     NULL,                             // lpProcessAttributes
@@ -204,21 +238,32 @@ bool NativeProcessStart::launch(const char *executable) {
     env,                              // lpEnvironment
     NULL,                             // lpCurrentDirectory
     &startup_info_,                   // lpStartupInfo
-    &process_->platform_data_->info); // lpProcessInformation
+    &data->info); // lpProcessInformation
 
-  if (code) {
-    process_->state = NativeProcess::nsRunning;
-  } else {
+  if (!created) {
     process_->state = NativeProcess::nsCouldntCreate;
-    process_->result = GetLastError();
+    process_->exit_code_.fulfill(GetLastError());
+    process_->exited_.lower();
+
+    // It might seem counter-intuitive to succeed when CreateProcess returns
+    // false, but it is done to keep the interface consistent across platforms.
+    // On posix we won't know if creating the child failed until after we wait
+    // for it so even in that case start will succeed. So we simulate that on
+    // windows by succeeding here and recording the error so it can be reported
+    // later.
+    return true;
   }
 
-  // It might seem counter-intuitive to always succeed, even if CreateProcess
-  // returns false, but it is done to keep the interface consistent across
-  // platforms. On posix we won't know if creating the child failed until after
-  // we wait for it so even in that case start will succeed. So we simulate that
-  // on windows by succeeding here and recording the error so it can be reported
-  // later.
+  process_->state = NativeProcess::nsRunning;
+  if (!RegisterWaitForSingleObject(
+      &data->wait_handle,      // phNewWaitObject
+      data->info.hProcess,     // hObject
+      &mark_terminated_bridge, // Callback
+      process_,                // Context
+      INFINITE,                // dwMilliseconds
+      WT_EXECUTEONLYONCE))     // dwFlags
+    WARN("Call to RegisterWaitForSingleObject failed: %i", GetLastError());
+
   return true;
 }
 
@@ -273,41 +318,4 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
       && start.configure_sub_environment()
       && start.launch(executable)
       && start.post_launch();
-}
-
-bool NativeProcess::wait_sync(Duration timeout) {
-  if (state == nsCouldntCreate) {
-    // If we didn't even manage to create the child process waiting for it to
-    // terminate trivially succeeds.
-    state = nsComplete;
-    return true;
-  }
-
-  // First, wait for the process to terminate.
-  CHECK_EQ("waiting for process not running", nsRunning, state);
-  PROCESS_INFORMATION *info = &platform_data_->info;
-  dword_t wait_result = WaitForSingleObject(info->hProcess, timeout.to_winapi_millis());
-  if (wait_result == WAIT_TIMEOUT) {
-    return false;
-  } else if (wait_result == WAIT_FAILED) {
-    WARN("Call to WaitForSingleObject failed: %i", GetLastError());
-    return false;
-  }
-
-  // Then grab the exit code.
-  dword_t exit_code = 0;
-  if (!GetExitCodeProcess(info->hProcess, &exit_code)) {
-    WARN("Call to GetExitCodeProcess failed: %i", GetLastError());
-    return false;
-  }
-
-  // Only if both steps succeed do we count it as completed.
-  state = nsComplete;
-  result = exit_code;
-  return true;
-}
-
-int NativeProcess::exit_code() {
-  CHECK_EQ("getting exit code of running process", nsComplete, state);
-  return result;
 }

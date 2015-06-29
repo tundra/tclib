@@ -10,6 +10,10 @@
 #include "utils/callback.hh"
 #include "utils/refcount.hh"
 
+BEGIN_C_INCLUDES
+#include "async/promise.h"
+END_C_INCLUDES
+
 namespace tclib {
 
 template <typename T, typename E = void*>
@@ -151,20 +155,29 @@ public:
   template <typename T2>
   promise_t<T2, E> then(callback_t<T2(T)> mapper);
 
+  template <typename T2, typename E2>
+  promise_t<T2, E2> then(callback_t<T2(T)> vmap, callback_t<E2(E)> emap);
+
   // Returns a fresh empty promise.
   static promise_t<T, E> empty();
 
 protected:
   promise_t<T, E>(promise_state_t<T, E> *state) : super_t(state) { }
 
-  template <typename T2>
-  static void map_and_fulfill(promise_t<T2, E> dest, callback_t<T2(T)> mapper,
+  template <typename T2, typename E2>
+  static void map_and_fulfill(promise_t<T2, E2> dest, callback_t<T2(T)> mapper,
       T value);
+  template <typename T2, typename E2>
+  static void map_and_fail(promise_t<T2, E2> dest, callback_t<E2(E)> mapper,
+      E error);
   template <typename T2>
   static void pass_on_failure(promise_t<T2, E> dest, E error);
 
   promise_state_t<T, E> *state() { return super_t::refcount_shared(); }
 };
+
+// Returns a new opaque promise that behaves the same as the given C++ promise.
+opaque_promise_t *to_opaque_promise(promise_t<opaque_t, opaque_t> value);
 
 class NativeSemaphore;
 

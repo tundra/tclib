@@ -13,7 +13,7 @@ using namespace tclib;
 
 typedef promise_t<opaque_t, opaque_t> naked_opaque_promise_t;
 
-static opaque_promise_t *clone_and_cloak(naked_opaque_promise_t promise) {
+opaque_promise_t *tclib::to_opaque_promise(promise_t<opaque_t, opaque_t> promise) {
   naked_opaque_promise_t *result = new (kDefaultAlloc) naked_opaque_promise_t(promise);
   return reinterpret_cast<opaque_promise_t*>(result);
 }
@@ -29,7 +29,7 @@ static naked_opaque_promise_t uncloak(opaque_promise_t *promise) {
 }
 
 opaque_promise_t *opaque_promise_empty() {
-  return clone_and_cloak(naked_opaque_promise_t::empty());
+  return to_opaque_promise(naked_opaque_promise_t::empty());
 }
 
 bool opaque_promise_is_resolved(opaque_promise_t *promise) {
@@ -79,7 +79,7 @@ opaque_promise_t *opaque_promise_then(opaque_promise_t *promise,
     unary_callback_t *callback, ownership_mode_t ownership) {
   naked_opaque_promise_t result = uncloak(promise).then(
       new_callback(opaque_promise_then_trampoline, callback, ownership));
-  return clone_and_cloak(result);
+  return to_opaque_promise(result);
 }
 
 

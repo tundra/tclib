@@ -172,10 +172,17 @@ void promise_state_t<T, E>::on_failure(FailureAction action) {
 }
 
 template <typename T, typename E>
-template <typename T2>
-void promise_t<T, E>::map_and_fulfill(promise_t<T2, E> dest, callback_t<T2(T)> mapper,
+template <typename T2, typename E2>
+void promise_t<T, E>::map_and_fulfill(promise_t<T2, E2> dest, callback_t<T2(T)> mapper,
     T value) {
   dest.fulfill(mapper(value));
+}
+
+template <typename T, typename E>
+template <typename T2, typename E2>
+void promise_t<T, E>::map_and_fail(promise_t<T2, E2> dest, callback_t<E2(E)> mapper,
+    E error) {
+  dest.fail(mapper(error));
 }
 
 template <typename T, typename E>
@@ -188,8 +195,17 @@ template <typename T, typename E>
 template <typename T2>
 promise_t<T2, E> promise_t<T, E>::then(callback_t<T2(T)> mapper) {
   promise_t<T2, E> result = promise_t<T2, E>::empty();
-  on_success(new_callback(map_and_fulfill<T2>, result, mapper));
+  on_success(new_callback(map_and_fulfill<T2, E>, result, mapper));
   on_failure(new_callback(pass_on_failure<T2>, result));
+  return result;
+}
+
+template <typename T, typename E>
+template <typename T2, typename E2>
+promise_t<T2, E2> promise_t<T, E>::then(callback_t<T2(T)> vmap, callback_t<E2(E)> emap) {
+  promise_t<T2, E2> result = promise_t<T2, E2>::empty();
+  on_success(new_callback(map_and_fulfill<T2, E2>, result, vmap));
+  on_failure(new_callback(map_and_fail<T2, E2>, result, emap));
   return result;
 }
 

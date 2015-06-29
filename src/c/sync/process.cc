@@ -1,6 +1,7 @@
 //- Copyright 2015 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#include "async/promise-inl.hh"
 #include "sync/pipe.hh"
 #include "sync/process.hh"
 #include "utils/alloc.hh"
@@ -14,11 +15,13 @@ using namespace tclib;
 
 NativeProcess::NativeProcess()
   : platform_data_(NULL)
+  , exit_code_(promise_t<int>::empty())
+  , opaque_exit_code_(NULL)
   , stdin_(NULL)
   , stdout_(NULL)
   , stderr_(NULL) {
   state = nsInitial;
-  result = -1;
+  exited_.initialize();
 }
 
 bool NativeProcess::set_env(const char *key, const char *value) {
@@ -30,6 +33,37 @@ bool NativeProcess::set_env(const char *key, const char *value) {
   env_.push_back(binding);
   string_buffer_dispose(&buf);
   return true;
+}
+
+static opaque_t i2o(int value) {
+  return u2o(value);
+}
+
+opaque_promise_t *NativeProcess::opaque_exit_code() {
+  if (opaque_exit_code_ == NULL) {
+    promise_t<opaque_t, opaque_t> cpp_promise = exit_code().then(new_callback(i2o),
+        new_callback(p2o));
+    opaque_exit_code_ = to_opaque_promise(cpp_promise);
+  }
+  return opaque_exit_code_;
+}
+
+bool NativeProcess::wait_sync(Duration timeout) {
+  CHECK_TRUE("waiting for process not running", (state == nsRunning)
+      || (state == nsCouldntCreate));
+
+  if (state == nsCouldntCreate) {
+    // If we didn't even manage to create the child process waiting for it to
+    // terminate trivially succeeds.
+    state = nsComplete;
+    return true;
+  }
+
+  // Once the process terminates the drawbridge will be lowered.
+  bool passed = exited_.pass(timeout);
+  if (passed)
+    this->state = nsComplete;
+  return passed;
 }
 
 PipeRedirect::PipeRedirect(NativePipe *pipe, pipe_direction_t direction)
@@ -82,8 +116,8 @@ bool native_process_start(native_process_t *process, const char *executable,
   return static_cast<NativeProcess*>(process)->start(executable, argc, argv);
 }
 
-int native_process_exit_code(native_process_t *process) {
-  return static_cast<NativeProcess*>(process)->exit_code();
+opaque_promise_t *native_process_exit_code(native_process_t *process) {
+  return static_cast<NativeProcess*>(process)->opaque_exit_code();
 }
 
 stream_redirect_t *stream_redirect_from_pipe(native_pipe_t *pipe, pipe_direction_t dir) {
@@ -103,6 +137,11 @@ void stream_redirect_destroy(stream_redirect_t *value) {
 #endif
 
 NativeProcess::~NativeProcess() {
+  exited_.pass();
+  if (opaque_exit_code_ != NULL) {
+    opaque_promise_destroy(opaque_exit_code_);
+    opaque_exit_code_ = NULL;
+  }
   delete platform_data_;
   platform_data_ = NULL;
 }

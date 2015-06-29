@@ -60,7 +60,7 @@ TEST(process_c, return_value) {
 
   // Join with the process and check that it ran as expected.
   ASSERT_TRUE(native_process_wait(process));
-  ASSERT_EQ(77, native_process_exit_code(process));
+  ASSERT_EQ(77, o2u(opaque_promise_peek_value(native_process_exit_code(process), o0())));
 
   // Clean up.
   stream_redirect_destroy(stderr_redir);

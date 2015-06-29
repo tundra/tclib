@@ -139,19 +139,11 @@ private:
 class NativeProcess::PlatformData {
 public:
   PlatformData();
-  ~PlatformData();
-  Drawbridge exited;
   pid_t pid;
 };
 
 NativeProcess::PlatformData::PlatformData()
-  : pid(0) {
-  exited.initialize();
-}
-
-NativeProcess::PlatformData::~PlatformData() {
-  exited.pass();
-}
+  : pid(0) { }
 
 NativeProcessStart::NativeProcessStart(NativeProcess *process)
   : process_(process) { }
@@ -308,7 +300,7 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
   if (fork_pid == -1) {
     // Forking failed for some reason.
     WARN("Call to fork failed: %i", fork_pid);
-    platform_data_->exited.lower();
+    exited_.lower();
     result = false;
   } else if (fork_pid > 0) {
     ProcessRegistry::get()->add(fork_pid, this);
@@ -328,26 +320,12 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
   return result;
 }
 
-bool NativeProcess::wait_sync(Duration timeout) {
-  CHECK_EQ("waiting for process not running", nsRunning, state);
-  // Once the process terminates the drawbridge will be lowered.
-  bool passed = platform_data_->exited.pass(timeout);
-  if (passed)
-    this->state = nsComplete;
-  return passed;
-}
-
 bool NativeProcess::mark_terminated(int result) {
-  this->result = result;
-  bool lowered = platform_data_->exited.lower();
+  this->exit_code_.fulfill(WEXITSTATUS(result));
+  bool lowered = exited_.lower();
   if (!lowered)
     WARN("Failed to lower drawbridge for %lli", this->platform_data_->pid);
   return lowered;
-}
-
-int NativeProcess::exit_code() {
-  CHECK_EQ("getting exit code of running process", nsComplete, state);
-  return WEXITSTATUS(result);
 }
 
 bool ProcessRegistry::handle_signal(int signum, siginfo_t *info, void *context) {

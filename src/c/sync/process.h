@@ -5,6 +5,8 @@
 #define _TCLIB_PROCESS_H
 
 #include "c/stdc.h"
+
+#include "async/promise.h"
 #include "sync/pipe.h"
 #include "sync/sync.h"
 
@@ -39,7 +41,7 @@ bool native_process_wait(native_process_t *process);
 
 // Returns the process' exit code. The process must have been started and
 // waited on.
-int native_process_exit_code(native_process_t *process);
+opaque_promise_t *native_process_exit_code(native_process_t *process);
 
 // Direction of a pipe when used to redirect input/output to/from a process. The
 // direction is defined as viewed from the process so pdIn means that the pipe

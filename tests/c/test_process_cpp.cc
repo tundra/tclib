@@ -1,6 +1,7 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#include "async/promise-inl.hh"
 #include "io/iop.hh"
 #include "sync/pipe.hh"
 #include "sync/process.hh"
@@ -21,7 +22,7 @@ TEST(process_cpp, exec_missing) {
   ASSERT_TRUE(process.start("test_process_cpp_exec_fail_missing_executable", 0, NULL));
   ProcessWaitIop wait(&process, o0());
   ASSERT_TRUE(wait.execute());
-  ASSERT_TRUE(process.exit_code() != 0);
+  ASSERT_TRUE(process.exit_code().peek_value(0) != 0);
 }
 
 // Returns the path to the durian executable.
@@ -236,7 +237,7 @@ TEST(process_cpp, return_value) {
   ASSERT_TRUE(process.start(get_durian_main(), 2, argv));
   NativeThread::sleep(Duration::seconds(1));
   process.complete();
-  ASSERT_EQ(66, process.exit_code());
+  ASSERT_EQ(66, process.exit_code().peek_value(0));
   ASSERT_EQ(3, process.read_argc());
   char argbuf[1024];
   ASSERT_C_STREQ(get_durian_main(), process.read_argv(0, argbuf));
@@ -248,7 +249,7 @@ static void test_arg_passing(int argc, const char **argv) {
   RecordingProcess process;
   ASSERT_TRUE(process.start(get_durian_main(), argc, argv));
   process.complete();
-  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(argc + 1, process.read_argc());
   char argbuf[1024];
   ASSERT_C_STREQ(get_durian_main(), process.read_argv(0, argbuf));
@@ -311,7 +312,7 @@ TEST(process_cpp, env_simple) {
   process.set_env("FOO", "bar");
   ASSERT_TRUE(process.start(get_durian_main(), 0, NULL));
   process.complete();
-  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(1, process.read_argc());
   char envbuf[1024];
   ASSERT_C_STREQ("bar", process.read_env("FOO", envbuf));
@@ -357,7 +358,7 @@ static void test_env_passing(size_t in_envc, binding_t *in_envv, size_t out_envc
   ASSERT_TRUE(process.start(get_durian_main(), argc, argv));
   delete[] argv;
   process.complete();
-  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(argc + 1, process.read_argc());
   char argbuf[1024];
   ASSERT_C_STREQ(get_durian_main(), process.read_argv(0, argbuf));
@@ -428,7 +429,7 @@ TEST(process_cpp, stderr) {
   const char *argv[2] = {"--print-stderr", STDERR_MESSAGE};
   ASSERT_TRUE(process.start(get_durian_main(), 2, argv));
   process.complete();
-  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(3, process.read_argc());
   // Printing adds a newline.
   ASSERT_C_STREQ(STDERR_MESSAGE, process.err());
@@ -442,7 +443,7 @@ TEST(process_cpp, stdin) {
   const char *argv[1] = {"--echo-stdin"};
   ASSERT_TRUE(process.start(get_durian_main(), 1, argv));
   process.complete();
-  ASSERT_EQ(0, process.exit_code());
+  ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(2, process.read_argc());
   // Printing adds a newline.
   ASSERT_C_STREQ(STDIN_MESSAGE, process.err());
@@ -451,17 +452,32 @@ TEST(process_cpp, stdin) {
 // Processes are a bit more expensive on windows.
 #define kProcessCount IF_MSVC(64, 256)
 
+static bool async_exit(NativeMutex *count_guard, int *count, int exit_code) {
+  ASSERT_EQ(88, exit_code);
+  ASSERT_TRUE(count_guard->lock());
+  *count += 1;
+  ASSERT_TRUE(count_guard->unlock());
+  return true;
+}
+
 TEST(process_cpp, terminate_avalanche) {
   // Spin off N children all eventually blocking to read from stdin.
   NativeProcess processes[kProcessCount];
   NativePipe stdins[kProcessCount];
   PipeRedirect redirects[kProcessCount];
+  NativeMutex count_guard;
+  ASSERT_TRUE(count_guard.initialize());
+  int callback_count = 0;
   const char *argv[4] = {"--exit-code", "88", "--echo-stdin", "--quiet"};
   for (size_t i = 0; i < kProcessCount; i++) {
     ASSERT_TRUE(stdins[i].open(NativePipe::pfInherit));
     redirects[i].set_pipe(&stdins[i], pdIn);
     processes[i].set_stdin(&redirects[i]);
-    ASSERT_TRUE(processes[i].start(get_durian_main(), 4, argv));
+    NativeProcess *process = &processes[i];
+    ASSERT_TRUE(process->start(get_durian_main(), 4, argv));
+    promise_t<int> exit_code = process->exit_code();
+    ASSERT_FALSE(exit_code.is_resolved());
+    exit_code.then(new_callback(async_exit, &count_guard, &callback_count));
   }
 
   // Sleep a little bit to let them all start.
@@ -480,6 +496,11 @@ TEST(process_cpp, terminate_avalanche) {
   // test is for.
   for (size_t i = 0; i < kProcessCount; i++) {
     ASSERT_TRUE(processes[i].wait_sync());
-    ASSERT_EQ(88, processes[i].exit_code());
+    promise_t<int> exit_code = processes[i].exit_code();
+    ASSERT_TRUE(exit_code.is_resolved());
+    ASSERT_EQ(88, exit_code.peek_value(0));
   }
+
+  // Check that all the .then callbacks were called.
+  ASSERT_EQ(kProcessCount, callback_count);
 }

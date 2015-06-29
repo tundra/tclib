@@ -6,9 +6,12 @@
 
 #include "c/stdc.h"
 
-#include "io/stream.hh"
-#include "c/stdvector.hh"
 #include <string>
+
+#include "async/promise.hh"
+#include "c/stdvector.hh"
+#include "io/stream.hh"
+#include "sync/intex.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
@@ -128,21 +131,28 @@ public:
   // Wait synchronously for this process to terminate.
   bool wait_sync(Duration timeout = Duration::unlimited());
 
-  // Returns the process' exit code. The process must have been started and
-  // waited on.
-  int exit_code();
+  // Returns a promise for the process' exit code. This will be resolved at some
+  // point after the process terminates.
+  promise_t<int> exit_code() { return exit_code_; }
+
+  // Returns the same promise as the exit_code method but viewed as the C
+  // promise type. The result is valid until the process object is destroyed.
+  opaque_promise_t *opaque_exit_code();
 
   // Called asynchronously when the system notices that the process is done
   // running.
   ONLY_GCC(bool mark_terminated(int result);)
+  ONLY_MSVC(void mark_terminated(bool timer_or_wait_fired);)
 
 private:
   class PlatformData;
   friend class NativeProcessStart;
 
   state_t state;
-  int result;
   PlatformData *platform_data_;
+  Drawbridge exited_;
+  promise_t<int> exit_code_;
+  opaque_promise_t *opaque_exit_code_;
   StreamRedirect *stdin_;
   StreamRedirect *stdout_;
   StreamRedirect *stderr_;
