@@ -15,13 +15,12 @@ using namespace tclib;
 
 NativeProcess::NativeProcess()
   : platform_data_(NULL)
-  , exit_code_(promise_t<int>::empty())
+  , exit_code_(sync_promise_t<int>::empty())
   , opaque_exit_code_(NULL)
   , stdin_(NULL)
   , stdout_(NULL)
   , stderr_(NULL) {
   state = nsInitial;
-  exited_.initialize();
 }
 
 bool NativeProcess::set_env(const char *key, const char *value) {
@@ -60,7 +59,7 @@ bool NativeProcess::wait_sync(Duration timeout) {
   }
 
   // Once the process terminates the drawbridge will be lowered.
-  bool passed = exited_.pass(timeout);
+  bool passed = exit_code_.wait(timeout);
   if (passed)
     this->state = nsComplete;
   return passed;
@@ -137,7 +136,8 @@ void stream_redirect_destroy(stream_redirect_t *value) {
 #endif
 
 NativeProcess::~NativeProcess() {
-  exited_.pass();
+  // Wait for the process to exit before disposing it.
+  exit_code_.wait();
   if (opaque_exit_code_ != NULL) {
     opaque_promise_destroy(opaque_exit_code_);
     opaque_exit_code_ = NULL;

@@ -57,7 +57,6 @@ void NativeProcess::mark_terminated(bool timer_or_wait_fired) {
   if (exit_code == STILL_ACTIVE)
     WARN("Marking still active process as terminated.");
   exit_code_.fulfill(exit_code);
-  exited_.lower();
 }
 
 namespace tclib {
@@ -243,7 +242,6 @@ bool NativeProcessStart::launch(const char *executable) {
   if (!created) {
     process_->state = NativeProcess::nsCouldntCreate;
     process_->exit_code_.fulfill(GetLastError());
-    process_->exited_.lower();
 
     // It might seem counter-intuitive to succeed when CreateProcess returns
     // false, but it is done to keep the interface consistent across platforms.

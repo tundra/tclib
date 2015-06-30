@@ -300,7 +300,7 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
   if (fork_pid == -1) {
     // Forking failed for some reason.
     WARN("Call to fork failed: %i", fork_pid);
-    exited_.lower();
+    exit_code_.fulfill(-1);
     result = false;
   } else if (fork_pid > 0) {
     ProcessRegistry::get()->add(fork_pid, this);
@@ -321,11 +321,10 @@ bool NativeProcess::start(const char *executable, size_t argc, const char **argv
 }
 
 bool NativeProcess::mark_terminated(int result) {
-  this->exit_code_.fulfill(WEXITSTATUS(result));
-  bool lowered = exited_.lower();
-  if (!lowered)
-    WARN("Failed to lower drawbridge for %lli", this->platform_data_->pid);
-  return lowered;
+  bool fulfilled = this->exit_code_.fulfill(WEXITSTATUS(result));
+  if (!fulfilled)
+    WARN("Failed to fulfill for %lli", this->platform_data_->pid);
+  return fulfilled;
 }
 
 bool ProcessRegistry::handle_signal(int signum, siginfo_t *info, void *context) {
@@ -432,11 +431,14 @@ bool ProcessRegistry::dispatch_pending_terminations() {
 ProcessRegistry::ProcessRegistry()
   : shutdown_(false)
   , action_count_(0) {
-  guard_.initialize();
-  action_count_.initialize();
+  bool alls_well = true;
+  alls_well = guard_.initialize() && alls_well;
+  alls_well = action_count_.initialize() && alls_well;
   dispatcher_.set_callback(new_callback(&ProcessRegistry::run_signal_dispatcher, this));
-  dispatcher_.start();
+  alls_well = dispatcher_.start() && alls_well;
   install_signal_handler();
+  if (!alls_well)
+    WARN("Process registry initialization failed. Somehow.");
 }
 
 ProcessRegistry::~ProcessRegistry() {

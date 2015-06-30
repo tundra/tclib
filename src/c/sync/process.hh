@@ -11,7 +11,6 @@
 #include "async/promise.hh"
 #include "c/stdvector.hh"
 #include "io/stream.hh"
-#include "sync/intex.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
@@ -150,8 +149,7 @@ private:
 
   state_t state;
   PlatformData *platform_data_;
-  Drawbridge exited_;
-  promise_t<int> exit_code_;
+  sync_promise_t<int> exit_code_;
   opaque_promise_t *opaque_exit_code_;
   StreamRedirect *stdin_;
   StreamRedirect *stdout_;

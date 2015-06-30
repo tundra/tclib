@@ -98,7 +98,7 @@ static void limited_allocator_free(allocator_t *raw_self, blob_t memory) {
   limited_allocator_t *data = (limited_allocator_t*) raw_self;
   if (memory.size > data->live_memory) {
     data->has_warned = true;
-    WARN("Unbalanced free of %ib", memory.size);
+    FATAL("Unbalanced free of %ib with %ib live", memory.size, data->live_memory);
   }
   data->live_memory -= memory.size;
   data->live_blocks--;

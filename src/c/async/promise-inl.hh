@@ -221,32 +221,21 @@ sync_promise_t<T, E> sync_promise_t<T, E>::empty() {
 
 template <typename T, typename E>
 template <typename I>
-void sync_promise_state_t<T, E>::release_waiter(NativeSemaphore *sema, I ignore) {
-  sema->release();
+void sync_promise_state_t<T, E>::lower_drawbridge(Drawbridge *drawbridge, I) {
+  drawbridge->lower();
 }
 
 template <typename T, typename E>
 bool sync_promise_state_t<T, E>::wait(Duration timeout) {
-  lock();
-  if (promise_state_t<T, E>::state_ == promise_state_t<T, E>::psEmpty) {
-    // If multiple threads end up waiting for this promise this gives each of
-    // them their own semaphore which they strictly don't need, they could just
-    // all wait on the same condition variable say. But this is simple and it's
-    // not obvious that the multi-waiter case is one we need to be concerned
-    // about.
-    NativeSemaphore sema(0);
-    sema.initialize();
-    promise_state_t<T, E>::on_successes_.push_back(new_callback(release_waiter<T>, &sema));
-    promise_state_t<T, E>::on_failures_.push_back(new_callback(release_waiter<E>, &sema));
-    // This is the reason for using lock/unlock directly. Obviously we can't
-    // hang on to the mutex while we wait for someone else to fulfill the
-    // promise.
-    unlock();
-    return sema.acquire(timeout);
-  } else {
-    unlock();
-    return true;
-  }
+  return drawbridge_.pass(timeout);
+}
+
+template <typename T, typename E>
+sync_promise_state_t<T, E>::sync_promise_state_t() {
+  mutex_.initialize();
+  drawbridge_.initialize();
+  this->on_successes_.push_back(new_callback(lower_drawbridge<T>, &drawbridge_));
+  this->on_failures_.push_back(new_callback(lower_drawbridge<E>, &drawbridge_));
 }
 
 } // namespace tclib

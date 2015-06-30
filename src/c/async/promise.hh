@@ -6,6 +6,7 @@
 
 #include "c/stdc.h"
 #include "c/stdvector.hh"
+#include "sync/intex.hh"
 #include "sync/mutex.hh"
 #include "utils/callback.hh"
 #include "utils/refcount.hh"
@@ -184,7 +185,7 @@ class NativeSemaphore;
 template <typename T, typename E = void*>
 class sync_promise_state_t : public promise_state_t<T, E> {
 public:
-  sync_promise_state_t() { mutex_.initialize(); }
+  sync_promise_state_t();
   virtual bool lock() { return mutex_.lock(); }
   virtual bool unlock() { return mutex_.unlock(); }
   bool wait(Duration timeout);
@@ -193,13 +194,16 @@ protected:
 
 private:
   template <typename I>
-  static void release_waiter(NativeSemaphore *sema, I ignore);
+  static void lower_drawbridge(Drawbridge *drawbridge, I);
   typedef typename promise_state_t<T, E>::Locker Locker;
 
   // The mutex that guards all the state of this promise. Only ever do a known
   // constant amount of work in code guarded by this and definitely don't hold
   // it and invoke a user-supplied callback.
   NativeMutex mutex_;
+
+  // Drawbridge that gets lowered when the promise gets its value.
+  Drawbridge drawbridge_;
 };
 
 // A sync promise is like a promise but safe to share between threads. Also, you
