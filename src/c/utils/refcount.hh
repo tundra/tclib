@@ -19,9 +19,7 @@ END_C_INCLUDES
 
 namespace tclib {
 
-// The ref counted state shared between references. This state is not
-// automatically thread safe but has hooks that allows derived classes to make
-// it thread safe.
+// The ref counted state shared between references.
 class refcount_shared_t {
 public:
   refcount_shared_t() : refcount_(atomic_int32_new(0)) { }

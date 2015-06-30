@@ -99,8 +99,7 @@ private:
   alloc_mode_t mode_;
 };
 
-// A generic binder that has the type parameters but not the is-guarded one
-// which the callback types should be agnostic to.
+// A generic binder that any concrete binder conforms to.
 template <typename R,
           typename A0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
@@ -444,15 +443,9 @@ private:
 };
 
 // A generic callback. The actual implementation is in the specializations.
-//
-// The callbacks created using new_callback are not thread safe, they must stay
-// within the same thread; this is because they use ref counted data and the
-// ref counts are not thread safe. Given a callback, though, you can create a
-// thread safe version by calling thread_safe_clone() on one that is not thread
-// safe. Note that the resulting callback is only thread safe in the sense that
-// it itself can be passed between threads and called from multiple threads at
-// the same time. Whether the function ultimately being called can handle
-// multiple callers is a different matter.
+// Callbacks can safely be passed between threads, they are thread safe in that
+// sense, but whether calling a callback from multiple threads is thread safe
+// depends on the code actually being called.
 template <typename S>
 class callback_t;
 
