@@ -15,7 +15,7 @@ typedef struct {
   // Size of string currently in the buffer.
   size_t length;
   // The data buffer.
-  memory_block_t memory;
+  blob_t memory;
 } string_buffer_t;
 
 // Initialize a string buffer.

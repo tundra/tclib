@@ -79,7 +79,7 @@ public:
   PipeRedirect stderr_redirect_;
   string_buffer_t stdout_buf_;
   string_buffer_t stderr_buf_;
-  memory_block_t stdin_data_;
+  blob_t stdin_data_;
   const char *stdout_str_;
   const char *stderr_str_;
 };
@@ -88,7 +88,7 @@ RecordingProcess::RecordingProcess()
   : stdin_redirect_(&stdin_pipe_, pdIn)
   , stdout_redirect_(&stdout_pipe_, pdOut)
   , stderr_redirect_(&stderr_pipe_, pdOut)
-  , stdin_data_(memory_block_empty())
+  , stdin_data_(blob_empty())
   , stdout_str_(NULL)
   , stderr_str_(NULL) {
   ASSERT_TRUE(stdin_pipe_.open(NativePipe::pfInherit));
@@ -107,7 +107,7 @@ RecordingProcess::~RecordingProcess() {
 }
 
 void RecordingProcess::set_stdin_data(const char *data) {
-  stdin_data_ = new_memory_block(const_cast<char*>(data), strlen(data));
+  stdin_data_ = blob_new(const_cast<char*>(data), strlen(data));
 }
 
 
@@ -117,7 +117,7 @@ void RecordingProcess::complete() {
   static const size_t kStderrIndex = 2;
   IopGroup group;
   size_t stdin_cursor = 0;
-  WriteIop write_stdin(stdin_pipe_.out(), stdin_data_.memory, stdin_data_.size,
+  WriteIop write_stdin(stdin_pipe_.out(), stdin_data_.start, stdin_data_.size,
       u2o(kStdinIndex));
   group.schedule(&write_stdin);
   char stdout_buf[256];
@@ -134,7 +134,7 @@ void RecordingProcess::complete() {
       ASSERT_TRUE(write_stdin.has_succeeded());
       stdin_cursor += write_stdin.bytes_written();
       if (stdin_cursor < stdin_data_.size) {
-        write_stdin.recycle(static_cast<byte_t*>(stdin_data_.memory) + stdin_cursor,
+        write_stdin.recycle(static_cast<byte_t*>(stdin_data_.start) + stdin_cursor,
             stdin_data_.size - stdin_cursor);
       } else {
         ASSERT_TRUE(stdin_pipe_.out()->close());

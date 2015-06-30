@@ -9,7 +9,7 @@
 bool string_buffer_init(string_buffer_t *buf) {
   buf->length = 0;
   buf->memory = allocator_default_malloc(128);
-  return !memory_block_is_empty(buf->memory);
+  return !blob_is_empty(buf->memory);
 }
 
 void string_buffer_dispose(string_buffer_t *buf) {
@@ -22,10 +22,10 @@ static bool string_buffer_ensure_capacity(string_buffer_t *buf,
   if (length < buf->memory.size)
     return true;
   size_t new_capacity = (length * 2);
-  memory_block_t new_memory = allocator_default_malloc(new_capacity);
-  if (memory_block_is_empty(new_memory))
+  blob_t new_memory = allocator_default_malloc(new_capacity);
+  if (blob_is_empty(new_memory))
     return false;
-  memcpy(new_memory.memory, buf->memory.memory, buf->length);
+  memcpy(new_memory.start, buf->memory.start, buf->length);
   allocator_default_free(buf->memory);
   buf->memory = new_memory;
   return true;
@@ -33,7 +33,7 @@ static bool string_buffer_ensure_capacity(string_buffer_t *buf,
 
 bool string_buffer_append(string_buffer_t *buf, utf8_t str) {
   B_TRY(string_buffer_ensure_capacity(buf, buf->length + string_size(str)));
-  char *chars = (char*) buf->memory.memory;
+  char *chars = (char*) buf->memory.start;
   string_copy_to(str, chars + buf->length, buf->memory.size - buf->length);
   buf->length += string_size(str);
   return true;
@@ -41,7 +41,7 @@ bool string_buffer_append(string_buffer_t *buf, utf8_t str) {
 
 bool string_buffer_putc(string_buffer_t *buf, char c) {
   B_TRY(string_buffer_ensure_capacity(buf, buf->length + 1));
-  char *chars = (char*) buf->memory.memory;
+  char *chars = (char*) buf->memory.start;
   chars[buf->length] = c;
   buf->length++;
   return true;
@@ -64,7 +64,7 @@ bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
   char inline_buffer[kMaxInlineSize];
   size_t current_bufsize = kMaxInlineSize;
   char *current_buf = inline_buffer;
-  memory_block_t scratch = memory_block_empty();
+  blob_t scratch = blob_empty();
   while (true) {
     // Null terminate explicitly just to be on the safe side.
     current_buf[current_bufsize - 1] = '\0';
@@ -86,11 +86,11 @@ bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
       // terminator.
       scratch = allocator_default_malloc(written + 1);
       current_bufsize = written + 1;
-      current_buf = (char*) (scratch.memory);
+      current_buf = (char*) (scratch.start);
       continue;
     }
   }
-  if (!memory_block_is_empty(scratch))
+  if (!blob_is_empty(scratch))
     allocator_default_free(scratch);
   return true;
 }
@@ -218,7 +218,7 @@ bool string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
 
 utf8_t string_buffer_flush(string_buffer_t *buf) {
   CHECK_REL("no room for null terminator", buf->length, <, buf->memory.size);
-  char *chars = (char*) buf->memory.memory;
+  char *chars = (char*) buf->memory.start;
   chars[buf->length] = '\0';
   return new_string(chars, buf->length);
 }

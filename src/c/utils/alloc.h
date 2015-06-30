@@ -10,51 +10,62 @@
 // memory allows us to check how much memory is live at any given time.
 typedef struct {
   // The actual memory.
-  void *memory;
+  void *start;
   // The number of bytes of memory (minus any overhead added by the allocator).
   size_t size;
-} memory_block_t;
+} blob_t;
 
 // Returns true iff the given block is empty, say because allocation failed.
-bool memory_block_is_empty(memory_block_t block);
+bool blob_is_empty(blob_t block);
 
 // Resets the given block to the empty state.
-memory_block_t memory_block_empty();
+blob_t blob_empty();
 
 // Creates a new memory block with the given contents. Be sure to note that this
 // doesn't allocate anything, just bundles previously allocated memory into a
 // struct.
-memory_block_t new_memory_block(void *memory, size_t size);
+blob_t blob_new(void *start, size_t size);
 
 // Fills this memory block's data with the given value.
-void memory_block_fill(memory_block_t block, byte_t value);
+void blob_fill(blob_t block, byte_t value);
+
+// Write the contents of the source blob into the destination.
+void blob_copy_to(blob_t src, blob_t dest);
+
+// Given a struct by value, fills the memory occupied by the struct with zeroes.
+#define struct_zero_fill(V) blob_fill(blob_new(&(V), sizeof(V)), 0)
 
 // An allocator encapsulates a source of memory from the system.
-typedef struct {
+typedef struct allocator_t {
   // Function to call to do allocation.
-  memory_block_t (*malloc)(void *data, size_t size);
+  blob_t (*malloc)(struct allocator_t *self, size_t size);
   // Function to call to dispose memory. Note: the memory to deallocate is
   // the second arguments.
-  void (*free)(void *data, memory_block_t memory);
-  // Extra data that can be used by the alloc/dealloc functions.
-  void *data;
+  void (*free)(struct allocator_t *self, blob_t memory);
 } allocator_t;
 
-// Initializes the given allocator to be the system allocator, using malloc and
-// free.
-void init_system_allocator(allocator_t *alloc);
+// Returns an allocator that uses system malloc/free.
+allocator_t allocator_system();
 
 // Allocates a block of memory using the given allocator.
-memory_block_t allocator_malloc(allocator_t *alloc, size_t size);
+blob_t allocator_malloc(allocator_t *alloc, size_t size);
 
 // Allocates the specified amount of memory using the default allocator.
-memory_block_t allocator_default_malloc(size_t size);
+blob_t allocator_default_malloc(size_t size);
+
+// Allocates a struct of the given type using the current default allocator. If
+// allocation fails NULL is returned. The result must be deallocated using
+// allocator_default_free_struct with the exact same type.
+#define allocator_default_malloc_struct(T) ((T*) allocator_default_malloc(sizeof(T)).start)
 
 // Frees the given block of memory using the default allocator.
-void allocator_default_free(memory_block_t block);
+void allocator_default_free(blob_t block);
+
+// Frees a struct of the given type allocated with allocator_default_malloc.
+#define allocator_default_free_struct(T, v) allocator_default_free(blob_new((v), sizeof(T)))
 
 // Frees a block of memory using the given allocator.
-void allocator_free(allocator_t *alloc, memory_block_t memory);
+void allocator_free(allocator_t *alloc, blob_t memory);
 
 // Returns the current default allocator. If none has been explicitly set this
 // will be the system allocator.
@@ -66,15 +77,17 @@ allocator_t *allocator_set_default(allocator_t *value);
 // An allocator that keeps track of the total amount allocated and limits how
 // much allocation it will allow.
 typedef struct {
+  allocator_t header;
   // The default allocator this one is replacing.
   allocator_t *outer;
   // How much memory to allow in total.
   size_t limit;
   // The total amount of live memory.
   size_t live_memory;
+  // Total number of blocks allocated.
   size_t live_blocks;
-  // This, packed into an allocator_t.
-  allocator_t self;
+  // Has this allocator issued any warnings?
+  bool has_warned;
 } limited_allocator_t;
 
 // Initializes the given allocator with the given limit and installs it as the
@@ -85,5 +98,31 @@ void limited_allocator_install(limited_allocator_t *alloc, size_t limit);
 // restores the previous allocator, whatever it was. Returns true iff no memory
 // was leaked.
 bool limited_allocator_uninstall(limited_allocator_t *alloc);
+
+// How many buckets do we divide allocations into by fingerprint?
+#define kAllocFingerprintBuckets 65521
+
+// A fingerprinting allocator computes a fingerprint for each allocation and
+// matches up the fingerprint of allocations and frees, reporting errors if they
+// don't match. Similar to the limited allocator but may narrow down the site
+// of incorrect allocations/frees.
+typedef struct {
+  allocator_t header;
+  // The default allocator this one is replacing.
+  allocator_t *outer;
+  // How many blocks of memory have been allocated for a given fingerprint?
+  size_t blocks[kAllocFingerprintBuckets];
+  // How many bytes of memory have been allocated for a given fingerprint?
+  size_t bytes[kAllocFingerprintBuckets];
+  // Has this allocator issued any warnings?
+  bool has_warned;
+} fingerprinting_allocator_t;
+
+// Initializes the given allocator and installs it as the default.
+void fingerprinting_allocator_install(fingerprinting_allocator_t *alloc);
+
+// Uninstalls the given allocator, which must be the current default, and
+// restores the previous one.
+bool fingerprinting_allocator_uninstall(fingerprinting_allocator_t *alloc);
 
 #endif // _TCLIB_ALLOC_H

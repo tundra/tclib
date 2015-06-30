@@ -145,8 +145,12 @@ void TestCaseInfo::validate_all() {
 
 // Run!
 int main(int argc, char *argv[]) {
-  limited_allocator_t allocator;
-  limited_allocator_install(&allocator, 100 * 1024 * 1024);
+  // Impose an allocation limit.
+  limited_allocator_t limiter;
+  limited_allocator_install(&limiter, 100 * 1024 * 1024);
+  // Do allocation fingerprinting.
+  fingerprinting_allocator_t fingerprinter;
+  fingerprinting_allocator_install(&fingerprinter);
   lifetime_t lifetime;
   ASSERT_TRUE(lifetime_begin_default(&lifetime));
   install_crash_handler();
@@ -171,5 +175,10 @@ int main(int argc, char *argv[]) {
   size_t column = out->printf("  all tests passed");
   TestCaseInfo::print_time(out, column, duration);
   // Return a successful error code only if there were no allocator leaks.
-  return limited_allocator_uninstall(&allocator) ? 0 : 1;
+  if (fingerprinting_allocator_uninstall(&fingerprinter)
+      && limited_allocator_uninstall(&limiter)) {
+    return 0;
+  } else {
+    return 1;
+  }
 }

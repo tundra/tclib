@@ -44,7 +44,7 @@ public:
   virtual void dispose() {
     size_t size = instance_size();
     this->~refcount_shared_t();
-    allocator_default_free(new_memory_block(this, size));
+    allocator_default_free(blob_new(this, size));
   }
 
   // The raw refcount. This is visible for testing, you typically don't want to

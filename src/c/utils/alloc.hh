@@ -25,7 +25,7 @@ typedef enum {
 template <typename T>
 void default_delete_concrete(T *ptr) {
   ptr->~T();
-  allocator_default_free(new_memory_block(ptr, sizeof(T)));
+  allocator_default_free_struct(T, ptr);
 }
 
 } // namespace tclib
@@ -36,7 +36,7 @@ void default_delete_concrete(T *ptr) {
 // to keep track of that in any case since we want to exercise explicit control
 // over how much memory gets allocated from the system.
 inline void *operator new(size_t size, tclib::default_alloc_marker_t) {
-  return allocator_default_malloc(size).memory;
+  return allocator_default_malloc(size).start;
 }
 
 #endif // _TCLIB_UTILS_ALLOC_HH
