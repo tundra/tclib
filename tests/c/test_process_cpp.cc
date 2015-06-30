@@ -452,11 +452,9 @@ TEST(process_cpp, stdin) {
 // Processes are a bit more expensive on windows.
 #define kProcessCount IF_MSVC(64, 256)
 
-static bool async_exit(NativeMutex *count_guard, int *count, int exit_code) {
+static bool async_exit(NativeSemaphore *callback_count, int exit_code) {
   ASSERT_EQ(88, exit_code);
-  ASSERT_TRUE(count_guard->lock());
-  *count += 1;
-  ASSERT_TRUE(count_guard->unlock());
+  ASSERT_TRUE(callback_count->release());
   return true;
 }
 
@@ -465,9 +463,8 @@ TEST(process_cpp, terminate_avalanche) {
   NativeProcess processes[kProcessCount];
   NativePipe stdins[kProcessCount];
   PipeRedirect redirects[kProcessCount];
-  NativeMutex count_guard;
-  ASSERT_TRUE(count_guard.initialize());
-  int callback_count = 0;
+  NativeSemaphore callback_count(0);
+  ASSERT_TRUE(callback_count.initialize());
   const char *argv[4] = {"--exit-code", "88", "--echo-stdin", "--quiet"};
   for (size_t i = 0; i < kProcessCount; i++) {
     ASSERT_TRUE(stdins[i].open(NativePipe::pfInherit));
@@ -477,7 +474,7 @@ TEST(process_cpp, terminate_avalanche) {
     ASSERT_TRUE(process->start(get_durian_main(), 4, argv));
     promise_t<int> exit_code = process->exit_code();
     ASSERT_FALSE(exit_code.is_resolved());
-    exit_code.then(new_callback(async_exit, &count_guard, &callback_count));
+    exit_code.then(new_callback(async_exit, &callback_count));
   }
 
   // Sleep a little bit to let them all start.
@@ -486,6 +483,8 @@ TEST(process_cpp, terminate_avalanche) {
   // Check that as far as we know they're still all running.
   for (size_t i = 0; i < kProcessCount; i++)
     ASSERT_FALSE(processes[i].wait_sync(Duration::instant()));
+
+  ASSERT_FALSE(callback_count.acquire(Duration::instant()));
 
   // Close the stdins; this should cause the processes to exit.
   for (size_t i = 0; i < kProcessCount; i++)
@@ -499,8 +498,6 @@ TEST(process_cpp, terminate_avalanche) {
     promise_t<int> exit_code = processes[i].exit_code();
     ASSERT_TRUE(exit_code.is_resolved());
     ASSERT_EQ(88, exit_code.peek_value(0));
+    ASSERT_TRUE(callback_count.acquire());
   }
-
-  // Check that all the .then callbacks were called.
-  ASSERT_EQ(kProcessCount, callback_count);
 }

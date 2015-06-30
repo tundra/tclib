@@ -6,6 +6,8 @@
 
 #include "c/stdc.h"
 
+struct native_mutex_t;
+
 // A block of memory as returned from an allocator. Bundling the length with the
 // memory allows us to check how much memory is live at any given time.
 typedef struct {
@@ -78,6 +80,7 @@ allocator_t *allocator_set_default(allocator_t *value);
 // much allocation it will allow.
 typedef struct {
   allocator_t header;
+  struct native_mutex_t *guard;
   // The default allocator this one is replacing.
   allocator_t *outer;
   // How much memory to allow in total.
@@ -105,6 +108,7 @@ bool limited_allocator_uninstall(limited_allocator_t *alloc);
 // of incorrect allocations/frees.
 typedef struct {
   allocator_t header;
+  struct native_mutex_t *guard;
   // The default allocator this one is replacing.
   allocator_t *outer;
   // How many blocks of memory have been allocated for a given fingerprint?

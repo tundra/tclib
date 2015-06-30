@@ -4,8 +4,9 @@
 #include "sync/mutex.hh"
 
 BEGIN_C_INCLUDES
-#include "utils/log.h"
 #include "sync/mutex.h"
+#include "utils/alloc.h"
+#include "utils/log.h"
 END_C_INCLUDES
 
 #include <new>
@@ -33,6 +34,7 @@ NativeMutex::~NativeMutex() {
     return;
   is_initialized = false;
   platform_dispose();
+  struct_zero_fill(*this);
 }
 
 bool NativeMutex::initialize() {

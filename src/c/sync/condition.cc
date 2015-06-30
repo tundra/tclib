@@ -4,8 +4,9 @@
 #include "sync/condition.hh"
 
 BEGIN_C_INCLUDES
-#include "utils/log.h"
 #include "sync/condition.h"
+#include "utils/alloc.h"
+#include "utils/log.h"
 END_C_INCLUDES
 
 using namespace tclib;
@@ -27,6 +28,7 @@ NativeCondition::~NativeCondition() {
     return;
   is_initialized = false;
   platform_dispose();
+  struct_zero_fill(*this);
 }
 
 bool NativeCondition::initialize() {

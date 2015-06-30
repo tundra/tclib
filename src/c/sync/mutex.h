@@ -8,7 +8,7 @@
 #include "sync/sync.h"
 
 // Opaque mutex type.
-typedef struct {
+typedef struct native_mutex_t {
   bool is_initialized;
   platform_mutex_t mutex;
 } native_mutex_t;
