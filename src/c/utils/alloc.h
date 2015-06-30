@@ -100,7 +100,7 @@ void limited_allocator_install(limited_allocator_t *alloc, size_t limit);
 bool limited_allocator_uninstall(limited_allocator_t *alloc);
 
 // How many buckets do we divide allocations into by fingerprint?
-#define kAllocFingerprintBuckets 65521
+#define kAllocFingerprintBuckets 257
 
 // A fingerprinting allocator computes a fingerprint for each allocation and
 // matches up the fingerprint of allocations and frees, reporting errors if they

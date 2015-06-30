@@ -146,7 +146,8 @@ bool limited_allocator_uninstall(limited_allocator_t *alloc) {
 }
 
 static size_t calc_fingerprint(blob_t blob) {
-  uint64_t v64 = ((uint64_t) blob.start) * blob.size;
+  address_arith_t addr = (address_arith_t) blob.start;
+  uint64_t v64 = ((uint64_t) addr) * blob.size;
   uint32_t v32 = (uint32_t) ((v64 & 0xFFFFFFFF) ^ (v64 >> 32));
   uint32_t raw = (v32 * 2654435761U) % kAllocFingerprintBuckets;
   return (size_t) raw;
