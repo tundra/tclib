@@ -99,9 +99,6 @@ void limited_allocator_install(limited_allocator_t *alloc, size_t limit);
 // was leaked.
 bool limited_allocator_uninstall(limited_allocator_t *alloc);
 
-// How many buckets do we divide allocations into by fingerprint?
-#define kAllocFingerprintBuckets 257
-
 // A fingerprinting allocator computes a fingerprint for each allocation and
 // matches up the fingerprint of allocations and frees, reporting errors if they
 // don't match. Similar to the limited allocator but may narrow down the site
@@ -111,9 +108,9 @@ typedef struct {
   // The default allocator this one is replacing.
   allocator_t *outer;
   // How many blocks of memory have been allocated for a given fingerprint?
-  size_t blocks[kAllocFingerprintBuckets];
+  size_t *blocks;
   // How many bytes of memory have been allocated for a given fingerprint?
-  size_t bytes[kAllocFingerprintBuckets];
+  size_t *bytes;
   // Has this allocator issued any warnings?
   bool has_warned;
 } fingerprinting_allocator_t;

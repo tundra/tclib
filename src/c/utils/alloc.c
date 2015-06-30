@@ -145,6 +145,9 @@ bool limited_allocator_uninstall(limited_allocator_t *alloc) {
   return !had_leaks && !alloc->has_warned;
 }
 
+// How many buckets do we divide allocations into by fingerprint?
+#define kAllocFingerprintBuckets 65521
+
 static size_t calc_fingerprint(blob_t blob) {
   address_arith_t addr = (address_arith_t) blob.start;
   uint64_t v64 = ((uint64_t) addr) * blob.size;
@@ -185,6 +188,12 @@ void fingerprinting_allocator_install(fingerprinting_allocator_t *alloc) {
   alloc->header.free = fingerprinting_allocator_free;
   alloc->has_warned = false;
   alloc->outer = allocator_set_default(&alloc->header);
+  blob_t blocks = allocator_malloc(alloc->outer, kAllocFingerprintBuckets * sizeof(size_t));
+  blob_fill(blocks, 0);
+  blob_t bytes = allocator_malloc(alloc->outer, kAllocFingerprintBuckets * sizeof(size_t));
+  blob_fill(bytes, 0);
+  alloc->blocks = (size_t*) blocks.start;
+  alloc->bytes = (size_t*) bytes.start;
 }
 
 // Uninstalls the given allocator, which must be the current default, and
@@ -200,5 +209,9 @@ bool fingerprinting_allocator_uninstall(fingerprinting_allocator_t *alloc) {
           bytes, blocks, i);
     }
   }
+  blob_t blocks = blob_new(alloc->blocks, kAllocFingerprintBuckets * sizeof(size_t));
+  blob_t bytes = blob_new(alloc->bytes, kAllocFingerprintBuckets * sizeof(size_t));
+  allocator_free(alloc->outer, blocks);
+  allocator_free(alloc->outer, bytes);
   return allocator_set_default(alloc->outer) && !had_leaks && !alloc->has_warned;
 }
