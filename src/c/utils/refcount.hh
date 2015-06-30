@@ -13,6 +13,10 @@
 #include "c/stdc.h"
 #include "utils/alloc.hh"
 
+BEGIN_C_INCLUDES
+#include "sync/atomic.h"
+END_C_INCLUDES
+
 namespace tclib {
 
 // The ref counted state shared between references. This state is not
@@ -20,23 +24,17 @@ namespace tclib {
 // it thread safe.
 class refcount_shared_t {
 public:
-  refcount_shared_t() : refcount_(0) { }
+  refcount_shared_t() : refcount_(atomic_int32_new(0)) { }
   virtual ~refcount_shared_t() { }
 
   // Increment refcount.
   void ref() {
-    WithRefcount lock(this);
-    refcount_++;
+    atomic_int32_increment(&refcount_);
   }
 
   // Decremet refcount, possibly disposing this object.
   void deref() {
-    size_t new_value;
-    {
-      WithRefcount lock(this);
-      new_value = (--refcount_);
-    }
-    if (new_value == 0)
+    if (atomic_int32_decrement(&refcount_) == 0)
       dispose();
   }
 
@@ -49,34 +47,16 @@ public:
 
   // The raw refcount. This is visible for testing, you typically don't want to
   // ever use this for production code.
-  size_t refcount() {
-    return refcount_;
+  int32_t refcount() {
+    return atomic_int32_get(&refcount_);
   }
 
 protected:
-  // Optionally acquire a lock on the refcount. Derived types can use this to
-  // make ref counting thread safe.
-  virtual void acquire_refcount() { }
-
-  // If acquire_refcount acquired a lock on the refcount, this releases it
-  // again.
-  virtual void release_refcount() { }
-
   // Returns the size in bytes of this instance.
   virtual size_t instance_size() = 0;
 
-  // Convenience wrapper for calling acquire/release.
-  class WithRefcount {
-  public:
-    inline WithRefcount(refcount_shared_t *shared)
-      : shared_(shared) { shared_->acquire_refcount(); }
-    inline ~WithRefcount() { shared_->release_refcount(); }
-  private:
-    refcount_shared_t *shared_;
-  };
-
 private:
-  size_t refcount_;
+  atomic_int32_t refcount_;
 };
 
 // A references to shared data of type T, where T should be derived from

@@ -95,10 +95,6 @@ public:
       refcount_shared_t::dispose();
   }
 
-  // Returns a clone of this binder whose refcounts are guarded by a mutex such
-  // that it can be safely passed between threads.
-  virtual abstract_binder_t *thread_safe_clone() = 0;
-
 private:
   alloc_mode_t mode_;
 };
@@ -109,7 +105,7 @@ template <typename R,
           typename A0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t>
-class generic_binder_t : public abstract_binder_t {
+class binder_t : public abstract_binder_t {
 public:
   // Methods for invoking the bound function with the bound parameters and
   // also the given arguments. Only one of these is value and the callback
@@ -119,58 +115,19 @@ public:
   virtual R call(opaque_invoker_t invoker, A0 a0, A1 a1) = 0;
   virtual R call(opaque_invoker_t invoker, A0 a0, A1 a1, A2 a2) = 0;
 protected:
-  generic_binder_t(alloc_mode_t mode) : abstract_binder_t(mode) { }
-};
-
-// Abstract type that implements binding of function parameters. These are not
-// type safe on their own, they need to be used together with callbacks. The
-// type parameters are the expected argument parameters. The parameters of the
-// subtypes are the bound parameters (starting with B) followed by the remaining
-// arguments (starting with A). This can be somewhat confusing so watch out.
-template <bool IsGuarded, typename R, typename A0, typename A1, typename A2>
-class binder_t;
-
-// The non-guarded (that is, non thread safe) type of binder.
-template <typename R, typename A0, typename A1, typename A2>
-class binder_t<false, R, A0, A1, A2> : public generic_binder_t<R, A0, A1, A2> {
-public:
-  binder_t(abstract_binder_t::alloc_mode_t mode)
-    : generic_binder_t<R, A0, A1, A2>(mode) { }
-};
-
-// The guarded (that is, thread safe) type of binder. This one has a mutex
-// guarding changes to the refcount.
-template <typename R, typename A0, typename A1, typename A2>
-class binder_t<true, R, A0, A1, A2> : public generic_binder_t<R, A0, A1, A2> {
-public:
-  binder_t(abstract_binder_t::alloc_mode_t mode)
-    : generic_binder_t<R, A0, A1, A2>(mode) {
-    guard_.initialize();
-  }
-
-  virtual void acquire_refcount() {
-    guard_.lock();
-  }
-
-  virtual void release_refcount() {
-    guard_.unlock();
-  }
-
-private:
-  tclib::NativeMutex guard_;
+  binder_t(alloc_mode_t mode) : abstract_binder_t(mode) { }
 };
 
 // A binder that binds no parameters. As with all the binders, this one is
 // spectacularly type unsafe if not used carefully.
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename A0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t>
-class function_binder_0_t : public binder_t<IsGuarded, R, A0, A1, A2> {
+class function_binder_0_t : public binder_t<R, A0, A1, A2> {
 public:
   function_binder_0_t(abstract_binder_t::alloc_mode_t mode)
-    : binder_t<IsGuarded, R, A0, A1, A2>(mode) { }
+    : binder_t<R, A0, A1, A2>(mode) { }
 
   virtual R call(opaque_invoker_t invoker) {
     return (invoker.open<R(*)()>())();
@@ -188,38 +145,33 @@ public:
     return (invoker.open<R(*)(A0, A1, A2)>())(a0, a1, a2);
   }
 
-  virtual abstract_binder_t *thread_safe_clone() {
-    return function_binder_0_t<true, R, A0, A1, A2>::shared_instance();
-  }
-
   virtual size_t instance_size() {
     return sizeof(*this);
   }
 
   // For each choice of template parameters, returns the same shared binder
   // instance.
-  static function_binder_0_t<IsGuarded, R, A0, A1, A2> *shared_instance() {
+  static function_binder_0_t< R, A0, A1, A2> *shared_instance() {
     // This is not strictly thread safe but the worst that can happen if there
     // is a race condition during initialization should be leaking shared
     // instances which is unfortunate but should be benign.
-    static function_binder_0_t<IsGuarded, R, A0, A1, A2> *instance = NULL;
+    static function_binder_0_t<R, A0, A1, A2> *instance = NULL;
     if (instance == NULL)
       // Deliberately allocated using the system allocator since these are
       // expected to not be deleted.
-      instance = new function_binder_0_t<IsGuarded, R, A0, A1, A2>(abstract_binder_t::amShared);
+      instance = new function_binder_0_t<R, A0, A1, A2>(abstract_binder_t::amShared);
     return instance;
   }
 };
 
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename A0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t>
-class method_binder_0_t : public binder_t<IsGuarded, R, A0*, A1, A2> {
+class method_binder_0_t : public binder_t<R, A0*, A1, A2> {
 public:
   method_binder_0_t(abstract_binder_t::alloc_mode_t mode)
-    : binder_t<IsGuarded, R, A0*, A1, A2>(mode) { }
+    : binder_t<R, A0*, A1, A2>(mode) { }
 
   virtual R call(opaque_invoker_t invoker) {
     return R();
@@ -238,24 +190,20 @@ public:
     return (a0->*(invoker.open<R(A0::*)(A1, A2)>()))(a1, a2);
   }
 
-  virtual abstract_binder_t *thread_safe_clone() {
-    return method_binder_0_t<true, R, A0, A1, A2>::shared_instance();
-  }
-
   virtual size_t instance_size() {
     return sizeof(*this);
   }
 
   // For each choice of template parameters, returns the same shared binder
   // instance.
-  static method_binder_0_t<IsGuarded, R, A0, A1, A2> *shared_instance() {
+  static method_binder_0_t<R, A0, A1, A2> *shared_instance() {
     // See function_binder_0_t::shared_instance for the issues around
     // concurrency.
-    static method_binder_0_t<IsGuarded, R, A0, A1, A2> *instance = NULL;
+    static method_binder_0_t<R, A0, A1, A2> *instance = NULL;
     if (instance == NULL)
       // Deliberately allocated using the system allocator since these are
       // expected to not be deleted.
-      instance = new method_binder_0_t<IsGuarded, R, A0, A1, A2>(abstract_binder_t::amShared);
+      instance = new method_binder_0_t<R, A0, A1, A2>(abstract_binder_t::amShared);
     return instance;
   }
 
@@ -263,16 +211,15 @@ public:
 
 // A binder that binds a single parameter. As with all the binders, this one is
 // spectacularly type unsafe if not used carefully.
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename B0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t,
           typename A3 = abstract_binder_t::no_arg_t>
-class function_binder_1_t : public binder_t<IsGuarded, R, A1, A2, A3> {
+class function_binder_1_t : public binder_t<R, A1, A2, A3> {
 public:
   function_binder_1_t(B0 b0)
-    : binder_t<IsGuarded, R, A1, A2, A3>(abstract_binder_t::amAlloced)
+    : binder_t<R, A1, A2, A3>(abstract_binder_t::amAlloced)
     , b0_(b0) { }
 
   virtual R call(opaque_invoker_t invoker) {
@@ -291,10 +238,6 @@ public:
     return (invoker.open<R(*)(B0, A1, A2, A3)>())(b0_, a1, a2, a3);
   }
 
-  virtual abstract_binder_t *thread_safe_clone() {
-    return new (kDefaultAlloc) function_binder_1_t<true, R, B0, A1, A2, A3>(b0_);
-  }
-
   virtual size_t instance_size() {
     return sizeof(*this);
   }
@@ -303,16 +246,15 @@ private:
   B0 b0_;
 };
 
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename B0 = abstract_binder_t::no_arg_t,
           typename A1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t,
           typename A3 = abstract_binder_t::no_arg_t>
-class method_binder_1_t : public binder_t<IsGuarded, R, A1, A2, A3> {
+class method_binder_1_t : public binder_t<R, A1, A2, A3> {
 public:
   method_binder_1_t(B0 *b0)
-    : binder_t<IsGuarded, R, A1, A2, A3>(abstract_binder_t::amAlloced)
+    : binder_t<R, A1, A2, A3>(abstract_binder_t::amAlloced)
     , b0_(b0) { }
 
   virtual R call(opaque_invoker_t invoker) {
@@ -331,10 +273,6 @@ public:
     return (b0_->*(invoker.open<R(B0::*)(A1, A2, A3)>()))(a1, a2, a3);
   }
 
-  virtual abstract_binder_t *thread_safe_clone() {
-    return new (kDefaultAlloc) method_binder_1_t<true, R, B0, A1, A2, A3>(b0_);
-  }
-
   virtual size_t instance_size() {
     return sizeof(*this);
   }
@@ -345,17 +283,16 @@ private:
 
 // A binder that binds two parameters. As with all the binders, this one is
 // spectacularly type unsafe if not used carefully.
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename B0 = abstract_binder_t::no_arg_t,
           typename B1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t,
           typename A3 = abstract_binder_t::no_arg_t,
           typename A4 = abstract_binder_t::no_arg_t>
-class function_binder_2_t : public binder_t<IsGuarded, R, A2, A3, A4> {
+class function_binder_2_t : public binder_t<R, A2, A3, A4> {
 public:
   function_binder_2_t(B0 b0, B1 b1)
-    : binder_t<IsGuarded, R, A2, A3, A4>(abstract_binder_t::amAlloced)
+    : binder_t<R, A2, A3, A4>(abstract_binder_t::amAlloced)
     , b0_(b0)
     , b1_(b1) { }
 
@@ -375,10 +312,6 @@ public:
     return (invoker.open<R(*)(B0, B1, A2, A3, A4)>())(b0_, b1_, a2, a3, a4);
   }
 
-  virtual abstract_binder_t *thread_safe_clone() {
-    return new (kDefaultAlloc) function_binder_2_t<true, R, B0, B1, A2, A3, A4>(b0_, b1_);
-  }
-
   virtual size_t instance_size() {
     return sizeof(*this);
   }
@@ -390,18 +323,17 @@ private:
 
 // A binder that binds three parameters. As with all the binders, this one is
 // spectacularly type unsafe if not used carefully.
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename B0 = abstract_binder_t::no_arg_t,
           typename B1 = abstract_binder_t::no_arg_t,
           typename B2 = abstract_binder_t::no_arg_t,
           typename A3 = abstract_binder_t::no_arg_t,
           typename A4 = abstract_binder_t::no_arg_t,
           typename A5 = abstract_binder_t::no_arg_t>
-class function_binder_3_t : public binder_t<IsGuarded, R, A3, A4, A5> {
+class function_binder_3_t : public binder_t<R, A3, A4, A5> {
 public:
   function_binder_3_t(B0 b0, B1 b1, B2 b2)
-    : binder_t<IsGuarded, R, A3, A4, A5>(abstract_binder_t::amAlloced)
+    : binder_t<R, A3, A4, A5>(abstract_binder_t::amAlloced)
     , b0_(b0)
     , b1_(b1)
     , b2_(b2) { }
@@ -422,10 +354,6 @@ public:
     return (invoker.open<R(*)(B0, B1, B2, A3, A4, A5)>())(b0_, b1_, b2_, a3, a4, a5);
   }
 
-  virtual abstract_binder_t *thread_safe_clone() {
-    return new (kDefaultAlloc) function_binder_3_t<true, R, B0, B1, B2, A3, A4, A5>(b0_, b1_, b2_);
-  }
-
   virtual size_t instance_size() {
     return sizeof(*this);
   }
@@ -436,17 +364,16 @@ private:
   B2 b2_;
 };
 
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename B0 = abstract_binder_t::no_arg_t,
           typename B1 = abstract_binder_t::no_arg_t,
           typename A2 = abstract_binder_t::no_arg_t,
           typename A3 = abstract_binder_t::no_arg_t,
           typename A4 = abstract_binder_t::no_arg_t>
-class method_binder_2_t : public binder_t<IsGuarded, R, A2, A3, A4> {
+class method_binder_2_t : public binder_t<R, A2, A3, A4> {
 public:
   method_binder_2_t(B0 *b0, B1 b1)
-    : binder_t<IsGuarded, R, A2, A3, A4>(abstract_binder_t::amAlloced)
+    : binder_t<R, A2, A3, A4>(abstract_binder_t::amAlloced)
     , b0_(b0)
     , b1_(b1) { }
 
@@ -466,10 +393,6 @@ public:
     return (b0_->*(invoker.open<R(B0::*)(B1, A2, A3, A4)>()))(b1_, a2, a3, a4);
   }
 
-  virtual abstract_binder_t *thread_safe_clone() {
-    return new (kDefaultAlloc) method_binder_2_t<true, R, B0, B1, A2, A3, A4>(b0_, b1_);
-  }
-
   virtual size_t instance_size() {
     return sizeof(*this);
   }
@@ -479,18 +402,17 @@ private:
   B1 b1_;
 };
 
-template <bool IsGuarded,
-          typename R,
+template <typename R,
           typename B0 = abstract_binder_t::no_arg_t,
           typename B1 = abstract_binder_t::no_arg_t,
           typename B2 = abstract_binder_t::no_arg_t,
           typename A3 = abstract_binder_t::no_arg_t,
           typename A4 = abstract_binder_t::no_arg_t,
           typename A5 = abstract_binder_t::no_arg_t>
-class method_binder_3_t : public binder_t<IsGuarded, R, A3, A4, A5> {
+class method_binder_3_t : public binder_t<R, A3, A4, A5> {
 public:
   method_binder_3_t(B0 *b0, B1 b1, B2 b2)
-    : binder_t<IsGuarded, R, A3, A4, A5>(abstract_binder_t::amAlloced)
+    : binder_t<R, A3, A4, A5>(abstract_binder_t::amAlloced)
     , b0_(b0)
     , b1_(b1)
     , b2_(b2) { }
@@ -509,10 +431,6 @@ public:
 
   virtual R call(opaque_invoker_t invoker, A3 a3, A4 a4, A5 a5) {
     return (b0_->*(invoker.open<R(B0::*)(B1, B2, A3, A4, A5)>()))(b1_, b2_, a3, a4, a5);
-  }
-
-  virtual abstract_binder_t *thread_safe_clone() {
-    return new (kDefaultAlloc) method_binder_3_t<true, R, B0, B1, B2, A3, A4, A5>(b0_, b1_, b2_);
   }
 
   virtual size_t instance_size() {
@@ -577,16 +495,6 @@ protected:
     : refcount_reference_t(binder)
     , invoker_(invoker) { }
 
-  // Thread safe clone has the same implementation in all types but we need the
-  // concrete self-type to express it. This method has that.
-  template <typename M>
-  static inline callback_t<M> common_thread_safe_clone(callback_t<M> *that) {
-    typedef typename callback_t<M>::my_binder_t its_binder_t;
-    abstract_binder_t *raw_safe_binder = that->binder()->thread_safe_clone();
-    its_binder_t *safe_binder = static_cast<its_binder_t*>(raw_safe_binder);
-    return callback_t<M>(that->invoker_, safe_binder);
-  }
-
   // The binder to call to invoke this callback.
   opaque_invoker_t invoker_;
 };
@@ -610,21 +518,17 @@ class callback_t<R(void)> : public abstract_callback_t {
 public:
   // This is mainly used for consistency and validation: the binder used by this
   // callback should be of this type.
-  typedef generic_binder_t<R> my_binder_t;
+  typedef binder_t<R> my_binder_t;
 
   callback_t() : abstract_callback_t() { }
   callback_t(opaque_invoker_t invoker, my_binder_t *binder) : abstract_callback_t(invoker, binder) { }
   callback_t(null_callback_t) : abstract_callback_t() { }
   callback_t(R (*invoker)(void))
-    : abstract_callback_t(invoker, function_binder_0_t<false, R>::shared_instance()) { }
+    : abstract_callback_t(invoker, function_binder_0_t<R>::shared_instance()) { }
 
   R operator()() {
     return (static_cast<my_binder_t*>(binder()))->call(invoker_);
   }
-
-  // Returns a callback identical to this one but which can safely be passed
-  // between multiple threads.
-  callback_t<R(void)> thread_safe_clone() { return common_thread_safe_clone(this); }
 };
 
 template <typename R>
@@ -634,32 +538,32 @@ callback_t<R(void)> new_callback(R (*invoker)(void)) {
 
 template <typename R, typename B0>
 callback_t<R(void)> new_callback(R (*invoker)(B0), B0 b0) {
-  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0>(b0));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_1_t<R, B0>(b0));
 }
 
 template <typename R, typename B0>
 callback_t<R(void)> new_callback(R (B0::*invoker)(void), B0 *b0) {
-  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0>(b0));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_1_t<R, B0>(b0));
 }
 
 template <typename R, typename B0, typename B1>
 callback_t<R(void)> new_callback(R (*invoker)(B0, B1), B0 b0, B1 b1) {
-  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1>(b0, b1));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_2_t<R, B0, B1>(b0, b1));
 }
 
 template <typename R, typename B0, typename B1>
 callback_t<R(void)> new_callback(R (B0::*invoker)(B1), B0 *b0, B1 b1) {
-  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1>(b0, b1));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_2_t<R, B0, B1>(b0, b1));
 }
 
 template <typename R, typename B0, typename B1, typename B2>
 callback_t<R(void)> new_callback(R (*invoker)(B0, B1, B2), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2>(b0, b1, b2));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) function_binder_3_t<R, B0, B1, B2>(b0, b1, b2));
 }
 
 template <typename R, typename B0, typename B1, typename B2>
 callback_t<R(void)> new_callback(R (B0::*invoker)(B1, B2), B0 *b0, B1 b1, B2 b2) {
-  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2>(b0, b1, b2));
+  return callback_t<R(void)>(invoker, new (kDefaultAlloc) method_binder_3_t<R, B0, B1, B2>(b0, b1, b2));
 }
 
 template <typename T>
@@ -672,7 +576,7 @@ static void destructor_trampoline(T *that) {
 // destructor.
 template <typename T>
 callback_t<void(T*)> new_destructor_callback() {
-  return callback_t<void(T*)>(destructor_trampoline<T>, function_binder_0_t<false, void, T*>::shared_instance());
+  return callback_t<void(T*)>(destructor_trampoline<T>, function_binder_0_t<void, T*>::shared_instance());
 }
 
 // Returns a callback that, when invoked, invokes the given instance's
@@ -680,7 +584,7 @@ callback_t<void(T*)> new_destructor_callback() {
 // destructor.
 template <typename T>
 callback_t<void(void)> new_destructor_callback(T *t) {
-  return callback_t<void(void)>(destructor_trampoline<T>, new (kDefaultAlloc) function_binder_1_t<false, void, T*>(t));
+  return callback_t<void(void)>(destructor_trampoline<T>, new (kDefaultAlloc) function_binder_1_t<void, T*>(t));
 }
 
 template <typename R, typename A0>
@@ -688,22 +592,18 @@ class callback_t<R(A0)> : public abstract_callback_t {
 public:
   // This is mainly used for consistency and validation: the binder used by this
   // callback should be of this type.
-  typedef generic_binder_t<R, A0> my_binder_t;
+  typedef binder_t<R, A0> my_binder_t;
 
   callback_t() : abstract_callback_t() { }
   callback_t(opaque_invoker_t invoker, my_binder_t *binder)
     : abstract_callback_t(invoker, binder) { }
   callback_t(null_callback_t) : abstract_callback_t() { }
   callback_t(R (*invoker)(A0))
-    : abstract_callback_t(invoker, function_binder_0_t<false, R, A0>::shared_instance()) { }
+    : abstract_callback_t(invoker, function_binder_0_t<R, A0>::shared_instance()) { }
 
   R operator()(A0 a0) {
     return (static_cast<my_binder_t*>(binder()))->call(invoker_, a0);
   }
-
-  // Returns a callback identical to this one but which can safely be passed
-  // between multiple threads.
-  callback_t<R(A0)> thread_safe_clone() { return common_thread_safe_clone(this); }
 };
 
 template <typename R, typename A0>
@@ -717,37 +617,37 @@ unary_callback_t *unary_callback_from(callback_t<opaque_t(opaque_t)> *callback);
 
 template <typename R, typename A0, typename B0>
 callback_t<R(A0)> new_callback(R (*invoker)(B0, A0), B0 b0) {
-  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0, A0>(b0));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_1_t<R, B0, A0>(b0));
 }
 
 template <typename R, typename A0, typename B0, typename B1>
 callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, A0), B0 b0, B1 b1) {
-  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1, A0>(b0, b1));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_2_t<R, B0, B1, A0>(b0, b1));
 }
 
 template <typename R, typename A0, typename B0, typename B1, typename B2>
 callback_t<R(A0)> new_callback(R (*invoker)(B0, B1, B2, A0), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2, A0>(b0, b1, b2));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) function_binder_3_t<R, B0, B1, B2, A0>(b0, b1, b2));
 }
 
 template <typename R, typename A0>
 callback_t<R(A0*)> new_callback(R (A0::*invoker)(void)) {
-  return callback_t<R(A0*)>(invoker, method_binder_0_t<false, R, A0>::shared_instance());
+  return callback_t<R(A0*)>(invoker, method_binder_0_t<R, A0>::shared_instance());
 }
 
 template <typename R, typename A0, typename B0>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(A0), B0 *b0) {
-  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0, A0>(b0));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_1_t<R, B0, A0>(b0));
 }
 
 template <typename R, typename A0, typename B0, typename B1>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(B1, A0), B0 *b0, B1 b1) {
-  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1, A0>(b0, b1));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_2_t<R, B0, B1, A0>(b0, b1));
 }
 
 template <typename R, typename A0, typename B0, typename B1, typename B2>
 callback_t<R(A0)> new_callback(R (B0::*invoker)(B1, B2, A0), B0 *b0, B1 b1, B2 b2) {
-  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2, A0>(b0, b1, b2));
+  return callback_t<R(A0)>(invoker, new (kDefaultAlloc) method_binder_3_t<R, B0, B1, B2, A0>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1>
@@ -755,21 +655,17 @@ class callback_t<R(A0, A1)> : public abstract_callback_t {
 public:
   // This is mainly used for consistency and validation: the binder used by this
   // callback should be of this type.
-  typedef generic_binder_t<R, A0, A1> my_binder_t;
+  typedef binder_t<R, A0, A1> my_binder_t;
 
   callback_t() : abstract_callback_t() { }
   callback_t(opaque_invoker_t invoker, my_binder_t *binder) : abstract_callback_t(invoker, binder) { }
   callback_t(null_callback_t) : abstract_callback_t() { }
   callback_t(R (*invoker)(A0, A1))
-    : abstract_callback_t(invoker, function_binder_0_t<false, R, A0, A1>::shared_instance()) { }
+    : abstract_callback_t(invoker, function_binder_0_t<R, A0, A1>::shared_instance()) { }
 
   R operator()(A0 a0, A1 a1) {
     return (static_cast<my_binder_t*>(binder()))->call(invoker_, a0, a1);
   }
-
-  // Returns a callback identical to this one but which can safely be passed
-  // between multiple threads.
-  callback_t<R(A0, A1)> thread_safe_clone() { return common_thread_safe_clone(this); }
 };
 
 template <typename R, typename A0, typename A1>
@@ -779,37 +675,37 @@ callback_t<R(A0, A1)> new_callback(R (*invoker)(A0, A1)) {
 
 template <typename R, typename A0, typename A1, typename B0>
 callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, A0, A1), B0 b0) {
-  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0, A0, A1>(b0));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_1_t<R, B0, A0, A1>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1>
 callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, B1, A0, A1), B0 b0, B1 b1) {
-  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1, A0, A1>(b0, b1));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_2_t<R, B0, B1, A0, A1>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1)> new_callback(R (*invoker)(B0, B1, B2, A0, A1), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2, A0, A1>(b0, b1, b2));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) function_binder_3_t<R, B0, B1, B2, A0, A1>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1>
 callback_t<R(A0*, A1)> new_callback(R (A0::*invoker)(A1)) {
-  return callback_t<R(A0*, A1)>(invoker, method_binder_0_t<false, R, A0, A1>::shared_instance());
+  return callback_t<R(A0*, A1)>(invoker, method_binder_0_t<R, A0, A1>::shared_instance());
 }
 
 template <typename R, typename A0, typename A1, typename B0>
 callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(A0, A1), B0* b0) {
-  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0, A0, A1>(b0));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_1_t<R, B0, A0, A1>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1>
 callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(B1, A0, A1), B0* b0, B1 b1) {
-  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1, A0, A1>(b0, b1));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_2_t<R, B0, B1, A0, A1>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1)> new_callback(R (B0::*invoker)(B1, B2, A0, A1), B0* b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2, A0, A1>(b0, b1, b2));
+  return callback_t<R(A0, A1)>(invoker, new (kDefaultAlloc) method_binder_3_t<R, B0, B1, B2, A0, A1>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1, typename A2>
@@ -817,21 +713,17 @@ class callback_t<R(A0, A1, A2)> : public abstract_callback_t {
 public:
   // This is mainly used for consistency and validation: the binder used by this
   // callback should be of this type.
-  typedef generic_binder_t<R, A0, A1, A2> my_binder_t;
+  typedef binder_t<R, A0, A1, A2> my_binder_t;
 
   callback_t() : abstract_callback_t() { }
   callback_t(opaque_invoker_t invoker, my_binder_t *binder) : abstract_callback_t(invoker, binder) { }
   callback_t(null_callback_t) : abstract_callback_t() { }
   callback_t(R (*invoker)(A0, A1, A2))
-    : abstract_callback_t(invoker, function_binder_0_t<false, R, A0, A1, A2>::shared_instance()) { }
+    : abstract_callback_t(invoker, function_binder_0_t<R, A0, A1, A2>::shared_instance()) { }
 
   R operator()(A0 a0, A1 a1, A2 a2) {
     return (static_cast<my_binder_t*>(binder()))->call(invoker_, a0, a1, a2);
   }
-
-  // Returns a callback identical to this one but which can safely be passed
-  // between multiple threads.
-  callback_t<R(A0, A1, A2)> thread_safe_clone() { return common_thread_safe_clone(this); }
 };
 
 template <typename R, typename A0, typename A1, typename A2>
@@ -841,37 +733,37 @@ callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(A0, A1, A2)) {
 
 template <typename R, typename A0, typename A1, typename A2, typename B0>
 callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, A0, A1, A2), B0 b0) {
-  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_1_t<false, R, B0, A0, A1, A2>(b0));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_1_t<R, B0, A0, A1, A2>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1>
 callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, B1, A0, A1, A2), B0 b0, B1 b1) {
-  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_2_t<false, R, B0, B1, A0, A1, A2>(b0, b1));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_2_t<R, B0, B1, A0, A1, A2>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1, A2)> new_callback(R (*invoker)(B0, B1, B2, A0, A1, A2), B0 b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_3_t<false, R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) function_binder_3_t<R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
 }
 
 template <typename R, typename A0, typename A1, typename A2>
 callback_t<R(A0*, A1, A2)> new_callback(R (A0::*invoker)(A1, A2)) {
-  return callback_t<R(A0*, A1, A2)>(invoker, method_binder_0_t<false, R, A0, A1, A2>::shared_instance());
+  return callback_t<R(A0*, A1, A2)>(invoker, method_binder_0_t<R, A0, A1, A2>::shared_instance());
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0>
 callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(A0, A1, A2), B0 *b0) {
-  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_1_t<false, R, B0, A0, A1, A2>(b0));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_1_t<R, B0, A0, A1, A2>(b0));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1>
 callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(B1, A0, A1, A2), B0 *b0, B1 b1) {
-  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_2_t<false, R, B0, B1, A0, A1, A2>(b0, b1));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_2_t<R, B0, B1, A0, A1, A2>(b0, b1));
 }
 
 template <typename R, typename A0, typename A1, typename A2, typename B0, typename B1, typename B2>
 callback_t<R(A0, A1, A2)> new_callback(R (B0::*invoker)(B1, B2, A0, A1, A2), B0 *b0, B1 b1, B2 b2) {
-  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_3_t<false, R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
+  return callback_t<R(A0, A1, A2)>(invoker, new (kDefaultAlloc) method_binder_3_t<R, B0, B1, B2, A0, A1, A2>(b0, b1, b2));
 }
 
 } // namespace tclib

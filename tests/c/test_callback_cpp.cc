@@ -301,7 +301,7 @@ static void *pass_callback_around(ThreadSafetyTestState *state) {
 // fail on valgrind, before or after.
 TEST(callback_cpp, thread_safety) {
   ThreadSafetyTestState state;
-  state.callback = new_callback(f1, 0).thread_safe_clone();
+  state.callback = new_callback(f1, 0);
   ASSERT_TRUE(state.waiters.initialize());
   ASSERT_TRUE(state.kick_off.initialize());
   static const size_t kThreadCount = 8;

@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 library_files = [
+  "atomic.c",
   "condition.cc",
   "intex.cc",
   "mutex.cc",
