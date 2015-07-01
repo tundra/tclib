@@ -228,16 +228,16 @@ bool NativeProcessStart::launch(const char *executable) {
   NativeProcess::PlatformData *data = process_->platform_data_;
   // Create the child process.
   bool created = CreateProcess(
-    executable,                       // lpApplicationName
-    cmdline_chars,                    // lpCommandLine
-    NULL,                             // lpProcessAttributes
-    NULL,                             // lpThreadAttributes
-    true,                             // bInheritHandles
-    0,                                // dwCreationFlags
-    env,                              // lpEnvironment
-    NULL,                             // lpCurrentDirectory
-    &startup_info_,                   // lpStartupInfo
-    &data->info); // lpProcessInformation
+    executable,      // lpApplicationName
+    cmdline_chars,   // lpCommandLine
+    NULL,            // lpProcessAttributes
+    NULL,            // lpThreadAttributes
+    true,            // bInheritHandles
+    0,               // dwCreationFlags
+    env,             // lpEnvironment
+    NULL,            // lpCurrentDirectory
+    &startup_info_,  // lpStartupInfo
+    &data->info);    // lpProcessInformation
 
   if (!created) {
     process_->state = NativeProcess::nsCouldntCreate;

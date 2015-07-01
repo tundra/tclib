@@ -25,8 +25,8 @@ bool atomic_int32_compare_and_set(atomic_int32_t *value, int32_t old_value,
     int32_t new_value) {
   return old_value == InterlockedCompareExchange(
       &value->value, // Destination
-      new_value, // Exchange
-      old_value); // Comparand
+      new_value,     // Exchange
+      old_value);    // Comparand
 }
 
 int64_t atomic_int64_increment(atomic_int64_t *value) {
