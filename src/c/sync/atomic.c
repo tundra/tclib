@@ -11,6 +11,10 @@ int32_t atomic_int32_get(atomic_int32_t *value) {
   return value->value;
 }
 
+int32_t atomic_int32_set(atomic_int32_t *value, int32_t new_value) {
+  return (value->value = new_value);
+}
+
 atomic_int32_t atomic_int32_new(int32_t value) {
   atomic_int32_t result = {value};
   return result;

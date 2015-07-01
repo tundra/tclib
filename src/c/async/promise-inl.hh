@@ -10,17 +10,6 @@
 namespace tclib {
 
 template <typename T, typename E>
-promise_state_t<T, E>::Locker::Locker(promise_state_t<T, E> *state)
-  : state_(state) {
-  state_->lock();
-}
-
-template <typename T, typename E>
-promise_state_t<T, E>::Locker::~Locker() {
-  state_->unlock();
-}
-
-template <typename T, typename E>
 const T &promise_state_t<T, E>::unsafe_get_value() {
   return *pointers_.as_value;
 }
@@ -32,20 +21,17 @@ const E &promise_state_t<T, E>::unsafe_get_error() {
 
 template <typename T, typename E>
 bool promise_state_t<T, E>::is_resolved() {
-  Locker lock(this);
-  return state_ != psEmpty;
+  return atomic_int32_get(&state_) > psResolving;
 }
 
 template <typename T, typename E>
 bool promise_state_t<T, E>::has_succeeded() {
-  Locker lock(this);
-  return state_ == psSucceeded;
+  return atomic_int32_get(&state_) == psSucceeded;
 }
 
 template <typename T, typename E>
 bool promise_state_t<T, E>::has_failed() {
-  Locker lock(this);
-  return state_ == psFailed;
+  return atomic_int32_get(&state_) == psFailed;
 }
 
 template <typename T, typename E>
@@ -74,7 +60,8 @@ void promise_state_t<T, E>::unsafe_set_error(const E &error) {
 
 template <typename T, typename E>
 promise_state_t<T, E>::promise_state_t()
-  : state_(psEmpty) {
+  : state_(atomic_int32_new(psEmpty)) {
+  guard_.initialize();
   // These two overlap so really there is some redundancy here but the compiler
   // can probably figure it out, if not it doesn't matter.
   memset(memory_.as_value, 0, sizeof(T));
@@ -86,88 +73,95 @@ promise_state_t<T, E>::~promise_state_t() {
   // Because of the initialization trickery we'll only know dynamically whether
   // the value or error have been initialized. Hence we need to call the
   // destructor explicitly.
-  if (state_ == psSucceeded) {
+  if (has_succeeded()) {
     unsafe_get_value().~T();
-  } else if (state_ == psFailed) {
+  } else if (has_failed()) {
     unsafe_get_error().~E();
   }
 }
 
 template <typename T, typename E>
 bool promise_state_t<T, E>::fulfill(const T &value) {
-  {
-    Locker lock(this);
-    if (state_ != psEmpty)
-      return false;
-    // Set the value before the state such that it is safe to assume the value
-    // is set when the state is non-empty. This is used by peek_value.
-    unsafe_set_value(value);
-    state_ = psSucceeded;
-  }
+  // Try to put this promise in the resolving state. This can only be done once
+  // by one thread so after this has happened we can safely update the state.
+  // This also catches the case where the promise has already been resolved.
+  if (!atomic_int32_compare_and_set(&state_, psEmpty, psResolving))
+    return false;
+  // Set the value before the state such that it is safe to assume the value
+  // is set when the state is non-empty. This is used by peek_value.
+  unsafe_set_value(value);
+  atomic_int32_set(&state_, psSucceeded);
   // At this point any new on_success added will be executed immediately so we
   // have the vector to ourselves.
+  guard_.lock();
+  guard_.unlock();
   for (size_t i = 0; i < on_successes_.size(); i++)
     (on_successes_[i])(value);
+  on_failures_.clear();
   on_successes_.clear();
   return true;
 }
 
 template <typename T, typename E>
+bool sync_promise_state_t<T, E>::fulfill(const T &value) {
+  return promise_state_t<T, E>::fulfill(value) && drawbridge_.lower();
+}
+
+template <typename T, typename E>
 bool promise_state_t<T, E>::fail(const E &error) {
-  {
-    Locker lock(this);
-    if (state_ != psEmpty)
-      return false;
-    // See fulfill for why we set the error first.
-    unsafe_set_error(error);
-    state_ = psFailed;
-  }
+  if (!atomic_int32_compare_and_set(&state_, psEmpty, psResolving))
+    return false;
+  // See fulfill for why we set the error first.
+  unsafe_set_error(error);
+  atomic_int32_set(&state_, psFailed);
   // At this point any new on_failure added will be executed immediately so we
   // have the vector to ourselves.
+  guard_.lock();
+  guard_.unlock();
   for (size_t i = 0; i < on_failures_.size(); i++)
     (on_failures_[i])(error);
+  on_successes_.clear();
   on_failures_.clear();
   return true;
+}
+
+template <typename T, typename E>
+bool sync_promise_state_t<T, E>::fail(const E &error) {
+  return promise_state_t<T, E>::fail(error) && drawbridge_.lower();
 }
 
 template <typename T, typename E>
 const T &promise_state_t<T, E>::peek_value(const T &if_unfulfilled) {
   // Because the value is set before state_ is changed we know that it's safe
   // to read the value in the success case even without taking the mutex.
-  return (state_ == psSucceeded) ? unsafe_get_value() : if_unfulfilled;
+  return has_succeeded() ? unsafe_get_value() : if_unfulfilled;
 }
 
 template <typename T, typename E>
 const E &promise_state_t<T, E>::peek_error(const E &if_unfulfilled) {
   // See peek_value for why this doesn't need to lock.
-  return (state_ == psFailed) ? unsafe_get_error() : if_unfulfilled;
+  return has_failed() ? unsafe_get_error() : if_unfulfilled;
 }
 
 template <typename T, typename E>
 void promise_state_t<T, E>::on_success(SuccessAction action) {
-  {
-    Locker lock(this);
-    if (state_ == psEmpty) {
-      on_successes_.push_back(action);
-      return;
-    }
-  }
-  // We know the promise has been fulfilled here so no need to lock.
-  if (state_ == psSucceeded)
+  guard_.lock();
+  int32_t state = atomic_int32_get(&state_);
+  if (state <= psResolving)
+    on_successes_.push_back(action);
+  guard_.unlock();
+  if (state == psSucceeded)
     action(unsafe_get_value());
 }
 
 template <typename T, typename E>
 void promise_state_t<T, E>::on_failure(FailureAction action) {
-  {
-    Locker lock(this);
-    if (state_ == psEmpty) {
-      on_failures_.push_back(action);
-      return;
-    }
-  }
-  // We know the promise has been fulfilled here so no need to lock.
-  if (state_ == psFailed)
+  guard_.lock();
+  int32_t state = atomic_int32_get(&state_);
+  if (state <= psResolving)
+    on_failures_.push_back(action);
+  guard_.unlock();
+  if (state == psFailed)
     action(unsafe_get_error());
 }
 
@@ -220,12 +214,6 @@ sync_promise_t<T, E> sync_promise_t<T, E>::empty() {
 }
 
 template <typename T, typename E>
-template <typename I>
-void sync_promise_state_t<T, E>::lower_drawbridge(Drawbridge *drawbridge, I) {
-  drawbridge->lower();
-}
-
-template <typename T, typename E>
 bool sync_promise_state_t<T, E>::wait(Duration timeout) {
   return drawbridge_.pass(timeout);
 }
@@ -233,8 +221,6 @@ bool sync_promise_state_t<T, E>::wait(Duration timeout) {
 template <typename T, typename E>
 sync_promise_state_t<T, E>::sync_promise_state_t() {
   drawbridge_.initialize();
-  this->on_successes_.push_back(new_callback(lower_drawbridge<T>, &drawbridge_));
-  this->on_failures_.push_back(new_callback(lower_drawbridge<E>, &drawbridge_));
 }
 
 } // namespace tclib

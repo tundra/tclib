@@ -24,8 +24,8 @@ public:
   typedef callback_t<void(E)> FailureAction;
   promise_state_t();
   virtual ~promise_state_t();
-  bool fulfill(const T &value);
-  bool fail(const E &value);
+  virtual bool fulfill(const T &value);
+  virtual bool fail(const E &value);
   bool is_resolved();
   bool has_succeeded();
   bool has_failed();
@@ -36,16 +36,18 @@ public:
 
 protected:
   typedef enum {
-    psEmpty,
-    psSucceeded,
-    psFailed
+    psEmpty = 0,
+    psResolving = 1,
+    psSucceeded = 2,
+    psFailed = 3
   } state_t;
 
-  state_t state_;
+  atomic_int32_t state_;
   // These will return the raw value or error; only call them after the
   // promise has been fulfilled.
   const T &unsafe_get_value();
   const E &unsafe_get_error();
+  NativeMutex guard_;
   std::vector<SuccessAction> on_successes_;
   std::vector<FailureAction> on_failures_;
 
@@ -175,14 +177,14 @@ template <typename T, typename E = void*>
 class sync_promise_state_t : public promise_state_t<T, E> {
 public:
   sync_promise_state_t();
+  ~sync_promise_state_t() { }
   bool wait(Duration timeout);
+  virtual bool fulfill(const T &value);
+  virtual bool fail(const E &value);
 protected:
   virtual size_t instance_size() { return sizeof(*this); }
 
 private:
-  template <typename I>
-  static void lower_drawbridge(Drawbridge *drawbridge, I);
-  typedef typename promise_state_t<T, E>::Locker Locker;
 
   // Drawbridge that gets lowered when the promise gets its value.
   Drawbridge drawbridge_;

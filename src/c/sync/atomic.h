@@ -30,6 +30,11 @@ int32_t atomic_int32_subtract(atomic_int32_t *value, int32_t delta);
 // Returns the current value of the given atomic integer.
 int32_t atomic_int32_get(atomic_int32_t *value);
 
+bool atomic_int32_compare_and_set(atomic_int32_t *value, int32_t old_value,
+    int32_t new_value);
+
+int32_t atomic_int32_set(atomic_int32_t *value, int32_t new_value);
+
 // Returns a new atomic int32 that starts out with the given value. The result
 // does not have to be disposed.
 atomic_int32_t atomic_int32_new(int32_t value);

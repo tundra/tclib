@@ -19,6 +19,11 @@ int32_t atomic_int32_subtract(atomic_int32_t *value, int32_t delta) {
   return atomic_int32_add(value, -delta);
 }
 
+bool atomic_int32_compare_and_set(atomic_int32_t *value, int32_t old_value,
+    int32_t new_value) {
+  return __sync_bool_compare_and_swap(&value->value, old_value, new_value);
+}
+
 int64_t atomic_int64_increment(atomic_int64_t *value) {
   return atomic_int64_add(value, 1);
 }
