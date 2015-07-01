@@ -4,19 +4,21 @@
 #include "c/winhdr.h"
 
 int32_t atomic_int32_increment(atomic_int32_t *value) {
-  return InterlockedIncrement(&value->value);
+  return atomic_int32_add(value, 1);
 }
 
 int32_t atomic_int32_decrement(atomic_int32_t *value) {
-  return InterlockedDecrement(&value->value);
+  return atomic_int32_add(value, -1);
 }
 
 int32_t atomic_int32_add(atomic_int32_t *value, int32_t delta) {
-  return InterlockedAdd(&value->value, delta);
+  // It'd be great if we could use InterlockedAdd but it's not available on
+  // 32-bit.
+  return InterlockedExchangeAdd(&value->value, delta) + delta;
 }
 
 int32_t atomic_int32_subtract(atomic_int32_t *value, int32_t delta) {
-  return InterlockedAdd(&value->value, -delta);
+  return atomic_int32_add(value, -delta);
 }
 
 bool atomic_int32_compare_and_set(atomic_int32_t *value, int32_t old_value,
