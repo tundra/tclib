@@ -254,7 +254,10 @@ bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
   execv(executable, args);
   // If successful execv replaces the process so we'll never reach this point.
   // If it fails though we'll drop to here and we need to bail out immediately.
-  // The error code signals an os api error.
+  // The error code signals an os api error. Clean up first to make valgrind
+  // happy -- it doesn't matter since the process is going away anyway but it
+  // simplifies things.
+  delete[] args;
   exit(EX_OSERR);
   // This should never be reached.
   ERROR("Fell through exec, pid %i", getpid());
