@@ -6,7 +6,7 @@
 
 #include "c/stdc.h"
 
-struct native_mutex_t;
+#include "sync/atomic.h"
 
 // A block of memory as returned from an allocator. Bundling the length with the
 // memory allows us to check how much memory is live at any given time.
@@ -80,15 +80,14 @@ allocator_t *allocator_set_default(allocator_t *value);
 // much allocation it will allow.
 typedef struct {
   allocator_t header;
-  struct native_mutex_t *guard;
   // The default allocator this one is replacing.
   allocator_t *outer;
   // How much memory to allow in total.
   size_t limit;
   // The total amount of live memory.
-  size_t live_memory;
+  atomic_int64_t live_memory;
   // Total number of blocks allocated.
-  size_t live_blocks;
+  atomic_int64_t live_blocks;
   // Has this allocator issued any warnings?
   bool has_warned;
 } limited_allocator_t;
@@ -108,13 +107,12 @@ bool limited_allocator_uninstall(limited_allocator_t *alloc);
 // of incorrect allocations/frees.
 typedef struct {
   allocator_t header;
-  struct native_mutex_t *guard;
   // The default allocator this one is replacing.
   allocator_t *outer;
   // How many blocks of memory have been allocated for a given fingerprint?
-  size_t *blocks;
+  atomic_int64_t *blocks;
   // How many bytes of memory have been allocated for a given fingerprint?
-  size_t *bytes;
+  atomic_int64_t *bytes;
   // Has this allocator issued any warnings?
   bool has_warned;
 } fingerprinting_allocator_t;

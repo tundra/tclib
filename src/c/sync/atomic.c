@@ -16,6 +16,15 @@ atomic_int32_t atomic_int32_new(int32_t value) {
   return result;
 }
 
+int64_t atomic_int64_get(atomic_int64_t *value) {
+  return value->value;
+}
+
+atomic_int64_t atomic_int64_new(int64_t value) {
+  atomic_int64_t result = {value};
+  return result;
+}
+
 #ifdef IS_GCC
 #  include "atomic-posix.c"
 #endif

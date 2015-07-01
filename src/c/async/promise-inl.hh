@@ -232,7 +232,6 @@ bool sync_promise_state_t<T, E>::wait(Duration timeout) {
 
 template <typename T, typename E>
 sync_promise_state_t<T, E>::sync_promise_state_t() {
-  mutex_.initialize();
   drawbridge_.initialize();
   this->on_successes_.push_back(new_callback(lower_drawbridge<T>, &drawbridge_));
   this->on_failures_.push_back(new_callback(lower_drawbridge<E>, &drawbridge_));

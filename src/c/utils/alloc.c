@@ -97,15 +97,13 @@ static void limited_allocator_free(allocator_t *raw_self, blob_t memory) {
   if (blob_is_empty(memory))
     return;
   limited_allocator_t *data = (limited_allocator_t*) raw_self;
-  native_mutex_lock(data->guard);
-  bool is_unbalanced = memory.size > data->live_memory;
-  data->live_memory -= memory.size;
-  data->live_blocks--;
-  native_mutex_unlock(data->guard);
-  if (is_unbalanced) {
+  size_t live_memory = (size_t) atomic_int64_get(&data->live_memory);
+  if (memory.size > live_memory) {
     data->has_warned = true;
-    FATAL("Unbalanced free of %ib with %ib live", memory.size, data->live_memory);
+    FATAL("Unbalanced free of %ib with %ib live", memory.size, live_memory);
   }
+  atomic_int64_subtract(&data->live_memory, memory.size);
+  atomic_int64_decrement(&data->live_blocks);
   allocator_free(data->outer, memory);
 }
 
@@ -113,17 +111,15 @@ static blob_t limited_allocator_malloc(allocator_t *raw_self, size_t size) {
   if (size == 0)
     return blob_empty();
   limited_allocator_t *data = (limited_allocator_t*) raw_self;
-  native_mutex_lock(data->guard);
-  if (data->live_memory + size > data->limit) {
-    native_mutex_unlock(data->guard);
+  size_t live_memory = (size_t) atomic_int64_get(&data->live_memory);
+  if (live_memory + size > data->limit) {
     data->has_warned = true;
     WARN("Tried to allocate more than %i of system memory. At %i, requested %i.",
-        data->limit, data->live_memory, size);
+        data->limit, live_memory, size);
     return blob_empty();
   } else {
-    data->live_memory += size;
-    data->live_blocks++;
-    native_mutex_unlock(data->guard);
+    atomic_int64_add(&data->live_memory, size);
+    atomic_int64_increment(&data->live_blocks);
     return allocator_malloc(data->outer, size);
   }
 }
@@ -132,11 +128,8 @@ void limited_allocator_install(limited_allocator_t *alloc, size_t limit) {
   struct_zero_fill(*alloc);
   alloc->header.malloc = limited_allocator_malloc;
   alloc->header.free = limited_allocator_free;
-  alloc->guard = allocator_default_malloc_struct(native_mutex_t);
-  native_mutex_construct(alloc->guard);
-  native_mutex_initialize(alloc->guard);
-  alloc->live_memory = 0;
-  alloc->live_blocks = 0;
+  alloc->live_memory = atomic_int64_new(0);
+  alloc->live_blocks = atomic_int64_new(0);
   alloc->limit = limit;
   alloc->has_warned = false;
   alloc->outer = allocator_set_default(&alloc->header);
@@ -144,13 +137,13 @@ void limited_allocator_install(limited_allocator_t *alloc, size_t limit) {
 
 bool limited_allocator_uninstall(limited_allocator_t *alloc) {
   CHECK_PTREQ("not current allocator", &alloc->header, allocator_get_default());
-  native_mutex_dispose(alloc->guard);
-  allocator_free(alloc->outer, blob_new(alloc->guard, sizeof(native_mutex_t)));
   allocator_set_default(alloc->outer);
-  bool had_leaks = (alloc->live_memory > 0) || (alloc->live_blocks > 0);
+  size_t live_memory = (size_t) atomic_int64_get(&alloc->live_memory);
+  size_t live_blocks = (size_t) atomic_int64_get(&alloc->live_blocks);
+  bool had_leaks = (live_memory > 0) || (live_blocks > 0);
   if (had_leaks) {
-    WARN("Disposing with %ib of live memory in %i blocks", alloc->live_memory,
-        alloc->live_blocks);
+    WARN("Disposing with %ib of live memory in %i blocks", live_memory,
+        live_blocks);
   }
   return !had_leaks && !alloc->has_warned;
 }
@@ -172,10 +165,8 @@ static blob_t fingerprinting_allocator_malloc(allocator_t *raw_self, size_t size
   if (blob_is_empty(result))
     return result;
   size_t fprint = calc_fingerprint(result);
-  native_mutex_lock(self->guard);
-  self->blocks[fprint]++;
-  self->bytes[fprint] += size;
-  native_mutex_unlock(self->guard);
+  atomic_int64_increment(&self->blocks[fprint]);
+  atomic_int64_add(&self->bytes[fprint], size);
   return result;
 }
 
@@ -184,15 +175,14 @@ static void fingerprinting_allocator_free(allocator_t *raw_self, blob_t memory) 
   if (blob_is_empty(memory))
     return;
   size_t fprint = calc_fingerprint(memory);
-  native_mutex_lock(self->guard);
-  bool should_warn = (self->blocks[fprint] == 0) || (self->bytes[fprint] < memory.size);
-  self->blocks[fprint]--;
-  self->bytes[fprint] -= memory.size;
-  native_mutex_unlock(self->guard);
-  if (should_warn) {
+  size_t blocks = (size_t) atomic_int64_get(&self->blocks[fprint]);
+  size_t bytes = (size_t) atomic_int64_get(&self->bytes[fprint]);
+  if (blocks == 0 || bytes < memory.size) {
     self->has_warned = true;
     WARN("Unbalanced free of %ib with fingerprint %04X", memory.size, fprint);
   }
+  atomic_int64_decrement(&self->blocks[fprint]);
+  atomic_int64_subtract(&self->bytes[fprint], memory.size);
   allocator_free(self->outer, memory);
 }
 
@@ -200,35 +190,30 @@ void fingerprinting_allocator_install(fingerprinting_allocator_t *alloc) {
   struct_zero_fill(*alloc);
   alloc->header.malloc = fingerprinting_allocator_malloc;
   alloc->header.free = fingerprinting_allocator_free;
-  alloc->guard = allocator_default_malloc_struct(native_mutex_t);
-  native_mutex_construct(alloc->guard);
-  native_mutex_initialize(alloc->guard);
   alloc->has_warned = false;
   alloc->outer = allocator_set_default(&alloc->header);
-  blob_t blocks = allocator_malloc(alloc->outer, kAllocFingerprintBuckets * sizeof(size_t));
+  blob_t blocks = allocator_malloc(alloc->outer, kAllocFingerprintBuckets * sizeof(atomic_int64_t));
   blob_fill(blocks, 0);
-  blob_t bytes = allocator_malloc(alloc->outer, kAllocFingerprintBuckets * sizeof(size_t));
+  blob_t bytes = allocator_malloc(alloc->outer, kAllocFingerprintBuckets * sizeof(atomic_int64_t));
   blob_fill(bytes, 0);
-  alloc->blocks = (size_t*) blocks.start;
-  alloc->bytes = (size_t*) bytes.start;
+  alloc->blocks = (atomic_int64_t*) blocks.start;
+  alloc->bytes = (atomic_int64_t*) bytes.start;
 }
 
 bool fingerprinting_allocator_uninstall(fingerprinting_allocator_t *alloc) {
   bool had_leaks = false;
   for (size_t i = 0; i < kAllocFingerprintBuckets; i++) {
-    size_t blocks = alloc->blocks[i];
-    size_t bytes = alloc->bytes[i];
+    size_t blocks = (size_t) atomic_int64_get(&alloc->blocks[i]);
+    size_t bytes = (size_t) atomic_int64_get(&alloc->bytes[i]);
     if (blocks > 0 || bytes > 0) {
       had_leaks = true;
       WARN("Disposing with %ib of live memory in %i allocations with fingerprint %04X",
           bytes, blocks, i);
     }
   }
-  blob_t blocks = blob_new(alloc->blocks, kAllocFingerprintBuckets * sizeof(size_t));
-  blob_t bytes = blob_new(alloc->bytes, kAllocFingerprintBuckets * sizeof(size_t));
+  blob_t blocks = blob_new(alloc->blocks, kAllocFingerprintBuckets * sizeof(atomic_int64_t));
+  blob_t bytes = blob_new(alloc->bytes, kAllocFingerprintBuckets * sizeof(atomic_int64_t));
   allocator_free(alloc->outer, blocks);
   allocator_free(alloc->outer, bytes);
-  native_mutex_dispose(alloc->guard);
-  allocator_free(alloc->outer, blob_new(alloc->guard, sizeof(native_mutex_t)));
   return allocator_set_default(alloc->outer) && !had_leaks && !alloc->has_warned;
 }

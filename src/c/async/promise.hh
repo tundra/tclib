@@ -33,24 +33,13 @@ public:
   const E &peek_error(const E &if_unfulfilled);
   void on_success(SuccessAction action);
   void on_failure(FailureAction action);
-  // Even though basic promises aren't thread safe the code still deals with
-  // locking -- the locking ops are just noops.
-  virtual bool lock() { return true; }
-  virtual bool unlock() { return true; }
+
 protected:
   typedef enum {
     psEmpty,
     psSucceeded,
     psFailed
   } state_t;
-
-  class Locker {
-  public:
-    Locker(promise_state_t<T, E> *state);
-    ~Locker();
-  private:
-    promise_state_t<T, E> *state_;
-  };
 
   state_t state_;
   // These will return the raw value or error; only call them after the
@@ -186,8 +175,6 @@ template <typename T, typename E = void*>
 class sync_promise_state_t : public promise_state_t<T, E> {
 public:
   sync_promise_state_t();
-  virtual bool lock() { return mutex_.lock(); }
-  virtual bool unlock() { return mutex_.unlock(); }
   bool wait(Duration timeout);
 protected:
   virtual size_t instance_size() { return sizeof(*this); }
@@ -196,11 +183,6 @@ private:
   template <typename I>
   static void lower_drawbridge(Drawbridge *drawbridge, I);
   typedef typename promise_state_t<T, E>::Locker Locker;
-
-  // The mutex that guards all the state of this promise. Only ever do a known
-  // constant amount of work in code guarded by this and definitely don't hold
-  // it and invoke a user-supplied callback.
-  NativeMutex mutex_;
 
   // Drawbridge that gets lowered when the promise gets its value.
   Drawbridge drawbridge_;
