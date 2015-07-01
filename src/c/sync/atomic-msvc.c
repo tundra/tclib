@@ -30,17 +30,17 @@ bool atomic_int32_compare_and_set(atomic_int32_t *value, int32_t old_value,
 }
 
 int64_t atomic_int64_increment(atomic_int64_t *value) {
-  return InterlockedIncrement64(&value->value);
+  return atomic_int64_add(value, 1);
 }
 
 int64_t atomic_int64_decrement(atomic_int64_t *value) {
-  return InterlockedDecrement64(&value->value);
+  return atomic_int64_add(value, -1);
 }
 
 int64_t atomic_int64_add(atomic_int64_t *value, int64_t delta) {
-  return InterlockedAdd64(&value->value, delta);
+  return InterlockedExchangeAdd64(&value->value, delta) + delta;
 }
 
 int64_t atomic_int64_subtract(atomic_int64_t *value, int64_t delta) {
-  return InterlockedAdd64(&value->value, -delta);
+  return atomic_int64_add(value, -delta);
 }
