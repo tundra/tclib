@@ -103,3 +103,33 @@ TEST(atomic, contended32) {
 TEST(atomic, contended64) {
   test_contended<A64>();
 }
+
+static void *hammer_compare_and_set(Drawbridge *start, atomic_int32_t *a,
+    int32_t id) {
+  ASSERT_TRUE(start->pass());
+  // Each thread tries to set the atomic to their id from 0. Each time one
+  // succeeds the value must now be their id so setting it back must succeed. If
+  // compare_and_set is not thread safe then multiple threads may think they
+  // have succeeded and one that actually didn't will fail the test.
+  ASSERT_REL(id, >, 0);
+  for (size_t i = 0; i < 1024; i++) {
+    if (atomic_int32_compare_and_set(a, 0, id))
+      ASSERT_TRUE(atomic_int32_compare_and_set(a, id, 0));
+  }
+  return NULL;
+}
+
+TEST(atomic, compare_and_set) {
+  NativeThread threads[kThreadCount];
+  atomic_int32_t a = atomic_int32_new(0);
+  Drawbridge start;
+  ASSERT_TRUE(start.initialize());
+  for (int32_t i = 0; i < kThreadCount; i++) {
+    threads[i].set_callback(new_callback(hammer_compare_and_set, &start, &a, i + 1));
+    ASSERT_TRUE(threads[i].start());
+  }
+  ASSERT_TRUE(NativeThread::sleep(Duration::millis(10)));
+  ASSERT_TRUE(start.lower());
+  for (size_t i = 0; i < kThreadCount; i++)
+    threads[i].join();
+}
