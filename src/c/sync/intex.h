@@ -9,7 +9,10 @@
 #include "sync/mutex.h"
 #include "sync/sync.h"
 
-// Opaque condition variable type.
+// An intex is like a mutex except that in addition to the standard lock and
+// unlock behavior it can also be locked conditionally on an integer value. So
+// a thread will not only wait for the lock to become available but for the
+// intex to reach a particular value or range of values.
 typedef struct {
   bool is_initialized_;
   native_mutex_t guard_;
