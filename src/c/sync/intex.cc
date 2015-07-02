@@ -11,24 +11,59 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-Intex::Intex(uint64_t init_value)
-  : value_(init_value) { }
+Intex::Intex(uint64_t init_value) {
+  value_ = init_value;
+  new (guard()) NativeMutex();
+  new (cond()) NativeCondition();
+  is_initialized_ = false;
+}
 
 bool Intex::initialize() {
-  return guard_.initialize() && cond_.initialize();
+  return is_initialized_ = (guard()->initialize() && cond()->initialize());
+}
+
+Intex::~Intex() {
+  if (!is_initialized_)
+    return;
+  guard()->~NativeMutex();
+  cond()->~NativeCondition();
 }
 
 bool Intex::set(uint64_t value) {
   value_ = value;
-  return cond_.wake_all();
+  return cond()->wake_all();
 }
 
 bool Intex::lock(Duration timeout) {
-  return guard_.lock(timeout);
+  return guard()->lock(timeout);
 }
 
 bool Intex::unlock() {
-  return guard_.unlock();
+  return guard()->unlock();
+}
+
+void intex_construct(intex_t *intex, uint64_t init_value) {
+  new (intex) Intex(init_value);
+}
+
+bool intex_initialize(intex_t *intex) {
+  return static_cast<Intex*>(intex)->initialize();
+}
+
+bool intex_lock_when_equal(intex_t *intex, int64_t value, duration_t timeout) {
+  return static_cast<Intex*>(intex)->lock_when(Duration(timeout)) == value;
+}
+
+bool intex_lock_when_less(intex_t *intex, int64_t value, duration_t timeout) {
+  return static_cast<Intex*>(intex)->lock_when(Duration(timeout)) < value;
+}
+
+bool intex_lock_when_greater(intex_t *intex, int64_t value, duration_t timeout) {
+  return static_cast<Intex*>(intex)->lock_when(Duration(timeout)) > value;
+}
+
+bool intex_unlock(intex_t *intex) {
+  return static_cast<Intex*>(intex)->unlock();
 }
 
 Drawbridge::Drawbridge(state_t state)

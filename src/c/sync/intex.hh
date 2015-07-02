@@ -9,6 +9,10 @@
 #include "sync/condition.hh"
 #include "sync/mutex.hh"
 
+BEGIN_C_INCLUDES
+#include "sync/intex.h"
+END_C_INCLUDES
+
 namespace tclib {
 
 class Intex;
@@ -18,11 +22,13 @@ class IntexLocker;
 // unlock behavior it can also be locked conditionally on an integer value. So
 // a thread will not only wait for the lock to become available but for the
 // intex to reach a particular value or range of values.
-class Intex {
+class Intex : public intex_t {
 public:
   // Construct this intex with the given initial value. Note that before use
   // the intex has to be explicitly initialized.
   explicit Intex(uint64_t init_value = 0);
+
+  ~Intex();
 
   // Initializes the state of this intex, returning true if initialization
   // succeeded.
@@ -59,6 +65,10 @@ private:
   template <typename C>
   bool lock_cond(Duration timeout, uint64_t target);
 
+  NativeMutex *guard() { return static_cast<NativeMutex*>(&guard_); }
+
+  NativeCondition *cond() { return static_cast<NativeCondition*>(&cond_); }
+
   class Dispatcher {
   public:
     // Wait for the value to become equal to another value.
@@ -87,10 +97,6 @@ private:
     Duration timeout_;
   };
 
-  volatile uint64_t value_;
-  NativeMutex guard_;
-  NativeCondition cond_;
-
 public:
   // Lock this intex when the value reaches a particular value or range of
   // values. For instance, to wait for the value to become greater than 3 you
@@ -108,13 +114,13 @@ public:
 
 template <typename C>
 bool Intex::lock_cond(Duration timeout, uint64_t target) {
-  if (!guard_.lock(timeout))
+  if (!guard()->lock(timeout))
     return false;
   // We now have to lock, now spin around waiting for the value to become what
   // we're waiting for.
   while (!C::eval(value_, target)) {
-    if (!cond_.wait(&guard_, timeout)) {
-      guard_.unlock();
+    if (!cond()->wait(guard(), timeout)) {
+      guard()->unlock();
       return false;
     }
   }
