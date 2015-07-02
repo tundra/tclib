@@ -137,11 +137,14 @@ void stream_redirect_destroy(stream_redirect_t *value) {
 
 NativeProcess::~NativeProcess() {
   // Wait for the process to exit before disposing it.
-  exit_code_.wait();
+  if (state != nsInitial)
+    exit_code_.wait();
+
   if (opaque_exit_code_ != NULL) {
     opaque_promise_destroy(opaque_exit_code_);
     opaque_exit_code_ = NULL;
   }
+
   delete platform_data_;
   platform_data_ = NULL;
 }
