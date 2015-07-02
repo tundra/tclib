@@ -21,4 +21,5 @@ TEST(intex_c, simple) {
   ASSERT_FALSE(intex_lock_when_greater(&intex, 18, duration_instant()));
   ASSERT_TRUE(intex_lock_when_greater(&intex, 17, duration_instant()));
   ASSERT_TRUE(intex_unlock(&intex));
+  intex_dispose(&intex);
 }

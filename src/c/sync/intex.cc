@@ -46,6 +46,10 @@ void intex_construct(intex_t *intex, uint64_t init_value) {
   new (intex) Intex(init_value);
 }
 
+void intex_dispose(intex_t *intex) {
+  static_cast<Intex*>(intex)->~Intex();
+}
+
 bool intex_initialize(intex_t *intex) {
   return static_cast<Intex*>(intex)->initialize();
 }

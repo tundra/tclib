@@ -24,6 +24,9 @@ void intex_construct(intex_t *intex, uint64_t init_value);
 // succeeded.
 bool intex_initialize(intex_t *intex);
 
+// Release any resources held by the given intex.
+void intex_dispose(intex_t *intex);
+
 // Wait the given duration for the intex to be equal to the given value then
 // locks it. Returns true iff successful.
 bool intex_lock_when_equal(intex_t *intex, int64_t value, duration_t timeout);
