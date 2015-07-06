@@ -149,7 +149,7 @@ bool limited_allocator_uninstall(limited_allocator_t *alloc) {
 }
 
 // How many buckets do we divide allocations into by fingerprint?
-#define kAllocFingerprintBuckets 8
+#define kAllocFingerprintBuckets 65521
 
 static size_t calc_fingerprint(blob_t blob) {
   address_arith_t addr = (address_arith_t) blob.start;
