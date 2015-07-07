@@ -32,7 +32,7 @@ public:
   bool configure_file_descriptors();
   bool build_sub_environment();
   bool parent_post_fork();
-  bool child_post_fork(const char *executable, size_t argc, const char **argv);
+  bool child_post_fork(utf8_t executable, size_t argc, utf8_t *argv);
 private:
   NativeProcess *process_;
   std::vector<char*> new_environ_;
@@ -217,8 +217,8 @@ static bool close_child_if_necessary(StreamRedirect *stream) {
   return (stream == NULL) || stream->child_side_close();
 }
 
-bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
-    const char **argv) {
+bool NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
+    utf8_t *argv) {
   // From here on we're in the child process. First redirect std streams if
   // necessary.
   remap_std_stream(process_->stdin_, STDIN_FILENO);
@@ -239,11 +239,11 @@ bool NativeProcessStart::child_post_fork(const char *executable, size_t argc,
 
   // Run the executable.
   char **args = new char *[argc + 2];
-  args[0] = const_cast<char*>(executable);
+  args[0] = const_cast<char*>(executable.chars);
   for (size_t i = 0; i < argc; i++)
-    args[i + 1] = const_cast<char*>(argv[i]);
+    args[i + 1] = const_cast<char*>(argv[i].chars);
   args[argc + 1] = NULL;
-  execv(executable, args);
+  execv(executable.chars, args);
   // If successful execv replaces the process so we'll never reach this point.
   // If it fails though we'll drop to here and we need to bail out immediately.
   // The error code signals an os api error. Clean up first to make valgrind
@@ -271,7 +271,7 @@ bool PipeRedirect::child_side_close() {
   return local_side()->close();
 }
 
-bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
+bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   CHECK_EQ("starting process already running", nsInitial, state);
 
   NativeProcessStart start(this);

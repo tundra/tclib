@@ -23,10 +23,10 @@ NativeProcess::NativeProcess()
   state = nsInitial;
 }
 
-bool NativeProcess::set_env(const char *key, const char *value) {
+bool NativeProcess::set_env(utf8_t key, utf8_t value) {
   string_buffer_t buf;
   string_buffer_init(&buf);
-  string_buffer_printf(&buf, "%s=%s", key, value);
+  string_buffer_printf(&buf, "%s=%s", key.chars, value.chars);
   utf8_t raw_binding = string_buffer_flush(&buf);
   std::string binding(raw_binding.chars, raw_binding.size);
   env_.push_back(binding);
@@ -110,8 +110,8 @@ void native_process_set_stderr(native_process_t *process, stream_redirect_t *val
   static_cast<NativeProcess*>(process)->set_stderr(static_cast<StreamRedirect*>(value));
 }
 
-bool native_process_start(native_process_t *process, const char *executable,
-    size_t argc, const char **argv) {
+bool native_process_start(native_process_t *process, utf8_t executable,
+    size_t argc, utf8_t *argv) {
   return static_cast<NativeProcess*>(process)->start(executable, argc, argv);
 }
 

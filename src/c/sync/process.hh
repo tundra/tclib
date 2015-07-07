@@ -96,7 +96,7 @@ public:
   // Start this process running. This will return immediately after spawning
   // the child process, there is no guarantee that the executable is started or
   // indeed completes successfully.
-  bool start(const char *executable, size_t argc, const char **argv);
+  bool start(utf8_t executable, size_t argc, utf8_t *argv);
 
   // Adds an environment mapping to the set visible to the process. The process
   // copies the key and value so they can be released immediately after this
@@ -107,7 +107,7 @@ public:
   // necessarily what you want -- it would be nice just from an orthogonality
   // viewpoint to be able to pass values with equals signs in them without
   // getting funky behavior, but it's not clear that there's a way to do that
-  bool set_env(const char *key, const char *value);
+  bool set_env(utf8_t key, utf8_t value);
 
   // Sets the stream to use as standard input for the running process. Must be
   // called before starting the process.

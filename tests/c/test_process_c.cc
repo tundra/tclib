@@ -14,10 +14,10 @@ END_C_INCLUDES
 using namespace tclib;
 
 // Returns the path to the durian executable.
-static const char *get_durian_main() {
+static utf8_t get_durian_main() {
   const char *result = getenv("DURIAN_MAIN");
   ASSERT_TRUE(result != NULL);
-  return result;
+  return new_c_string(result);
 }
 
 TEST(process_c, return_value) {
@@ -33,7 +33,7 @@ TEST(process_c, return_value) {
   native_process_set_stderr(process, stderr_redir);
 
   // Launch the process.
-  const char *argv[2] = {"--exit-code", "77"};
+  utf8_t argv[2] = {new_c_string("--exit-code"), new_c_string("77")};
   ASSERT_TRUE(native_process_start(process, get_durian_main(), 2, argv));
 
   // Consume all the output, otherwise the process may block waiting to be able

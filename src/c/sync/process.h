@@ -32,8 +32,8 @@ void native_process_set_stderr(native_process_t *process, stream_redirect_t *val
 // Start this process running. This will return immediately after spawning
 // the child process, there is no guarantee that the executable is started or
 // indeed completes successfully.
-bool native_process_start(native_process_t *process, const char *executable,
-    size_t argc, const char **argv);
+bool native_process_start(native_process_t *process, utf8_t executable,
+    size_t argc, utf8_t *argv);
 
 // Wait for this process, which must already have been started, to complete.
 // Returns true iff waiting succeeded. The process must have been started.

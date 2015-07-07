@@ -64,7 +64,7 @@ class NativeProcessStart {
 public:
   NativeProcessStart(NativeProcess *process);
   ~NativeProcessStart();
-  utf8_t build_cmdline(const char *executable, size_t argc, const char **argv);
+  utf8_t build_cmdline(utf8_t executable, size_t argc, utf8_t *argv);
 
   // Set up any standard stream redirection in the startup_info.
   bool configure_standard_streams();
@@ -75,7 +75,7 @@ public:
   bool maybe_redirect_standard_stream(const char *name, StreamRedirect *stream,
       handle_t *handle_out, bool *has_redirected);
   bool configure_sub_environment();
-  bool launch(const char *executable);
+  bool launch(utf8_t executable);
   bool post_launch();
   bool maybe_close_standard_stream(StreamRedirect *stream);
 private:
@@ -102,7 +102,7 @@ NativeProcessStart::~NativeProcessStart() {
   string_buffer_dispose(&new_env_buf_);
 }
 
-static void string_buffer_append_escaped(string_buffer_t *buf, const char *str) {
+static void string_buffer_append_escaped(string_buffer_t *buf, utf8_t str) {
   // Escaping commands on windows is tricky. Quoting strings takes care of most
   // luckily but quotes themselves must be escaped with \s. You'd think you'd
   // then need to also escape \s themselves but if you try that fails -- two
@@ -110,17 +110,17 @@ static void string_buffer_append_escaped(string_buffer_t *buf, const char *str) 
   // for immediately before an escaped quote and then at the end of the string
   // because we'll add an unescaped quote there.
   string_buffer_putc(buf, '"');
-  size_t length = strlen(str);
+  size_t length = str.size;
   for (size_t ic = 0; ic < length; ic++) {
     // Count slashes from this point. Usually it will be 0.
     size_t slash_count = 0;
-    while (str[ic] == '\\' && ic < length) {
+    while (str.chars[ic] == '\\' && ic < length) {
       ic++;
       slash_count++;
     }
     // At this point if we started at a sequence of slashes we will now be
     // immediately past it, possibly just past the end of the string.
-    if (ic == length || str[ic] == '"') {
+    if (ic == length || str.chars[ic] == '"') {
       // If we're at the end or before a quote slashes need to be escaped.
       for (size_t is = 0; is < slash_count; is++) {
         string_buffer_putc(buf, '\\');
@@ -128,7 +128,7 @@ static void string_buffer_append_escaped(string_buffer_t *buf, const char *str) 
       }
       // If we're at the end there's nothing to do, the quote will be added
       // below, otherwise escape the quote.
-      if (str[ic] == '"') {
+      if (str.chars[ic] == '"') {
         string_buffer_putc(buf, '\\');
         string_buffer_putc(buf, '"');
       }
@@ -137,14 +137,14 @@ static void string_buffer_append_escaped(string_buffer_t *buf, const char *str) 
       // output them, no need to escape.
       for (size_t is = 0; is < slash_count; is++)
         string_buffer_putc(buf, '\\');
-      string_buffer_putc(buf, str[ic]);
+      string_buffer_putc(buf, str.chars[ic]);
     }
   }
   string_buffer_putc(buf, '"');
 }
 
-utf8_t NativeProcessStart::build_cmdline(const char *executable, size_t argc,
-    const char **argv) {
+utf8_t NativeProcessStart::build_cmdline(utf8_t executable, size_t argc,
+    utf8_t *argv) {
   string_buffer_append_escaped(&cmdline_buf_, executable);
   for (size_t i = 0; i < argc; i++) {
     string_buffer_append(&cmdline_buf_, new_c_string(" "));
@@ -219,7 +219,7 @@ static void CALLBACK mark_terminated_bridge(void *context, BOOLEAN timer_or_wait
   static_cast<NativeProcess*>(context)->mark_terminated(timer_or_wait_fired);
 }
 
-bool NativeProcessStart::launch(const char *executable) {
+bool NativeProcessStart::launch(utf8_t executable) {
   char *cmdline_chars = const_cast<char*>(cmdline_.chars);
   void *env = NULL;
   if (!string_is_empty(new_env_))
@@ -228,7 +228,7 @@ bool NativeProcessStart::launch(const char *executable) {
   NativeProcess::PlatformData *data = process_->platform_data_;
   // Create the child process.
   bool created = CreateProcess(
-    executable,      // lpApplicationName
+    executable.chars,// lpApplicationName
     cmdline_chars,   // lpCommandLine
     NULL,            // lpProcessAttributes
     NULL,            // lpThreadAttributes
@@ -307,7 +307,7 @@ bool PipeRedirect::child_side_close() {
   return true;
 }
 
-bool NativeProcess::start(const char *executable, size_t argc, const char **argv) {
+bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   CHECK_EQ("starting process already running", nsInitial, state);
   platform_data_ = new NativeProcess::PlatformData();
   NativeProcessStart start(this);
