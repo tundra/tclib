@@ -13,6 +13,7 @@ test_file_names = [
   "test_callback_link.cc",
   "test_condition_cpp.cc",
   "test_duration.cc",
+  "test_eventseq.cc",
   "test_intex_c.cc",
   "test_intex_cpp.cc",
   "test_lifetime.cc",

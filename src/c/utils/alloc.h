@@ -60,11 +60,20 @@ blob_t allocator_default_malloc(size_t size);
 // allocator_default_free_struct with the exact same type.
 #define allocator_default_malloc_struct(T) ((T*) allocator_default_malloc(sizeof(T)).start)
 
+// Allocates an array of structs of the given type and length. If allocation
+// fails NULL is returned. The result must be deallocated using
+// allocator_default_free_structs with the exact same type and length.
+#define allocator_default_malloc_structs(T, N) ((T*) allocator_default_malloc((N) * sizeof(T)).start)
+
 // Frees the given block of memory using the default allocator.
 void allocator_default_free(blob_t block);
 
-// Frees a struct of the given type allocated with allocator_default_malloc.
+// Frees a struct of the given type allocated with allocator_default_malloc_struct.
 #define allocator_default_free_struct(T, v) allocator_default_free(blob_new((v), sizeof(T)))
+
+// Frees an arra of structs of the given type and length allocated with
+// allocator_default_malloc_structs.
+#define allocator_default_free_structs(T, N, v) allocator_default_free(blob_new((v), (N) * sizeof(T)))
 
 // Frees a block of memory using the given allocator.
 void allocator_free(allocator_t *alloc, blob_t memory);
