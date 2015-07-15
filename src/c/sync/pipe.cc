@@ -40,11 +40,11 @@ NativePipe::~NativePipe() {
   out_ = NULL;
 }
 
-const PipeRedirector NativePipe::in_redir_(pdIn);
-const PipeRedirector NativePipe::out_redir_(pdOut);
+const PipeRedirector NativePipe::kInRedir(pdIn);
+const PipeRedirector NativePipe::kOutRedir(pdOut);
 
 StreamRedirect NativePipe::redirect(pipe_direction_t dir) {
-  const PipeRedirector *redir = (dir == pdIn) ? &in_redir_ : &out_redir_;
+  const PipeRedirector *redir = (dir == pdIn) ? &kInRedir : &kOutRedir;
   return StreamRedirect(redir, this);
 }
 

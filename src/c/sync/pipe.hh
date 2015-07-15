@@ -48,8 +48,8 @@ public:
   StreamRedirect redirect(pipe_direction_t dir);
 
 private:
-  static const PipeRedirector in_redir_;
-  static const PipeRedirector out_redir_;
+  static const PipeRedirector kInRedir;
+  static const PipeRedirector kOutRedir;
 };
 
 } // namespace tclib
