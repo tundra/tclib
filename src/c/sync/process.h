@@ -24,20 +24,25 @@ typedef struct {
   opaque_t o_data_;
 } stream_redirect_t;
 
+// Identifiers for the standard streams.
+typedef enum {
+  siStdin = 0,
+  siStdout = 1,
+  siStderr = 2
+} stdio_stream_t;
+
+// How many standard streams are there?
+#define kStdioStreamCount 3
+
 // Create and initialize a new native process.
 native_process_t *native_process_new();
 
 // Dispose and free a process created using native_process_new.
 void native_process_destroy(native_process_t *process);
 
-// Sets the stream to redirect this process' stdin to.
-void native_process_set_stdin(native_process_t *process, stream_redirect_t value);
-
-// Sets the stream to redirect this process' stdout to.
-void native_process_set_stdout(native_process_t *process, stream_redirect_t value);
-
-// Sets the stream to redirect this process' stderr to.
-void native_process_set_stderr(native_process_t *process, stream_redirect_t value);
+// Redirects a standard stream of the given process to the given value.
+void native_process_set_stream(native_process_t *process, stdio_stream_t stream,
+    stream_redirect_t value);
 
 // Start this process running. This will return immediately after spawning
 // the child process, there is no guarantee that the executable is started or

@@ -72,12 +72,11 @@ public:
   // If necessary set up redirection using the given stream, storing the result
   // in the three out parameters. This is a little messy but we need to do this
   // a couple of times so it seems worth it.
-  bool maybe_redirect_standard_stream(const char *name, StreamRedirect stream,
+  bool maybe_redirect_standard_stream(const char *name, stdio_stream_t stream,
       handle_t *handle_out, bool *has_redirected);
   bool configure_sub_environment();
   bool launch(utf8_t executable);
   bool post_launch();
-  bool maybe_close_standard_stream(StreamRedirect stream);
 private:
   NativeProcess *process_;
   string_buffer_t cmdline_buf_;
@@ -154,12 +153,13 @@ utf8_t NativeProcessStart::build_cmdline(utf8_t executable, size_t argc,
 }
 
 bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
-    StreamRedirect stream, handle_t *handle_out, bool *has_redirected) {
-  if (stream.is_empty())
+    stdio_stream_t stream, handle_t *handle_out, bool *has_redirected) {
+  StreamRedirect redirect = process_->stdio_[stream];
+  if (redirect.is_empty())
     return true;
-  if (!stream.prepare_launch())
+  if (!redirect.prepare_launch())
     return false;
-  handle_t handle = stream.remote_handle();
+  handle_t handle = redirect.remote_handle();
   if (handle == AbstractStream::kNullNakedFileHandle) {
     WARN("Invalid %s", name);
     return false;
@@ -172,15 +172,15 @@ bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
 bool NativeProcessStart::configure_standard_streams() {
   bool has_redirected = false;
 
-  if (!maybe_redirect_standard_stream("stdin", process_->stdin_,
+  if (!maybe_redirect_standard_stream("stdin", siStdin,
       &startup_info_.hStdInput, &has_redirected))
     return false;
 
-  if (!maybe_redirect_standard_stream("stdout", process_->stdout_,
+  if (!maybe_redirect_standard_stream("stdout", siStdout,
       &startup_info_.hStdOutput, &has_redirected))
     return false;
 
-  if (!maybe_redirect_standard_stream("stderr", process_->stderr_,
+  if (!maybe_redirect_standard_stream("stderr", siStderr,
       &startup_info_.hStdError, &has_redirected))
     return false;
 
@@ -265,16 +265,15 @@ bool NativeProcessStart::launch(utf8_t executable) {
   return true;
 }
 
-bool NativeProcessStart::maybe_close_standard_stream(StreamRedirect stream) {
-  return stream.is_empty() || stream.parent_side_close();
-}
-
 bool NativeProcessStart::post_launch() {
   // Close the parent's clone of the stdout handle since it belongs to the
   // child now.
-  return maybe_close_standard_stream(process_->stdin_)
-      && maybe_close_standard_stream(process_->stdout_)
-      && maybe_close_standard_stream(process_->stderr_);
+  bool succeeded = true;
+  for (size_t i = 0; i < kStdioStreamCount; i++) {
+    StreamRedirect redirect = process_->stdio_[i];
+    succeeded = (redirect.is_empty() || redirect.parent_side_close()) || succeeded;
+  }
+  return succeeded;
 }
 
 bool PipeRedirector::prepare_launch(StreamRedirect *redirect) const {

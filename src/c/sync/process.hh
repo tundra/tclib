@@ -146,22 +146,10 @@ public:
   // getting funky behavior, but it's not clear that there's a way to do that
   bool set_env(utf8_t key, utf8_t value);
 
-  // Sets the stream to use as standard input for the running process. Must be
-  // called before starting the process.
-  void set_stdin(StreamRedirect redirect) {
-    stdin_ = redirect;
-  }
-
-  // Sets the stream to use as standard output for the running process. Must be
-  // called before starting the process.
-  void set_stdout(StreamRedirect redirect) {
-    stdout_ = redirect;
-  }
-
-  // Sets the stream to use as standard error for the running process. Must be
-  // called before starting the process.
-  void set_stderr(StreamRedirect redirect) {
-    stderr_ = redirect;
+  // Specifies that the given redirect should be used for the given stream. Must
+  // be called before starting the process.
+  void set_stream(stdio_stream_t stream, StreamRedirect redirect) {
+    stdio_[stream] = redirect;
   }
 
   // Wait synchronously for this process to terminate.
@@ -188,9 +176,7 @@ private:
   PlatformData *platform_data_;
   sync_promise_t<int> exit_code_;
   opaque_promise_t *opaque_exit_code_;
-  StreamRedirect stdin_;
-  StreamRedirect stdout_;
-  StreamRedirect stderr_;
+  StreamRedirect stdio_[kStdioStreamCount];
   std::vector<std::string> env_;
 };
 

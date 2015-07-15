@@ -25,10 +25,12 @@ TEST(process_c, return_value) {
   native_process_t *process = native_process_new();
   native_pipe_t stdout_pipe;
   ASSERT_TRUE(native_pipe_open(&stdout_pipe));
-  native_process_set_stdout(process, stream_redirect_from_pipe(&stdout_pipe, pdOut));
+  native_process_set_stream(process, siStdout,
+      stream_redirect_from_pipe(&stdout_pipe, pdOut));
   native_pipe_t stderr_pipe;
   ASSERT_TRUE(native_pipe_open(&stderr_pipe));
-  native_process_set_stderr(process, stream_redirect_from_pipe(&stderr_pipe, pdOut));
+  native_process_set_stream(process, siStderr,
+      stream_redirect_from_pipe(&stderr_pipe, pdOut));
 
   // Launch the process.
   utf8_t argv[2] = {new_c_string("--exit-code"), new_c_string("77")};

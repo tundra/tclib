@@ -88,12 +88,12 @@ RecordingProcess::RecordingProcess()
   , stdout_str_(NULL)
   , stderr_str_(NULL) {
   ASSERT_TRUE(stdin_pipe_.open(NativePipe::pfInherit));
-  set_stdin(stdin_pipe_.redirect(pdIn));
+  set_stream(siStdin, stdin_pipe_.redirect(pdIn));
   ASSERT_TRUE(stdout_pipe_.open(NativePipe::pfInherit));
-  set_stdout(stdout_pipe_.redirect(pdOut));
+  set_stream(siStdout, stdout_pipe_.redirect(pdOut));
   string_buffer_init(&stdout_buf_);
   ASSERT_TRUE(stderr_pipe_.open(NativePipe::pfInherit));
-  set_stderr(stderr_pipe_.redirect(pdOut));
+  set_stream(siStderr, stderr_pipe_.redirect(pdOut));
   string_buffer_init(&stderr_buf_);
 }
 
@@ -464,7 +464,7 @@ TEST(process_cpp, terminate_avalanche) {
       new_c_string("--echo-stdin"), new_c_string("--quiet")};
   for (size_t i = 0; i < kProcessCount; i++) {
     ASSERT_TRUE(stdins[i].open(NativePipe::pfInherit));
-    processes[i].set_stdin(stdins[i].redirect(pdIn));
+    processes[i].set_stream(siStdin, stdins[i].redirect(pdIn));
     NativeProcess *process = &processes[i];
     ASSERT_TRUE(process->start(get_durian_main(), 4, argv));
     promise_t<int> exit_code = process->exit_code();

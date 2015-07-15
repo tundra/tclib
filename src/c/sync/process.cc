@@ -121,16 +121,9 @@ void native_process_destroy(native_process_t *process) {
   default_delete_concrete(static_cast<NativeProcess*>(process));
 }
 
-void native_process_set_stdin(native_process_t *process, stream_redirect_t value) {
-  static_cast<NativeProcess*>(process)->set_stdin(value);
-}
-
-void native_process_set_stdout(native_process_t *process, stream_redirect_t value) {
-  static_cast<NativeProcess*>(process)->set_stdout(value);
-}
-
-void native_process_set_stderr(native_process_t *process, stream_redirect_t value) {
-  static_cast<NativeProcess*>(process)->set_stderr(value);
+void native_process_set_stream(native_process_t *process, stdio_stream_t stream,
+    stream_redirect_t value) {
+  static_cast<NativeProcess*>(process)->set_stream(stream, value);
 }
 
 bool native_process_start(native_process_t *process, utf8_t executable,
