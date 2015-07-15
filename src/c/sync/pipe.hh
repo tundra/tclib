@@ -7,6 +7,7 @@
 #include "c/stdc.h"
 
 #include "io/stream.hh"
+#include "sync/process.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/pipe.h"
@@ -42,6 +43,13 @@ public:
 
   // Returns the write-end of this pipe.
   OutStream *out() { return static_cast<OutStream*>(out_); }
+
+  // Returns a redirect wrapper for this pipe going in the specified direction.
+  StreamRedirect redirect(pipe_direction_t dir);
+
+private:
+  static const PipeRedirector in_redir_;
+  static const PipeRedirector out_redir_;
 };
 
 } // namespace tclib

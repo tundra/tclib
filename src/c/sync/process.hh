@@ -17,63 +17,100 @@ BEGIN_C_INCLUDES
 #include "sync/process.h"
 END_C_INCLUDES
 
-struct stream_redirect_t { };
+struct stream_redirector_t { };
 struct native_process_t { };
 
 namespace tclib {
 
 class NativePipe;
+class StreamRedirector;
+
+// Helper class that controls how an I/O device is used as a standard stream
+// connected to a process. Usually it's not just a matter of connecting a
+// stream to stdout, say, some extra management needs to be done based on the
+// type of the input. For instance, with pipes you need to connect one end and
+// close the other.
+//
+// The structure of this is a little complicated, that's because we need some
+// extra behavior somewhere to deal with processes but it doesn't really belong
+// on the streams themselves. Also, it's a lot of maintenance to allocate and
+// manage the lifetimes of separate objects just to deal with this. So instead
+// there's a few shared "redirectors" which take care of the behavior and then
+// the data to be operated on, for instance the pipe, is passed to it.
+class StreamRedirect : public stream_redirect_t {
+public:
+  StreamRedirect(const StreamRedirector *redirector, void *data);
+
+  // Converts a C redirect to a C++ one.
+  StreamRedirect(stream_redirect_t c_redirect);
+
+  // Initializes an empty stream redirect.
+  StreamRedirect();
+
+  // Does this redirect have contents or has it been left empty?
+  bool is_empty() { return redirector_ == NULL; }
+
+  // See the corresponding methods on StreamRedirector.
+  naked_file_handle_t remote_handle();
+  bool prepare_launch();
+  bool parent_side_close();
+  bool child_side_close();
+
+private:
+  // Yields the redirector viewed as a C++ object.
+  const StreamRedirector *redirector();
+};
 
 // Encapsulates the behavior of redirecting input/output to a process. The
 // implementations and patterns of use are somewhat platform dependent so read
 // the platform-independent documentation with a grain of salt, you kind of have
 // to know what's going on on the platform to know how it really works.
-class StreamRedirect : public stream_redirect_t {
+class StreamRedirector : public stream_redirector_t {
 public:
   // No-op destructor.
-  virtual ~StreamRedirect() { }
+  virtual ~StreamRedirector() { }
 
   // Returns the file handle to export to the child process.
-  virtual naked_file_handle_t remote_handle() = 0;
+  virtual naked_file_handle_t remote_handle(StreamRedirect *redirect) const = 0;
 
   // Perform any work that needs to be done before creating the child.
-  virtual bool prepare_launch() = 0;
+  virtual bool prepare_launch(StreamRedirect *redirect) const = 0;
 
   // Called after the child has been successfully spawned to clean up the parent
   // side of the redirect.
-  virtual bool parent_side_close() = 0;
+  virtual bool parent_side_close(StreamRedirect *redirect) const = 0;
 
   // Called after the child has been successfully spawned to clean up the child
   // side of the redirect.
-  virtual bool child_side_close() = 0;
+  virtual bool child_side_close(StreamRedirect *redirect) const = 0;
 };
 
-// A pipe-based redirect. This takes ownership of the pipe and will close the
+// A pipe-based redirector. This takes ownership of the pipe and will close the
 // in- and outgoing handles appropriately. When the child process exits the
 // pipe will be dead.
-class PipeRedirect : public StreamRedirect {
+class PipeRedirector : public StreamRedirector {
 public:
-  PipeRedirect(NativePipe *pipe, pipe_direction_t direction);
-  PipeRedirect();
-  virtual naked_file_handle_t remote_handle();
-  virtual bool prepare_launch();
-  virtual bool parent_side_close();
-  virtual bool child_side_close();
-  void set_pipe(NativePipe *pipe, pipe_direction_t direction);
+  PipeRedirector(pipe_direction_t direction);
+  virtual naked_file_handle_t remote_handle(StreamRedirect *redirect) const;
+  virtual bool prepare_launch(StreamRedirect *redirect) const;
+  virtual bool parent_side_close(StreamRedirect *redirect) const;
+  virtual bool child_side_close(StreamRedirect *redirect) const;
 
 private:
-  NativePipe *pipe_;
   pipe_direction_t direction_;
 
+  // Returns the given redirect's pipe.
+  NativePipe *pipe(StreamRedirect *redirect) const { return (NativePipe*) o2p(redirect->o_data_); }
+
   // Does this redirect output or input?
-  bool is_output() { return direction_ == pdOut; }
+  bool is_output() const { return direction_ == pdOut; }
 
   // The remote stream, the stream that will be passed on to the child.
-  AbstractStream *remote_side();
+  AbstractStream *remote_side(StreamRedirect *redirect) const;
 
   // The local stream, the stream the current process will use to interact with
   // the child.
-  AbstractStream *local_side();
+  AbstractStream *local_side(StreamRedirect *redirect) const;
 };
 
 // An os-native process.
@@ -111,19 +148,19 @@ public:
 
   // Sets the stream to use as standard input for the running process. Must be
   // called before starting the process.
-  void set_stdin(StreamRedirect *redirect) {
+  void set_stdin(StreamRedirect redirect) {
     stdin_ = redirect;
   }
 
   // Sets the stream to use as standard output for the running process. Must be
   // called before starting the process.
-  void set_stdout(StreamRedirect *redirect) {
+  void set_stdout(StreamRedirect redirect) {
     stdout_ = redirect;
   }
 
   // Sets the stream to use as standard error for the running process. Must be
   // called before starting the process.
-  void set_stderr(StreamRedirect *redirect) {
+  void set_stderr(StreamRedirect redirect) {
     stderr_ = redirect;
   }
 
@@ -151,9 +188,9 @@ private:
   PlatformData *platform_data_;
   sync_promise_t<int> exit_code_;
   opaque_promise_t *opaque_exit_code_;
-  StreamRedirect *stdin_;
-  StreamRedirect *stdout_;
-  StreamRedirect *stderr_;
+  StreamRedirect stdin_;
+  StreamRedirect stdout_;
+  StreamRedirect stderr_;
   std::vector<std::string> env_;
 };
 

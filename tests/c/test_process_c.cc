@@ -25,12 +25,10 @@ TEST(process_c, return_value) {
   native_process_t *process = native_process_new();
   native_pipe_t stdout_pipe;
   ASSERT_TRUE(native_pipe_open(&stdout_pipe));
-  stream_redirect_t *stdout_redir = stream_redirect_from_pipe(&stdout_pipe, pdOut);
-  native_process_set_stdout(process, stdout_redir);
+  native_process_set_stdout(process, stream_redirect_from_pipe(&stdout_pipe, pdOut));
   native_pipe_t stderr_pipe;
   ASSERT_TRUE(native_pipe_open(&stderr_pipe));
-  stream_redirect_t *stderr_redir = stream_redirect_from_pipe(&stderr_pipe, pdOut);
-  native_process_set_stderr(process, stderr_redir);
+  native_process_set_stderr(process, stream_redirect_from_pipe(&stderr_pipe, pdOut));
 
   // Launch the process.
   utf8_t argv[2] = {new_c_string("--exit-code"), new_c_string("77")};
@@ -63,8 +61,6 @@ TEST(process_c, return_value) {
   ASSERT_EQ(77, o2u(opaque_promise_peek_value(native_process_exit_code(process), o0())));
 
   // Clean up.
-  stream_redirect_destroy(stderr_redir);
-  stream_redirect_destroy(stdout_redir);
   native_pipe_dispose(&stdout_pipe);
   native_pipe_dispose(&stderr_pipe);
   native_process_destroy(process);

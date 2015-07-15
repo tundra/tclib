@@ -149,18 +149,18 @@ NativeProcessStart::NativeProcessStart(NativeProcess *process)
   : process_(process) { }
 
 bool NativeProcessStart::configure_file_descriptors() {
-  if (process_->stdout_ != NULL) {
-    if (!process_->stdout_->prepare_launch())
+  if (!process_->stdout_.is_empty()) {
+    if (!process_->stdout_.prepare_launch())
       return false;
-    if (process_->stdout_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
+    if (process_->stdout_.remote_handle() == AbstractStream::kNullNakedFileHandle) {
       WARN("Invalid stdout");
       return false;
     }
   }
-  if (process_->stderr_ != NULL) {
-    if (!process_->stderr_->prepare_launch())
+  if (!process_->stderr_.is_empty()) {
+    if (!process_->stderr_.prepare_launch())
       return false;
-    if (process_->stderr_->remote_handle() == AbstractStream::kNullNakedFileHandle) {
+    if (process_->stderr_.remote_handle() == AbstractStream::kNullNakedFileHandle) {
       WARN("Invalid stderr");
       return false;
     }
@@ -190,8 +190,8 @@ bool NativeProcessStart::build_sub_environment() {
   return true;
 }
 
-static bool close_parent_if_necessary(StreamRedirect *stream) {
-  return (stream == NULL) || stream->parent_side_close();
+static bool close_parent_if_necessary(StreamRedirect stream) {
+  return stream.is_empty() || stream.parent_side_close();
 }
 
 bool NativeProcessStart::parent_post_fork() {
@@ -202,10 +202,10 @@ bool NativeProcessStart::parent_post_fork() {
       && close_parent_if_necessary(process_->stderr_);
 }
 
-static void remap_std_stream(StreamRedirect *redirect, int old_fd) {
-  if (redirect == NULL)
+static void remap_std_stream(StreamRedirect redirect, int old_fd) {
+  if (redirect.is_empty())
     return;
-  int new_fd = redirect->remote_handle();
+  int new_fd = redirect.remote_handle();
   CHECK_TRUE("invalid fd", new_fd != AbstractStream::kNullNakedFileHandle);
   if (new_fd == old_fd)
     return;
@@ -213,8 +213,8 @@ static void remap_std_stream(StreamRedirect *redirect, int old_fd) {
   close(new_fd);
 }
 
-static bool close_child_if_necessary(StreamRedirect *stream) {
-  return (stream == NULL) || stream->child_side_close();
+static bool close_child_if_necessary(StreamRedirect stream) {
+  return stream.is_empty() || stream.child_side_close();
 }
 
 bool NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
@@ -256,19 +256,19 @@ bool NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
   return false;
 }
 
-bool PipeRedirect::prepare_launch() {
+bool PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
   return true;
 }
 
-bool PipeRedirect::parent_side_close() {
+bool PipeRedirector::parent_side_close(StreamRedirect *redirect) const {
   // The child now has a clone of the remote handle so we can close this side.
-  return remote_side()->close();
+  return remote_side(redirect)->close();
 }
 
-bool PipeRedirect::child_side_close() {
+bool PipeRedirector::child_side_close(StreamRedirect *redirect) const {
   // We have a clone of the local handle which is really only useful to the
   // parent so we close it.
-  return local_side()->close();
+  return local_side(redirect)->close();
 }
 
 bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {

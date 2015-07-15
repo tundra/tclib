@@ -72,12 +72,12 @@ public:
   // If necessary set up redirection using the given stream, storing the result
   // in the three out parameters. This is a little messy but we need to do this
   // a couple of times so it seems worth it.
-  bool maybe_redirect_standard_stream(const char *name, StreamRedirect *stream,
+  bool maybe_redirect_standard_stream(const char *name, StreamRedirect stream,
       handle_t *handle_out, bool *has_redirected);
   bool configure_sub_environment();
   bool launch(utf8_t executable);
   bool post_launch();
-  bool maybe_close_standard_stream(StreamRedirect *stream);
+  bool maybe_close_standard_stream(StreamRedirect stream);
 private:
   NativeProcess *process_;
   string_buffer_t cmdline_buf_;
@@ -154,12 +154,12 @@ utf8_t NativeProcessStart::build_cmdline(utf8_t executable, size_t argc,
 }
 
 bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
-    StreamRedirect *stream, handle_t *handle_out, bool *has_redirected) {
-  if (stream == NULL)
+    StreamRedirect stream, handle_t *handle_out, bool *has_redirected) {
+  if (stream.is_empty())
     return true;
-  if (!stream->prepare_launch())
+  if (!stream.prepare_launch())
     return false;
-  handle_t handle = stream->remote_handle();
+  handle_t handle = stream.remote_handle();
   if (handle == AbstractStream::kNullNakedFileHandle) {
     WARN("Invalid %s", name);
     return false;
@@ -265,8 +265,8 @@ bool NativeProcessStart::launch(utf8_t executable) {
   return true;
 }
 
-bool NativeProcessStart::maybe_close_standard_stream(StreamRedirect *stream) {
-  return (stream == NULL) || stream->parent_side_close();
+bool NativeProcessStart::maybe_close_standard_stream(StreamRedirect stream) {
+  return stream.is_empty() || stream.parent_side_close();
 }
 
 bool NativeProcessStart::post_launch() {
@@ -277,32 +277,32 @@ bool NativeProcessStart::post_launch() {
       && maybe_close_standard_stream(process_->stderr_);
 }
 
-bool PipeRedirect::prepare_launch() {
+bool PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
   // Do inherit the remote side of this pipe.
   if (!SetHandleInformation(
-          remote_side()->to_raw_handle(), // hObject
-          HANDLE_FLAG_INHERIT,            // dwMask
-          1)) {                           // dwFlags
+          remote_side(redirect)->to_raw_handle(), // hObject
+          HANDLE_FLAG_INHERIT,                    // dwMask
+          1)) {                                   // dwFlags
     WARN("Failed to set remote pipe flags while redirecting");
     return false;
   }
 
   // Don't inherit the local side of this pipe.
   if (!SetHandleInformation(
-          local_side()->to_raw_handle(), // hObject
-          HANDLE_FLAG_INHERIT,           // dwMask
-          0)) {                          // dwFlags
+          local_side(redirect)->to_raw_handle(), // hObject
+          HANDLE_FLAG_INHERIT,                   // dwMask
+          0)) {                                  // dwFlags
     WARN("Failed to set local pipe flags while redirecting");
     return false;
   }
   return true;
 }
 
-bool PipeRedirect::parent_side_close() {
-  return remote_side()->close();
+bool PipeRedirector::parent_side_close(StreamRedirect *redirect) const {
+  return remote_side(redirect)->close();
 }
 
-bool PipeRedirect::child_side_close() {
+bool PipeRedirector::child_side_close(StreamRedirect *redirect) const {
   // There is no child side, or -- there is but we don't have access to it.
   return true;
 }

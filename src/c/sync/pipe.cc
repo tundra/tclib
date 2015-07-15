@@ -40,6 +40,14 @@ NativePipe::~NativePipe() {
   out_ = NULL;
 }
 
+const PipeRedirector NativePipe::in_redir_(pdIn);
+const PipeRedirector NativePipe::out_redir_(pdOut);
+
+StreamRedirect NativePipe::redirect(pipe_direction_t dir) {
+  const PipeRedirector *redir = (dir == pdIn) ? &in_redir_ : &out_redir_;
+  return StreamRedirect(redir, this);
+}
+
 #ifdef IS_GCC
 #  include "pipe-posix.cc"
 #endif

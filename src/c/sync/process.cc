@@ -13,13 +13,44 @@ END_C_INCLUDES
 
 using namespace tclib;
 
+StreamRedirect::StreamRedirect() {
+  redirector_ = NULL;
+  o_data_ = o0();
+}
+
+StreamRedirect::StreamRedirect(stream_redirect_t c_redirect) {
+  *static_cast<stream_redirect_t*>(this) = c_redirect;
+}
+
+StreamRedirect::StreamRedirect(const StreamRedirector *redirector, void *data) {
+  redirector_ = redirector;
+  o_data_ = p2o(data);
+}
+
+const StreamRedirector *StreamRedirect::redirector() {
+  return static_cast<const StreamRedirector*>(redirector_);
+}
+
+naked_file_handle_t StreamRedirect::remote_handle() {
+  return redirector()->remote_handle(this);
+}
+
+bool StreamRedirect::prepare_launch() {
+  return redirector()->prepare_launch(this);
+}
+
+bool StreamRedirect::parent_side_close() {
+  return redirector()->parent_side_close(this);
+}
+
+bool StreamRedirect::child_side_close() {
+  return redirector()->child_side_close(this);
+}
+
 NativeProcess::NativeProcess()
   : platform_data_(NULL)
   , exit_code_(sync_promise_t<int>::empty())
-  , opaque_exit_code_(NULL)
-  , stdin_(NULL)
-  , stdout_(NULL)
-  , stderr_(NULL) {
+  , opaque_exit_code_(NULL) {
   state = nsInitial;
 }
 
@@ -65,29 +96,21 @@ bool NativeProcess::wait_sync(Duration timeout) {
   return passed;
 }
 
-PipeRedirect::PipeRedirect(NativePipe *pipe, pipe_direction_t direction)
-  : pipe_(pipe)
-  , direction_(direction) { }
+PipeRedirector::PipeRedirector(pipe_direction_t direction)
+  : direction_(direction) { }
 
-PipeRedirect::PipeRedirect()
-  : pipe_(NULL)
-  , direction_(pdOut) { }
-
-void PipeRedirect::set_pipe(NativePipe *pipe, pipe_direction_t direction) {
-  pipe_ = pipe;
-  direction_ = direction;
+naked_file_handle_t PipeRedirector::remote_handle(StreamRedirect *redirect) const {
+  return remote_side(redirect)->to_raw_handle();
 }
 
-naked_file_handle_t PipeRedirect::remote_handle() {
-  return remote_side()->to_raw_handle();
+AbstractStream *PipeRedirector::remote_side(StreamRedirect *redirect) const {
+  NativePipe *pipe = this->pipe(redirect);
+  return is_output() ? static_cast<AbstractStream*>(pipe->out()) : pipe->in();
 }
 
-AbstractStream *PipeRedirect::remote_side() {
-  return is_output() ? static_cast<AbstractStream*>(pipe_->out()) : pipe_->in();
-}
-
-AbstractStream *PipeRedirect::local_side() {
-  return is_output() ? static_cast<AbstractStream*>(pipe_->in()) : pipe_->out();
+AbstractStream *PipeRedirector::local_side(StreamRedirect *redirect) const {
+  NativePipe *pipe = this->pipe(redirect);
+  return is_output() ? static_cast<AbstractStream*>(pipe->in()) : pipe->out();
 }
 
 native_process_t *native_process_new() {
@@ -98,16 +121,16 @@ void native_process_destroy(native_process_t *process) {
   default_delete_concrete(static_cast<NativeProcess*>(process));
 }
 
-void native_process_set_stdin(native_process_t *process, stream_redirect_t *value) {
-  static_cast<NativeProcess*>(process)->set_stdin(static_cast<StreamRedirect*>(value));
+void native_process_set_stdin(native_process_t *process, stream_redirect_t value) {
+  static_cast<NativeProcess*>(process)->set_stdin(value);
 }
 
-void native_process_set_stdout(native_process_t *process, stream_redirect_t *value) {
-  static_cast<NativeProcess*>(process)->set_stdout(static_cast<StreamRedirect*>(value));
+void native_process_set_stdout(native_process_t *process, stream_redirect_t value) {
+  static_cast<NativeProcess*>(process)->set_stdout(value);
 }
 
-void native_process_set_stderr(native_process_t *process, stream_redirect_t *value) {
-  static_cast<NativeProcess*>(process)->set_stderr(static_cast<StreamRedirect*>(value));
+void native_process_set_stderr(native_process_t *process, stream_redirect_t value) {
+  static_cast<NativeProcess*>(process)->set_stderr(value);
 }
 
 bool native_process_start(native_process_t *process, utf8_t executable,
@@ -119,12 +142,8 @@ opaque_promise_t *native_process_exit_code(native_process_t *process) {
   return static_cast<NativeProcess*>(process)->opaque_exit_code();
 }
 
-stream_redirect_t *stream_redirect_from_pipe(native_pipe_t *pipe, pipe_direction_t dir) {
-  return new PipeRedirect(static_cast<NativePipe*>(pipe), dir);
-}
-
-void stream_redirect_destroy(stream_redirect_t *value) {
-  delete static_cast<StreamRedirect*>(value);
+stream_redirect_t stream_redirect_from_pipe(native_pipe_t *pipe, pipe_direction_t dir) {
+  return static_cast<NativePipe*>(pipe)->redirect(dir);
 }
 
 #ifdef IS_GCC
