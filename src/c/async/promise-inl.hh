@@ -20,18 +20,18 @@ const E &promise_state_t<T, E>::unsafe_get_error() {
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::is_resolved() {
-  return atomic_int32_get(&state_) > psResolving;
+bool promise_state_t<T, E>::is_settled() {
+  return atomic_int32_get(&state_) > psSettling;
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::has_succeeded() {
-  return atomic_int32_get(&state_) == psSucceeded;
+bool promise_state_t<T, E>::is_fulfilled() {
+  return atomic_int32_get(&state_) == psFulfilled;
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::has_failed() {
-  return atomic_int32_get(&state_) == psFailed;
+bool promise_state_t<T, E>::is_rejected() {
+  return atomic_int32_get(&state_) == psRejected;
 }
 
 template <typename T, typename E>
@@ -60,7 +60,7 @@ void promise_state_t<T, E>::unsafe_set_error(const E &error) {
 
 template <typename T, typename E>
 promise_state_t<T, E>::promise_state_t()
-  : state_(atomic_int32_new(psEmpty)) {
+  : state_(atomic_int32_new(psPending)) {
   guard_.initialize();
   // These two overlap so really there is some redundancy here but the compiler
   // can probably figure it out, if not it doesn't matter.
@@ -73,9 +73,9 @@ promise_state_t<T, E>::~promise_state_t() {
   // Because of the initialization trickery we'll only know dynamically whether
   // the value or error have been initialized. Hence we need to call the
   // destructor explicitly.
-  if (has_succeeded()) {
+  if (is_fulfilled()) {
     unsafe_get_value().~T();
-  } else if (has_failed()) {
+  } else if (is_rejected()) {
     unsafe_get_error().~E();
   }
 }
@@ -85,20 +85,20 @@ bool promise_state_t<T, E>::fulfill(const T &value) {
   // Try to put this promise in the resolving state. This can only be done once
   // by one thread so after this has happened we can safely update the state.
   // This also catches the case where the promise has already been resolved.
-  if (!atomic_int32_compare_and_set(&state_, psEmpty, psResolving))
+  if (!atomic_int32_compare_and_set(&state_, psPending, psSettling))
     return false;
   // Set the value before the state such that it is safe to assume the value
   // is set when the state is non-empty. This is used by peek_value.
   unsafe_set_value(value);
-  atomic_int32_set(&state_, psSucceeded);
+  atomic_int32_set(&state_, psFulfilled);
   // At this point any new on_success added will be executed immediately so we
   // have the vector to ourselves.
   guard_.lock();
   guard_.unlock();
-  for (size_t i = 0; i < on_successes_.size(); i++)
-    (on_successes_[i])(value);
+  for (size_t i = 0; i < on_fulfills_.size(); i++)
+    (on_fulfills_[i])(value);
   on_failures_.clear();
-  on_successes_.clear();
+  on_fulfills_.clear();
   return true;
 }
 
@@ -108,60 +108,60 @@ bool sync_promise_state_t<T, E>::fulfill(const T &value) {
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::fail(const E &error) {
-  if (!atomic_int32_compare_and_set(&state_, psEmpty, psResolving))
+bool promise_state_t<T, E>::reject(const E &error) {
+  if (!atomic_int32_compare_and_set(&state_, psPending, psSettling))
     return false;
   // See fulfill for why we set the error first.
   unsafe_set_error(error);
-  atomic_int32_set(&state_, psFailed);
+  atomic_int32_set(&state_, psRejected);
   // At this point any new on_failure added will be executed immediately so we
   // have the vector to ourselves.
   guard_.lock();
   guard_.unlock();
   for (size_t i = 0; i < on_failures_.size(); i++)
     (on_failures_[i])(error);
-  on_successes_.clear();
+  on_fulfills_.clear();
   on_failures_.clear();
   return true;
 }
 
 template <typename T, typename E>
-bool sync_promise_state_t<T, E>::fail(const E &error) {
-  return promise_state_t<T, E>::fail(error) && drawbridge_.lower();
+bool sync_promise_state_t<T, E>::reject(const E &error) {
+  return promise_state_t<T, E>::reject(error) && drawbridge_.lower();
 }
 
 template <typename T, typename E>
 const T &promise_state_t<T, E>::peek_value(const T &if_unfulfilled) {
   // Because the value is set before state_ is changed we know that it's safe
   // to read the value in the success case even without taking the mutex.
-  return has_succeeded() ? unsafe_get_value() : if_unfulfilled;
+  return is_fulfilled() ? unsafe_get_value() : if_unfulfilled;
 }
 
 template <typename T, typename E>
 const E &promise_state_t<T, E>::peek_error(const E &if_unfulfilled) {
   // See peek_value for why this doesn't need to lock.
-  return has_failed() ? unsafe_get_error() : if_unfulfilled;
+  return is_rejected() ? unsafe_get_error() : if_unfulfilled;
 }
 
 template <typename T, typename E>
-void promise_state_t<T, E>::on_success(SuccessAction action) {
+void promise_state_t<T, E>::on_fulfill(ValueCallback action) {
   guard_.lock();
   int32_t state = atomic_int32_get(&state_);
-  if (state <= psResolving)
-    on_successes_.push_back(action);
+  if (state <= psSettling)
+    on_fulfills_.push_back(action);
   guard_.unlock();
-  if (state == psSucceeded)
+  if (state == psFulfilled)
     action(unsafe_get_value());
 }
 
 template <typename T, typename E>
-void promise_state_t<T, E>::on_failure(FailureAction action) {
+void promise_state_t<T, E>::on_reject(ErrorCallback action) {
   guard_.lock();
   int32_t state = atomic_int32_get(&state_);
-  if (state <= psResolving)
+  if (state <= psSettling)
     on_failures_.push_back(action);
   guard_.unlock();
-  if (state == psFailed)
+  if (state == psRejected)
     action(unsafe_get_error());
 }
 
@@ -174,42 +174,42 @@ void promise_t<T, E>::map_and_fulfill(promise_t<T2, E2> dest, callback_t<T2(T)> 
 
 template <typename T, typename E>
 template <typename T2, typename E2>
-void promise_t<T, E>::map_and_fail(promise_t<T2, E2> dest, callback_t<E2(E)> mapper,
+void promise_t<T, E>::map_and_reject(promise_t<T2, E2> dest, callback_t<E2(E)> mapper,
     E error) {
-  dest.fail(mapper(error));
+  dest.reject(mapper(error));
 }
 
 template <typename T, typename E>
 template <typename T2>
-void promise_t<T, E>::pass_on_failure(promise_t<T2, E> dest, E error) {
-  dest.fail(error);
+void promise_t<T, E>::pass_on_rejection(promise_t<T2, E> dest, E error) {
+  dest.reject(error);
 }
 
 template <typename T, typename E>
 template <typename T2>
 promise_t<T2, E> promise_t<T, E>::then(callback_t<T2(T)> mapper) {
-  promise_t<T2, E> result = promise_t<T2, E>::empty();
-  on_success(new_callback(map_and_fulfill<T2, E>, result, mapper));
-  on_failure(new_callback(pass_on_failure<T2>, result));
+  promise_t<T2, E> result = promise_t<T2, E>::pending();
+  on_fulfill(new_callback(map_and_fulfill<T2, E>, result, mapper));
+  on_reject(new_callback(pass_on_rejection<T2>, result));
   return result;
 }
 
 template <typename T, typename E>
 template <typename T2, typename E2>
 promise_t<T2, E2> promise_t<T, E>::then(callback_t<T2(T)> vmap, callback_t<E2(E)> emap) {
-  promise_t<T2, E2> result = promise_t<T2, E2>::empty();
-  on_success(new_callback(map_and_fulfill<T2, E2>, result, vmap));
-  on_failure(new_callback(map_and_fail<T2, E2>, result, emap));
+  promise_t<T2, E2> result = promise_t<T2, E2>::pending();
+  on_fulfill(new_callback(map_and_fulfill<T2, E2>, result, vmap));
+  on_reject(new_callback(map_and_reject<T2, E2>, result, emap));
   return result;
 }
 
 template <typename T, typename E>
-promise_t<T, E> promise_t<T, E>::empty() {
+promise_t<T, E> promise_t<T, E>::pending() {
   return promise_t<T, E>(new (kDefaultAlloc) promise_state_t<T, E>());
 }
 
 template <typename T, typename E>
-sync_promise_t<T, E> sync_promise_t<T, E>::empty() {
+sync_promise_t<T, E> sync_promise_t<T, E>::pending() {
   return sync_promise_t<T, E>(new (kDefaultAlloc) sync_promise_state_t<T, E>());
 }
 

@@ -8,67 +8,67 @@
 using namespace tclib;
 
 TEST(promise_cpp, simple) {
-  promise_t<int, int> p = promise_t<int, int>::empty();
-  ASSERT_FALSE(p.is_resolved());
-  ASSERT_FALSE(p.has_succeeded());
-  ASSERT_FALSE(p.has_failed());
+  promise_t<int, int> p = promise_t<int, int>::pending();
+  ASSERT_FALSE(p.is_settled());
+  ASSERT_FALSE(p.is_fulfilled());
+  ASSERT_FALSE(p.is_rejected());
   ASSERT_EQ(0, p.peek_value(0));
   ASSERT_EQ(5, p.peek_value(5));
   p.fulfill(10);
-  ASSERT_TRUE(p.is_resolved());
-  ASSERT_TRUE(p.has_succeeded());
-  ASSERT_FALSE(p.has_failed());
+  ASSERT_TRUE(p.is_settled());
+  ASSERT_TRUE(p.is_fulfilled());
+  ASSERT_FALSE(p.is_rejected());
   ASSERT_EQ(10, p.peek_value(0));
   ASSERT_EQ(0, p.peek_error(0));
 }
 
 TEST(promise_cpp, simple_sync) {
-  sync_promise_t<int, int> p = sync_promise_t<int, int>::empty();
-  ASSERT_FALSE(p.is_resolved());
-  ASSERT_FALSE(p.has_succeeded());
-  ASSERT_FALSE(p.has_failed());
+  sync_promise_t<int, int> p = sync_promise_t<int, int>::pending();
+  ASSERT_FALSE(p.is_settled());
+  ASSERT_FALSE(p.is_fulfilled());
+  ASSERT_FALSE(p.is_rejected());
   ASSERT_EQ(0, p.peek_value(0));
   ASSERT_EQ(5, p.peek_value(5));
   p.fulfill(10);
-  ASSERT_TRUE(p.is_resolved());
-  ASSERT_TRUE(p.has_succeeded());
-  ASSERT_FALSE(p.has_failed());
+  ASSERT_TRUE(p.is_settled());
+  ASSERT_TRUE(p.is_fulfilled());
+  ASSERT_FALSE(p.is_rejected());
   ASSERT_EQ(10, p.peek_value(0));
   ASSERT_EQ(0, p.peek_error(0));
 }
 
 TEST(promise_cpp, simple_error) {
-  promise_t<void*, int> p = promise_t<void*, int>::empty();
-  ASSERT_FALSE(p.is_resolved());
+  promise_t<void*, int> p = promise_t<void*, int>::pending();
+  ASSERT_FALSE(p.is_settled());
   ASSERT_EQ(0, p.peek_error(0));
   ASSERT_EQ(5, p.peek_error(5));
-  p.fail(10);
-  ASSERT_TRUE(p.is_resolved());
-  ASSERT_TRUE(p.has_failed());
-  ASSERT_FALSE(p.has_succeeded());
+  p.reject(10);
+  ASSERT_TRUE(p.is_settled());
+  ASSERT_TRUE(p.is_rejected());
+  ASSERT_FALSE(p.is_fulfilled());
   ASSERT_EQ(10, p.peek_error(0));
   ASSERT_PTREQ(NULL, p.peek_value(0));
 }
 
 TEST(promise_cpp, simple_error_sync) {
-  sync_promise_t<void*, int> p = sync_promise_t<void*, int>::empty();
-  ASSERT_FALSE(p.is_resolved());
+  sync_promise_t<void*, int> p = sync_promise_t<void*, int>::pending();
+  ASSERT_FALSE(p.is_settled());
   ASSERT_EQ(0, p.peek_error(0));
   ASSERT_EQ(5, p.peek_error(5));
-  p.fail(10);
-  ASSERT_TRUE(p.is_resolved());
+  p.reject(10);
+  ASSERT_TRUE(p.is_settled());
   ASSERT_EQ(10, p.peek_error(0));
 }
 
 TEST(promise_cpp, reffing) {
-  promise_t<int> p1 = promise_t<int>::empty();
+  promise_t<int> p1 = promise_t<int>::pending();
   promise_t<int> p2 = p1;
   p1 = p2;
   {
     promise_t<int> p3 = p2;
     p3 = p1;
   }
-  promise_t<int> p4 = promise_t<int>::empty();
+  promise_t<int> p4 = promise_t<int>::pending();
   p1 = p4;
   p2 = p4;
 }
@@ -100,7 +100,7 @@ TEST(promise_cpp, destruct) {
   {
     A a(&count);
     ASSERT_EQ(1, count);
-    promise_t<A> pa = promise_t<A>::empty();
+    promise_t<A> pa = promise_t<A>::pending();
     pa.fulfill(a);
     ASSERT_EQ(2, count);
   }
@@ -113,25 +113,25 @@ static void set_value(int *dest, int value) {
 
 TEST(promise_cpp, action_on_success) {
   int value_out = 0;
-  promise_t<int> pi = promise_t<int>::empty();
-  pi.on_success(new_callback(set_value, &value_out));
+  promise_t<int> pi = promise_t<int>::pending();
+  pi.on_fulfill(new_callback(set_value, &value_out));
   ASSERT_EQ(0, value_out);
   pi.fulfill(5);
   ASSERT_EQ(5, value_out);
   value_out = 0;
-  pi.on_success(new_callback(set_value, &value_out));
+  pi.on_fulfill(new_callback(set_value, &value_out));
   ASSERT_EQ(5, value_out);
 }
 
 TEST(promise_cpp, action_on_failure) {
   int value_out = 0;
-  promise_t<void*, int> pi = promise_t<void*, int>::empty();
-  pi.on_failure(new_callback(set_value, &value_out));
+  promise_t<void*, int> pi = promise_t<void*, int>::pending();
+  pi.on_reject(new_callback(set_value, &value_out));
   ASSERT_EQ(0, value_out);
-  pi.fail(5);
+  pi.reject(5);
   ASSERT_EQ(5, value_out);
   value_out = 0;
-  pi.on_failure(new_callback(set_value, &value_out));
+  pi.on_reject(new_callback(set_value, &value_out));
   ASSERT_EQ(5, value_out);
 }
 
@@ -144,29 +144,29 @@ static bool is_even(int value) {
 }
 
 TEST(promise_cpp, then_success) {
-  promise_t<int> a = promise_t<int>::empty();
+  promise_t<int> a = promise_t<int>::pending();
   promise_t<int> b = a.then<int>(new_callback(shift_plus_n, 4));
   promise_t<int> c = b.then<int>(new_callback(shift_plus_n, 5));
   promise_t<int> d = c.then<int>(new_callback(shift_plus_n, 6));
   promise_t<bool> is_d_even = d.then<bool>(is_even);
   a.fulfill(8);
   ASSERT_EQ(8456, d.peek_value(0));
-  ASSERT_TRUE(d.has_succeeded());
-  ASSERT_FALSE(d.has_failed());
+  ASSERT_TRUE(d.is_fulfilled());
+  ASSERT_FALSE(d.is_rejected());
   ASSERT_EQ(845, c.peek_value(0));
   ASSERT_EQ(84, b.peek_value(0));
   ASSERT_EQ(true, is_d_even.peek_value(false));
 }
 
 TEST(promise_cpp, then_failure) {
-  promise_t<int, int> a = promise_t<int, int>::empty();
+  promise_t<int, int> a = promise_t<int, int>::pending();
   promise_t<int, int> b = a.then<int>(new_callback(shift_plus_n, 7));
   promise_t<int, int> c = b.then<int>(new_callback(shift_plus_n, 8));
   promise_t<int, int> d = c.then<int>(new_callback(shift_plus_n, 9));
-  a.fail(100);
+  a.reject(100);
   ASSERT_EQ(100, d.peek_error(0));
-  ASSERT_TRUE(d.has_failed());
-  ASSERT_FALSE(d.has_succeeded());
+  ASSERT_TRUE(d.is_rejected());
+  ASSERT_FALSE(d.is_fulfilled());
   ASSERT_EQ(100, c.peek_error(0));
   ASSERT_EQ(100, b.peek_error(0));
 }
@@ -186,7 +186,7 @@ static void *run_sync_waiter(NativeSemaphore *about_to_wait,
 }
 
 TEST(promise_cpp, sync_wait) {
-  sync_promise_t<int> p = sync_promise_t<int>::empty();
+  sync_promise_t<int> p = sync_promise_t<int>::pending();
   NativeSemaphore about_to_wait(0);
   ASSERT_TRUE(about_to_wait.initialize());
   NativeSemaphore has_waited(0);

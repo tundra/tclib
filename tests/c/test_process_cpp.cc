@@ -468,7 +468,7 @@ TEST(process_cpp, terminate_avalanche) {
     NativeProcess *process = &processes[i];
     ASSERT_TRUE(process->start(get_durian_main(), 4, argv));
     promise_t<int> exit_code = process->exit_code();
-    ASSERT_FALSE(exit_code.is_resolved());
+    ASSERT_FALSE(exit_code.is_settled());
     exit_code.then(new_callback(async_exit, &callback_count));
   }
 
@@ -491,7 +491,7 @@ TEST(process_cpp, terminate_avalanche) {
   for (size_t i = 0; i < kProcessCount; i++) {
     ASSERT_TRUE(processes[i].wait_sync());
     promise_t<int> exit_code = processes[i].exit_code();
-    ASSERT_TRUE(exit_code.is_resolved());
+    ASSERT_TRUE(exit_code.is_settled());
     ASSERT_EQ(88, exit_code.peek_value(0));
     ASSERT_TRUE(callback_count.acquire());
   }

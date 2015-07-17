@@ -17,24 +17,24 @@ static opaque_t count_and_check(opaque_t raw_counter, opaque_t raw_value) {
 }
 
 TEST(promise_c, simple_success) {
-  opaque_promise_t *promise = opaque_promise_empty();
-  ASSERT_FALSE(opaque_promise_is_resolved(promise));
+  opaque_promise_t *promise = opaque_promise_pending();
+  ASSERT_FALSE(opaque_promise_is_settled(promise));
   size_t successes = 0;
   size_t failures = 0;
   unary_callback_t *on_success = unary_callback_new_1(count_and_check, p2o(&successes));
-  opaque_promise_on_success(promise, on_success, omDontTakeOwnership);
+  opaque_promise_on_fulfill(promise, on_success, omDontTakeOwnership);
   ASSERT_EQ(0, successes);
   unary_callback_t *on_failure = unary_callback_new_1(count_and_check, p2o(&failures));
-  opaque_promise_on_failure(promise, on_failure, omDontTakeOwnership);
+  opaque_promise_on_reject(promise, on_failure, omDontTakeOwnership);
   ASSERT_EQ(0, failures);
   opaque_promise_fulfill(promise, u2o(kValue));
   ASSERT_EQ(1, successes);
   ASSERT_EQ(0, failures);
-  ASSERT_TRUE(opaque_promise_is_resolved(promise));
-  opaque_promise_on_success(promise, on_success, omDontTakeOwnership);
+  ASSERT_TRUE(opaque_promise_is_settled(promise));
+  opaque_promise_on_fulfill(promise, on_success, omDontTakeOwnership);
   ASSERT_EQ(2, successes);
   ASSERT_EQ(0, failures);
-  opaque_promise_on_failure(promise, on_failure, omDontTakeOwnership);
+  opaque_promise_on_reject(promise, on_failure, omDontTakeOwnership);
   ASSERT_EQ(2, successes);
   ASSERT_EQ(0, failures);
   opaque_promise_destroy(promise);
@@ -43,24 +43,24 @@ TEST(promise_c, simple_success) {
 }
 
 TEST(promise_c, simple_failure) {
-  opaque_promise_t *promise = opaque_promise_empty();
-  ASSERT_FALSE(opaque_promise_is_resolved(promise));
+  opaque_promise_t *promise = opaque_promise_pending();
+  ASSERT_FALSE(opaque_promise_is_settled(promise));
   size_t successes = 0;
   size_t failures = 0;
   unary_callback_t *on_success = unary_callback_new_1(count_and_check, p2o(&successes));
-  opaque_promise_on_success(promise, on_success, omDontTakeOwnership);
+  opaque_promise_on_fulfill(promise, on_success, omDontTakeOwnership);
   ASSERT_EQ(0, successes);
   unary_callback_t *on_failure = unary_callback_new_1(count_and_check, p2o(&failures));
-  opaque_promise_on_failure(promise, on_failure, omDontTakeOwnership);
+  opaque_promise_on_reject(promise, on_failure, omDontTakeOwnership);
   ASSERT_EQ(0, failures);
-  opaque_promise_fail(promise, u2o(kValue));
+  opaque_promise_reject(promise, u2o(kValue));
   ASSERT_EQ(0, successes);
   ASSERT_EQ(1, failures);
-  ASSERT_TRUE(opaque_promise_is_resolved(promise));
-  opaque_promise_on_success(promise, on_success, omDontTakeOwnership);
+  ASSERT_TRUE(opaque_promise_is_settled(promise));
+  opaque_promise_on_fulfill(promise, on_success, omDontTakeOwnership);
   ASSERT_EQ(0, successes);
   ASSERT_EQ(1, failures);
-  opaque_promise_on_failure(promise, on_failure, omDontTakeOwnership);
+  opaque_promise_on_reject(promise, on_failure, omDontTakeOwnership);
   ASSERT_EQ(0, successes);
   ASSERT_EQ(2, failures);
   opaque_promise_destroy(promise);
@@ -73,7 +73,7 @@ static opaque_t plus_one(opaque_t o_n) {
 }
 
 TEST(promise_c, then_ownership) {
-  opaque_promise_t *p0 = opaque_promise_empty();
+  opaque_promise_t *p0 = opaque_promise_pending();
   opaque_promise_t *p1 = opaque_promise_then(p0, unary_callback_new_0(plus_one),
       omTakeOwnership);
   opaque_promise_t *p2 = opaque_promise_then(p1, unary_callback_new_0(plus_one),

@@ -17,8 +17,8 @@ typedef enum {
   omDontTakeOwnership
 } ownership_mode_t;
 
-// Creates and returns a new empty opaque promise.
-opaque_promise_t *opaque_promise_empty();
+// Creates and returns a new pending opaque promise.
+opaque_promise_t *opaque_promise_pending();
 
 // Returns a new promise whose value is the result of invoking the given
 // callback to the value of the given promise. If the promise fails, the result
@@ -26,8 +26,9 @@ opaque_promise_t *opaque_promise_empty();
 opaque_promise_t *opaque_promise_then(opaque_promise_t *promise,
     unary_callback_t *callback, ownership_mode_t ownership);
 
-// Returns true iff the given promise has been resolved, success or failure.
-bool opaque_promise_is_resolved(opaque_promise_t *promise);
+// Returns true iff the given promise has been settled, that is fulfilled or
+// rejected.
+bool opaque_promise_is_settled(opaque_promise_t *promise);
 
 // Returns the value of the given promise if it has been fulfilled, otherwise
 // the given fallback value.
@@ -39,18 +40,18 @@ bool opaque_promise_fulfill(opaque_promise_t *promise, opaque_t value);
 
 // Fail an opaque promise with the given value, if it hasn't already been
 // resolved.
-bool opaque_promise_fail(opaque_promise_t *promise, opaque_t error);
+bool opaque_promise_reject(opaque_promise_t *promise, opaque_t error);
 
 // Adds a callback to the set that will be invoked when the given promise
 // succeeds. The callback must not be disposed until after it has been called;
 // it is safe do dispose it during the call itself.
-void opaque_promise_on_success(opaque_promise_t *promise, unary_callback_t *callback,
+void opaque_promise_on_fulfill(opaque_promise_t *promise, unary_callback_t *callback,
     ownership_mode_t ownership);
 
 // Adds a callback to the set that will be invoked when the given promise
 // fails. The callback must not be disposed until after it has been called;
 // it is safe do dispose it during the call itself.
-void opaque_promise_on_failure(opaque_promise_t *promise, unary_callback_t *callback,
+void opaque_promise_on_reject(opaque_promise_t *promise, unary_callback_t *callback,
     ownership_mode_t ownership);
 
 // Disposes an opaque promise.

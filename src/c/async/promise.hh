@@ -20,26 +20,26 @@ namespace tclib {
 template <typename T, typename E = void*>
 class promise_state_t : public refcount_shared_t {
 public:
-  typedef callback_t<void(T)> SuccessAction;
-  typedef callback_t<void(E)> FailureAction;
+  typedef callback_t<void(T)> ValueCallback;
+  typedef callback_t<void(E)> ErrorCallback;
   promise_state_t();
   virtual ~promise_state_t();
   virtual bool fulfill(const T &value);
-  virtual bool fail(const E &value);
-  bool is_resolved();
-  bool has_succeeded();
-  bool has_failed();
+  virtual bool reject(const E &value);
+  bool is_settled();
+  bool is_fulfilled();
+  bool is_rejected();
   const T &peek_value(const T &if_unfulfilled);
   const E &peek_error(const E &if_unfulfilled);
-  void on_success(SuccessAction action);
-  void on_failure(FailureAction action);
+  void on_fulfill(ValueCallback action);
+  void on_reject(ErrorCallback action);
 
 protected:
   typedef enum {
-    psEmpty = 0,
-    psResolving = 1,
-    psSucceeded = 2,
-    psFailed = 3
+    psPending = 0,
+    psSettling = 1,
+    psFulfilled = 2,
+    psRejected = 3
   } state_t;
 
   atomic_int32_t state_;
@@ -48,8 +48,8 @@ protected:
   const T &unsafe_get_value();
   const E &unsafe_get_error();
   NativeMutex guard_;
-  std::vector<SuccessAction> on_successes_;
-  std::vector<FailureAction> on_failures_;
+  std::vector<ValueCallback> on_fulfills_;
+  std::vector<ErrorCallback> on_failures_;
 
 protected:
   virtual size_t instance_size() { return sizeof(*this); }
@@ -103,21 +103,22 @@ public:
     return state()->fulfill(value);
   }
 
-  // Fails this promise, causing the error to be set and any failure actions to
-  // be performed, but only if this promise is currently empty. Returns true iff
-  // that was the case.
-  bool fail(const E &error) {
-    return state()->fail(error);
+  // Reject this promise, causing the error to be set and any reject actions to
+  // be performed, but only if this promise is currently pending. Returns true
+  // iff that was the case.
+  bool reject(const E &error) {
+    return state()->reject(error);
   }
 
-  // Returns true iff this promise has been resolved.
-  bool is_resolved() { return state()->is_resolved(); }
+  // Returns true iff this promise has been settled, that is, fulfilled or
+  // rejected.
+  bool is_settled() { return state()->is_settled(); }
 
-  // Returns true iff this promise has been resolved successfully.
-  bool has_succeeded() { return state()->has_succeeded(); }
+  // Returns true iff this promise has been fulfilled successfully.
+  bool is_fulfilled() { return state()->is_fulfilled(); }
 
-  // Returns true iff this promise has been resolved with a failure.
-  bool has_failed() { return state()->has_failed(); }
+  // Returns true iff this promise has been rejected successfully.
+  bool is_rejected() { return state()->is_rejected(); }
 
   // Returns the value this promise resolved to or, if it hasn't been resolved
   // yet, the given default value.
@@ -130,14 +131,14 @@ public:
   // Adds a callback to be invoked when (if) this promise is successfully
   // resolved. If this promise has already been resolved the action is invoked
   // with the value immediately.
-  void on_success(typename promise_state_t<T, E>::SuccessAction action) {
-    state()->on_success(action);
+  void on_fulfill(typename promise_state_t<T, E>::ValueCallback action) {
+    state()->on_fulfill(action);
   }
 
   // Adds a callback to be invoked when (if) this promise fails. If this promise has already been resolved the action is invoked
   // with the value immediately.
-  void on_failure(typename promise_state_t<T, E>::FailureAction action) {
-    state()->on_failure(action);
+  void on_reject(typename promise_state_t<T, E>::ErrorCallback action) {
+    state()->on_reject(action);
   }
 
   // Returns a new promise that resolves when this one does in the same way,
@@ -150,8 +151,8 @@ public:
   template <typename T2, typename E2>
   promise_t<T2, E2> then(callback_t<T2(T)> vmap, callback_t<E2(E)> emap);
 
-  // Returns a fresh empty promise.
-  static promise_t<T, E> empty();
+  // Returns a fresh pending promise.
+  static promise_t<T, E> pending();
 
 protected:
   promise_t<T, E>(promise_state_t<T, E> *state) : super_t(state) { }
@@ -160,10 +161,10 @@ protected:
   static void map_and_fulfill(promise_t<T2, E2> dest, callback_t<T2(T)> mapper,
       T value);
   template <typename T2, typename E2>
-  static void map_and_fail(promise_t<T2, E2> dest, callback_t<E2(E)> mapper,
+  static void map_and_reject(promise_t<T2, E2> dest, callback_t<E2(E)> mapper,
       E error);
   template <typename T2>
-  static void pass_on_failure(promise_t<T2, E> dest, E error);
+  static void pass_on_rejection(promise_t<T2, E> dest, E error);
 
   promise_state_t<T, E> *state() { return super_t::refcount_shared(); }
 };
@@ -180,7 +181,7 @@ public:
   ~sync_promise_state_t() { }
   bool wait(Duration timeout);
   virtual bool fulfill(const T &value);
-  virtual bool fail(const E &value);
+  virtual bool reject(const E &value);
 protected:
   virtual size_t instance_size() { return sizeof(*this); }
 
@@ -191,7 +192,7 @@ private:
 };
 
 // A sync promise is like a promise but safe to share between threads. Also, you
-// can wait for a sync promise to resolve.
+// can wait for a sync promise to settle.
 //
 // Converting a sync promise to a plain one is fine, it will retain its thread
 // safety properties.
@@ -199,7 +200,7 @@ template <typename T, typename E = void*>
 class sync_promise_t : public promise_t<T, E> {
 public:
   // Returns a fresh empty promise.
-  static sync_promise_t<T, E> empty();
+  static sync_promise_t<T, E> pending();
 
   // Blocks this thread until this promise has been fulfilled. Once this returns
   // you can use the peek_ methods to get the value/error.

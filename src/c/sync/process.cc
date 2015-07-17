@@ -49,7 +49,7 @@ bool StreamRedirect::child_side_close() {
 
 NativeProcess::NativeProcess()
   : platform_data_(NULL)
-  , exit_code_(sync_promise_t<int>::empty())
+  , exit_code_(sync_promise_t<int>::pending())
   , opaque_exit_code_(NULL) {
   state = nsInitial;
 }

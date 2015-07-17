@@ -28,12 +28,12 @@ static naked_opaque_promise_t uncloak(opaque_promise_t *promise) {
   return *reinterpret_cast<naked_opaque_promise_t*>(promise);
 }
 
-opaque_promise_t *opaque_promise_empty() {
-  return to_opaque_promise(naked_opaque_promise_t::empty());
+opaque_promise_t *opaque_promise_pending() {
+  return to_opaque_promise(naked_opaque_promise_t::pending());
 }
 
-bool opaque_promise_is_resolved(opaque_promise_t *promise) {
-  return uncloak(promise).is_resolved();
+bool opaque_promise_is_settled(opaque_promise_t *promise) {
+  return uncloak(promise).is_settled();
 }
 
 opaque_t opaque_promise_peek_value(opaque_promise_t *promise, opaque_t otherwise) {
@@ -44,8 +44,8 @@ bool opaque_promise_fulfill(opaque_promise_t *promise, opaque_t value) {
   return uncloak(promise).fulfill(value);
 }
 
-bool opaque_promise_fail(opaque_promise_t *promise, opaque_t error) {
-  return uncloak(promise).fail(error);
+bool opaque_promise_reject(opaque_promise_t *promise, opaque_t error) {
+  return uncloak(promise).reject(error);
 }
 
 static void opaque_promise_callback_trampoline(unary_callback_t *callback,
@@ -55,15 +55,15 @@ static void opaque_promise_callback_trampoline(unary_callback_t *callback,
     callback_destroy(callback);
 }
 
-void opaque_promise_on_success(opaque_promise_t *promise, unary_callback_t *callback,
+void opaque_promise_on_fulfill(opaque_promise_t *promise, unary_callback_t *callback,
     ownership_mode_t ownership) {
-  uncloak(promise).on_success(new_callback(opaque_promise_callback_trampoline,
+  uncloak(promise).on_fulfill(new_callback(opaque_promise_callback_trampoline,
       callback, ownership));
 }
 
-void opaque_promise_on_failure(opaque_promise_t *promise, unary_callback_t *callback,
+void opaque_promise_on_reject(opaque_promise_t *promise, unary_callback_t *callback,
     ownership_mode_t ownership) {
-  uncloak(promise).on_failure(new_callback(opaque_promise_callback_trampoline,
+  uncloak(promise).on_reject(new_callback(opaque_promise_callback_trampoline,
       callback, ownership));
 }
 
