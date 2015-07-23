@@ -115,36 +115,6 @@ IF_CHECKS_ENABLED(CHECK_EQ(M, get_boolean_value(E), false))
   }                                                                            \
 } while (false)
 
-// Check that a given value is either nothing or belongs to a particular class,
-// where the class is given by calling a particular getter on the value. You
-// generally don't want to use this directly.
-#define __CHECK_CLASS_OR_NOTHING__(class_t, cExpected, EXPR, get_class) do {   \
-  value_t __value__ = (EXPR);                                                  \
-  if (!is_nothing(__value__)) {                                                \
-    class_t __class__ = get_class(__value__);                                  \
-    if (__class__ != cExpected) {                                              \
-      const char *__class_name__ = get_class##_name(__class__);                \
-      check_fail(__FILE__, __LINE__, "Check failed: %s(%s) == %s.\n  Found: %s", \
-          #get_class, #EXPR, #cExpected, __class_name__);                      \
-    }                                                                          \
-  }                                                                            \
-} while (false)
-
-// Check that a given value is either null or belongs to a particular class,
-// where the class is given by calling a particular getter on the value. You
-// generally don't want to use this directly.
-#define __CHECK_CLASS_OR_NULL__(class_t, cExpected, EXPR, get_class) do {      \
-  value_t __value__ = (EXPR);                                                  \
-  if (!is_null(__value__)) {                                                   \
-    class_t __class__ = get_class(__value__);                                  \
-    if (__class__ != cExpected) {                                              \
-      const char *__class_name__ = get_class##_name(__class__);                \
-      check_fail(__FILE__, __LINE__, "Check failed: %s(%s) == %s.\n  Found: %s", \
-          #get_class, #EXPR, #cExpected, __class_name__);                      \
-    }                                                                          \
-  }                                                                            \
-} while (false)
-
 // Check that fails unless the value is in the specified domain.
 #define CHECK_DOMAIN_RAW(vdDomain, EXPR)                                       \
 IF_CHECKS_ENABLED(__CHECK_CLASS__(value_domain_t, vdDomain, EXPR, get_value_domain))
@@ -154,60 +124,10 @@ IF_CHECKS_ENABLED(__CHECK_CLASS__(value_domain_t, vdDomain, EXPR, get_value_doma
 #define CHECK_DOMAIN_HOT(vdDomain, EXPR)                                       \
 IF_EXPENSIVE_CHECKS_ENABLED(CHECK_DOMAIN_RAW(vdDomain, EXPR))
 
-// Check that fails unless the value is a custom tagged value in the given phylum.
-#define CHECK_PHYLUM(tpPhylum, EXPR)                                           \
-IF_CHECKS_ENABLED(__CHECK_CLASS__(custom_tagged_phylum_t, tpPhylum, EXPR, get_custom_tagged_phylum))
-
-// Check that fails unless the value is a custom tagged value in the given phylum
-// or is nothing.
-#define CHECK_PHYLUM_OPT(tpPhylum, EXPR)                                       \
-IF_CHECKS_ENABLED(__CHECK_CLASS_OR_NOTHING__(custom_tagged_phylum_t, tpPhylum, EXPR, get_custom_tagged_phylum))
-
-// Check that fails unless the object is in the specified family.
-#define CHECK_GENUS(dgGenus, EXPR)                                             \
-IF_CHECKS_ENABLED(__CHECK_CLASS__(derived_object_genus_t, dgGenus, EXPR, get_derived_object_genus))
-
-// Check that fails unless the object is nothing or in the specified genus.
-#define CHECK_GENUS_OPT(dgGenus, EXPR)                                         \
-IF_CHECKS_ENABLED(__CHECK_CLASS_OR_NOTHING__(derived_object_genus_t, dgGenus, EXPR, get_derived_object_genus))
-
-// Check that fails unless the given expression is in a mutable mode.
-#define CHECK_MUTABLE(EXPR)                                                    \
-IF_CHECKS_ENABLED(CHECK_TRUE("mutable", is_mutable(EXPR)))
-
-// Check that fails unless the given expression is deep frozen.
-#define CHECK_DEEP_FROZEN(EXPR)                                                \
-IF_CHECKS_ENABLED(CHECK_TRUE("deep frozen", peek_deep_frozen(EXPR)))
-
-// Check that fails unless the given expression is frozen.
-#define CHECK_FROZEN(EXPR)                                                     \
-IF_CHECKS_ENABLED(CHECK_TRUE("frozen", is_frozen(EXPR)))
-
-// Check that fails unless the object is in the specified family or nothing.
-#define CHECK_FAMILY_OR_NULL(ofFamily, EXPR)                                   \
-IF_CHECKS_ENABLED(__CHECK_CLASS_OR_NULL__(heap_object_family_t, ofFamily, EXPR, get_heap_object_family))
-
-// Check that fails unless the object is in a syntax family or nothing.
-#define CHECK_SYNTAX_FAMILY_OPT(EXPR)                                          \
-IF_CHECKS_ENABLED(__CHECK_CLASS_OR_NOTHING__(bool, true, EXPR, in_syntax_family))
-
-// Check that fails unless the species is in the specified division.
-#define CHECK_DIVISION(sdDivision, EXPR)                                       \
-IF_CHECKS_ENABLED(__CHECK_CLASS__(species_division_t, sdDivision, EXPR, get_species_division))
-
 // Fails if executed. These aren't disabled when checks are off since they
 // won't get executed under normal circumstances so they're free.
 #define UNREACHABLE(M) do {                                                    \
   check_fail(__FILE__, __LINE__, "Unreachable (" M ").");                      \
-} while (false)
-
-// Check that a given value belongs to a particular class and otherwise returns
-// a condition, where the class is given by calling a particular getter on the
-// value. You generally don't want to use this directly.
-#define EXPECT_CLASS(scCause, class_t, cExpected, EXPR, get_class) do {        \
-  class_t __class__ = get_class(EXPR);                                         \
-  if (__class__ != cExpected)                                                  \
-    return new_condition(scCause);                                             \
 } while (false)
 
 #endif // _UTILS_CHECK
