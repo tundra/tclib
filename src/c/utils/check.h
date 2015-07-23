@@ -4,8 +4,8 @@
 // Runtime assertions.
 
 
-#ifndef _CHECK
-#define _CHECK
+#ifndef _UTILS_CHECK
+#define _UTILS_CHECK
 
 #include "c/stdc.h"
 #include "utils/crash.h"
@@ -146,17 +146,13 @@ IF_CHECKS_ENABLED(CHECK_EQ(M, get_boolean_value(E), false))
 } while (false)
 
 // Check that fails unless the value is in the specified domain.
-#define CHECK_DOMAIN(vdDomain, EXPR)                                           \
+#define CHECK_DOMAIN_RAW(vdDomain, EXPR)                                       \
 IF_CHECKS_ENABLED(__CHECK_CLASS__(value_domain_t, vdDomain, EXPR, get_value_domain))
 
 // Works the same way as CHECK_DOMAIN but can be used in hot code because it
 // gets enabled and disabled as an expensive check.
 #define CHECK_DOMAIN_HOT(vdDomain, EXPR)                                       \
-IF_EXPENSIVE_CHECKS_ENABLED(CHECK_DOMAIN(vdDomain, EXPR))
-
-// Check that fails unless the object is in the specified family or nothing.
-#define CHECK_DOMAIN_OPT(vdDomain, EXPR)                                       \
-IF_CHECKS_ENABLED(__CHECK_CLASS_OR_NOTHING__(value_domain_t, vdDomain, EXPR, get_value_domain))
+IF_EXPENSIVE_CHECKS_ENABLED(CHECK_DOMAIN_RAW(vdDomain, EXPR))
 
 // Check that fails unless the value is a custom tagged value in the given phylum.
 #define CHECK_PHYLUM(tpPhylum, EXPR)                                           \
@@ -166,10 +162,6 @@ IF_CHECKS_ENABLED(__CHECK_CLASS__(custom_tagged_phylum_t, tpPhylum, EXPR, get_cu
 // or is nothing.
 #define CHECK_PHYLUM_OPT(tpPhylum, EXPR)                                       \
 IF_CHECKS_ENABLED(__CHECK_CLASS_OR_NOTHING__(custom_tagged_phylum_t, tpPhylum, EXPR, get_custom_tagged_phylum))
-
-// Check that fails unless the object is in the specified family.
-#define CHECK_FAMILY(ofFamily, EXPR)                                           \
-IF_CHECKS_ENABLED(__CHECK_CLASS__(heap_object_family_t, ofFamily, EXPR, get_heap_object_family))
 
 // Check that fails unless the object is in the specified family.
 #define CHECK_GENUS(dgGenus, EXPR)                                             \
@@ -190,10 +182,6 @@ IF_CHECKS_ENABLED(CHECK_TRUE("deep frozen", peek_deep_frozen(EXPR)))
 // Check that fails unless the given expression is frozen.
 #define CHECK_FROZEN(EXPR)                                                     \
 IF_CHECKS_ENABLED(CHECK_TRUE("frozen", is_frozen(EXPR)))
-
-// Check that fails unless the object is in the specified family or nothing.
-#define CHECK_FAMILY_OPT(ofFamily, EXPR)                                       \
-IF_CHECKS_ENABLED(__CHECK_CLASS_OR_NOTHING__(heap_object_family_t, ofFamily, EXPR, get_heap_object_family))
 
 // Check that fails unless the object is in the specified family or nothing.
 #define CHECK_FAMILY_OR_NULL(ofFamily, EXPR)                                   \
@@ -222,8 +210,4 @@ IF_CHECKS_ENABLED(__CHECK_CLASS__(species_division_t, sdDivision, EXPR, get_spec
     return new_condition(scCause);                                             \
 } while (false)
 
-// Check that returns a condition unless the object is in the specified family.
-#define EXPECT_FAMILY(scCause, ofFamily, EXPR)                                 \
-EXPECT_CLASS(scCause, heap_object_family_t, ofFamily, EXPR, get_heap_object_family)
-
-#endif // _CHECK
+#endif // _UTILS_CHECK
