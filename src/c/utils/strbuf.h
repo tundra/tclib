@@ -46,14 +46,17 @@ utf8_t string_buffer_flush(string_buffer_t *buf);
 
 INTERFACE(format_handler_o);
 
+// Flags that can be set in a format request to control how values are printed.
 typedef enum {
-  ffDash = 1,
-  ffPlus = 2,
-  ffSpace = 4,
-  ffZero = 8,
-  ffHash = 16
+  ffDash = (1 << 0),
+  ffPlus = (1 << 1),
+  ffSpace = (1 << 2),
+  ffZero = (1 << 3),
+  ffHash = (1 << 4)
 } format_flag_t;
 
+// Format flag characters. The order must match the enum values, so the enum
+// value corresponding to the i'th format char must have value (1 << i).
 #define kPrintfFormatFlags "-+ 0#"
 
 typedef struct {
