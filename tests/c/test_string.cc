@@ -126,8 +126,8 @@ static void format_test_value(format_handler_o *self, format_request_t *request,
     va_list_ref_t argp) {
   test_format_handler_o *handler = (test_format_handler_o*) self;
   char *value = va_arg(VA_LIST_DEREF(argp), char*);
-  string_buffer_native_printf(request->buf, "[T %s %i %i]", value,
-      handler->count++, request->width);
+  string_buffer_native_printf(request->buf, "[T %s %i w%i f%i]", value,
+      handler->count++, request->width, request->flags);
 }
 
 TEST(string, custom_formatter) {
@@ -139,8 +139,8 @@ TEST(string, custom_formatter) {
 
   string_buffer_t buf;
   ASSERT_TRUE(string_buffer_init(&buf));
-  string_buffer_printf(&buf, "[foo %8t %7t %6t bar]", "bah", "hum", "bug");
-  ASSERT_C_STREQ("[foo [T bah 0 8] [T hum 1 7] [T bug 2 6] bar]",
+  string_buffer_printf(&buf, "[foo %+8t %#7t %06t bar]", "bah", "hum", "bug");
+  ASSERT_C_STREQ("[foo [T bah 0 w8 f2] [T hum 1 w7 f16] [T bug 2 w6 f8] bar]",
       string_buffer_flush(&buf).chars);
   string_buffer_dispose(&buf);
 

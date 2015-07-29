@@ -31,12 +31,14 @@ typedef enum {
 // Call the given callback for each log level, log level character, log level
 // value, and destination log stream. The more serious the error the higher the
 // value will be.
+//
+//  Name     char value stream    action      fail exit code
 #define ENUM_LOG_LEVELS(C)                                                     \
-  C(Info,    I, 1, lsStdout, lbContinue)                                       \
-  C(Warning, W, 2, lsStderr, lbContinue)                                       \
-  C(Error,   E, 3, lsStderr, lbContinue)                                       \
-  C(Fatal,   F, 4, lsStderr, lbAbort)                                          \
-  C(Hest,    H, 5, lsStderr, lbContinue)
+  C(Info,    I,   1,    lsStdout, lbContinue, _)                               \
+  C(Warning, W,   2,    lsStderr, lbContinue, _)                               \
+  C(Error,   E,   3,    lsStderr, lbContinue, X)                               \
+  C(Fatal,   F,   4,    lsStderr, lbAbort,    X)                               \
+  C(Hest,    H,   5,    lsStderr, lbContinue, _)
 
 // Special log topics that can be turned on and off statically and dynamically.
 // These are useful if you want to instrument particular areas of the code but
@@ -71,7 +73,7 @@ bool set_topic_logging_enabled(bool value);
 // Log levels, used to select which logging statements to emit.
 typedef enum {
   __llFirst__ = -1
-#define __DECLARE_LOG_LEVEL__(Name, C, V, S, B) , ll##Name = V
+#define __DECLARE_LOG_LEVEL__(Name, C, V, S, B, E) , ll##Name = V
   ENUM_LOG_LEVELS(__DECLARE_LOG_LEVEL__)
 #undef __DECLARE_LOG_LEVEL__
 } log_level_t;
@@ -102,6 +104,10 @@ void log_entry_init(log_entry_t *entry, log_stream_t destination,
 
 // Logs a message that has already been processed into an entry.
 bool log_entry(log_entry_t *entry);
+
+// Returns true if an entry has been logged whose log level requires the runtime
+// to yield a non-successful error code.
+bool has_logged_error_code_exit_entry();
 
 INTERFACE(log_o);
 

@@ -112,4 +112,11 @@ typedef size_t address_arith_t;
 #define JOIN3(A, B, C) A##_##B##_##C
 #define JOIN2(A, B) A##_##B
 
+// Macro argument that indicates true.
+#define X(T, F) T
+
+// Macro argument that indicates false.
+#define _(T, F) F
+
+
 #endif // _STDC

@@ -108,7 +108,7 @@ static format_handler_o **get_format_handler_ref(int c) {
   return &format_handlers[c];
 }
 
-static const char *kPrintfFlagChars = "-+ 0#";
+static const char *kPrintfFlagChars = kPrintfFormatFlags;
 static const char *kPrintfWidthChars = "0123456789";
 static const char *kPrintfPrecisionChars = "0123456789";
 static const char *kPrintfLengthModifierChars = "lLh";
@@ -130,10 +130,14 @@ bool string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
       const char *start = p;
       p++;
       int width = -1;
+      int32_t flags = 0;
       size_t ls = 0, Ls = 0;
       // Skip across the flags; they don't really matter here.
-      while (*p && string_contains(kPrintfFlagChars, *p))
+      while (*p && string_contains(kPrintfFlagChars, *p)) {
+        size_t index = (strchr(kPrintfFlagChars, *p) - kPrintfFlagChars);
+        flags = flags | (1 << index);
         p++;
+      }
       // Skip across the width, recording it in the width variable so it can be
       // passed to the custom formatters.
       while (*p && string_contains(kPrintfWidthChars, *p)) {
@@ -203,7 +207,7 @@ bool string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
           if (handler == NULL || (*handler) == NULL) {
             B_TRY(string_buffer_native_printf(buf, "%%%c", c));
           } else {
-            format_request_t request = {buf, width, c};
+            format_request_t request = {buf, width, flags, c};
             METHOD(*handler, write_format_value)(*handler, &request, VA_LIST_REF(argp));
           }
           break;

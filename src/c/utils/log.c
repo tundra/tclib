@@ -21,7 +21,7 @@ bool set_topic_logging_enabled(bool value) {
 // Returns the initial for the given log level.
 static const char *get_log_level_char(log_level_t level) {
   switch (level) {
-#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return #C;
+#define __LEVEL_CASE__(Name, C, V, S, B, E) case ll##Name: return #C;
     ENUM_LOG_LEVELS(__LEVEL_CASE__)
 #undef __LEVEL_CASE__
     default:
@@ -32,7 +32,7 @@ static const char *get_log_level_char(log_level_t level) {
 // Returns the full name of the given log level.
 static const char *get_log_level_name(log_level_t level) {
   switch (level) {
-#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return #Name;
+#define __LEVEL_CASE__(Name, C, V, S, B, E) case ll##Name: return #Name;
     ENUM_LOG_LEVELS(__LEVEL_CASE__)
 #undef __LEVEL_CASE__
     default:
@@ -43,7 +43,7 @@ static const char *get_log_level_name(log_level_t level) {
 // Returns the destination stream of the given log level.
 static log_stream_t get_log_level_destination(log_level_t level) {
   switch (level) {
-#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return S;
+#define __LEVEL_CASE__(Name, C, V, S, B, E) case ll##Name: return S;
     ENUM_LOG_LEVELS(__LEVEL_CASE__)
 #undef __LEVEL_CASE__
     default:
@@ -54,11 +54,24 @@ static log_stream_t get_log_level_destination(log_level_t level) {
 // Returns the destination stream of the given log level.
 static log_behavior_t get_log_level_behavior(log_level_t level) {
   switch (level) {
-#define __LEVEL_CASE__(Name, C, V, S, B) case ll##Name: return B;
+#define __LEVEL_CASE__(Name, C, V, S, B, E) case ll##Name: return B;
     ENUM_LOG_LEVELS(__LEVEL_CASE__)
 #undef __LEVEL_CASE__
     default:
       return lbContinue;
+  }
+}
+
+// When we log at the given log level, should that automatically mean that the
+// return code from the runtime indicates error?
+static bool get_log_level_fail_exit_code(log_level_t level) {
+  switch (level) {
+#define __LEVEL_CASE__(Name, C, V, S, B, E) E(case ll##Name:,)
+    ENUM_LOG_LEVELS(__LEVEL_CASE__)
+#undef __LEVEL_CASE__
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -74,6 +87,8 @@ IMPLEMENTATION(default_log_o, log_o);
 
 static log_o kDefaultLog;
 static log_o *global_log = NULL;
+
+static bool has_logged_error_code_exit_entry_ = false;
 
 // The default abort handler which prints the message to stdout/err and aborts
 // execution.
@@ -99,11 +114,17 @@ static bool default_log(log_o *log, log_entry_t *entry) {
         get_log_level_name(entry->level), entry->message.chars,
         get_log_level_char(entry->level), entry->timestamp.chars);
   }
+  if (get_log_level_fail_exit_code(entry->level))
+    has_logged_error_code_exit_entry_ = true;
   out_stream_flush(dest);
   return true;
 }
 
 VTABLE(default_log_o, log_o) { default_log };
+
+bool has_logged_error_code_exit_entry() {
+  return has_logged_error_code_exit_entry_;
+}
 
 // Returns the current global abort callback.
 static log_o *get_global_log() {

@@ -46,12 +46,24 @@ utf8_t string_buffer_flush(string_buffer_t *buf);
 
 INTERFACE(format_handler_o);
 
+typedef enum {
+  ffDash = 1,
+  ffPlus = 2,
+  ffSpace = 4,
+  ffZero = 8,
+  ffHash = 16
+} format_flag_t;
+
+#define kPrintfFormatFlags "-+ 0#"
+
 typedef struct {
   // The buffer to write the output on.
   string_buffer_t *buf;
   // Optional width parameter given to the format character. If no width was
   // specified this will be -1.
   int32_t width;
+  // Any format flags in the input, or'ed together.
+  int32_t flags;
   // The format character itself.
   char format;
 } format_request_t;
