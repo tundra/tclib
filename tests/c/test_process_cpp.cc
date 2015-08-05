@@ -52,26 +52,26 @@ public:
   // Returns the value of the index'th entry in the process' argv. The given
   // char buffer is scratch memory to use to store the result. If no argument
   // is found returns NULL.
-  const char *read_argv(int index, char *scratch);
+  const char *read_argv(int index, char *scratch, size_t scratch_size);
 
   // Returns the value of the environment variable with the given name. The
   // given char buffer is scratch memory to use to store the result. If the env
   // is not found returns NULL.
-  const char *read_env(const char *name, char *scratch);
+  const char *read_env(const char *name, char *scratch, size_t scratch_size);
 
   // Returns the value of the getenv output printed by the process. The given
   // char buffer is scratch memory to use to store the result. If the env is not
   // found returns NULL.
-  const char *read_getenv(const char *name, char *scratch);
+  const char *read_getenv(const char *name, char *scratch, size_t outsize);
 
   // Returns the raw stderr output as a string.
   const char *err() { return stderr_str_; }
 
 public:
-  // Iterate through the process' standard output and, for each line, invoke the
-  // given callback. The first time the scan is successful (returns true) this
-  // function returns.
-  bool for_each_stdout_line(callback_t<bool(const char *line)> callback);
+  // Iterate through the process' standard output and, for each line, scan the
+  // line for the given format using scanf. The first time the scan is
+  // successful this function returns.
+  bool scanf_lines(const char *fmt, void **ptrv, size_t ptrc);
 
   NativePipe stdin_pipe_;
   NativePipe stdout_pipe_;
@@ -163,53 +163,38 @@ void RecordingProcess::complete() {
   stderr_str_ = string_buffer_flush(&stderr_buf_).chars;
 }
 
-static bool scan_argc(int *argc, const char *line) {
-  return sscanf(line, "ARGC: {%i}", argc) > 0;
-}
-
 int RecordingProcess::read_argc() {
   int result = -1;
-  for_each_stdout_line(new_callback(scan_argc, &result));
+  void *ptrs[1] = {&result};
+  ASSERT_TRUE(scanf_lines("ARGC: {%i}", ptrs, 1));
   return result;
 }
 
-static bool scan_argv(int index, char *out, const char *line) {
+const char *RecordingProcess::read_argv(int index, char *out, size_t outsize) {
+  ASSERT_REL(outsize, >=, 1024);
   char fmt[256];
-  sprintf(fmt, "ARGV[%i]: {%%[^}]}", index);
-  return sscanf(line, fmt, out) > 0;
+  sprintf(fmt, "ARGV[%i]: {%%1024[^}]}", index);
+  return scanf_lines(fmt, (void**) &out, 1) ? out : NULL;
 }
 
-const char *RecordingProcess::read_argv(int index, char *out) {
-  return for_each_stdout_line(new_callback(scan_argv, index, out))
-    ? out
-    : NULL;
-}
-
-static bool scan_env(const char *key, char *out, const char *line) {
+const char *RecordingProcess::read_env(const char *key, char *out, size_t outsize) {
+  ASSERT_REL(outsize, >=, 1024);
   char fmt[256];
-  sprintf(fmt, "ENV: {%s=%%[^}]}", key);
-  return sscanf(line, fmt, out) > 0;
+  sprintf(fmt, "ENV: {%s=%%1024[^}]}", key);
+  return scanf_lines(fmt, (void**) &out, 1) ? out : NULL;
 }
 
-const char *RecordingProcess::read_env(const char *key, char *out) {
-  return for_each_stdout_line(new_callback(scan_env, key, out))
-    ? out
-    : NULL;
-}
-
-static bool scan_getenv(const char *key, char *out, const char *line) {
+const char *RecordingProcess::read_getenv(const char *key, char *out, size_t outsize) {
+  ASSERT_REL(outsize, >=, 1024);
   char fmt[256];
-  sprintf(fmt, "GETENV(%s): {%%[^}]}", key);
-  return sscanf(line, fmt, out) > 0;
+  sprintf(fmt, "GETENV(%s): {%%1024[^}]}", key);
+  return scanf_lines(fmt, (void**) &out, 1) ? out : NULL;
 }
 
-const char *RecordingProcess::read_getenv(const char *key, char *out) {
-  return for_each_stdout_line(new_callback(scan_getenv, key, out))
-    ? out
-    : NULL;
-}
-
-bool RecordingProcess::for_each_stdout_line(callback_t<bool(const char *line)> callback) {
+bool RecordingProcess::scanf_lines(const char *fmt, void **ptrv, size_t ptrc) {
+  utf8_t format = new_c_string(fmt);
+  scanf_conversion_t convs[8];
+  ASSERT_EQ(ptrc, string_scanf_analyze_conversions(format, convs, 8));
   const char *output = stdout_str_;
   for (size_t i = 0; output[i] != '\0'; i++) {
     const char *current;
@@ -220,8 +205,11 @@ bool RecordingProcess::for_each_stdout_line(callback_t<bool(const char *line)> c
     } else {
       current = NULL;
     }
-    if (current != NULL && callback(current))
-      return true;
+    if (current != NULL) {
+      int64_t scanned = string_scanf(format, new_c_string(current), convs, ptrc, ptrv);
+      if (scanned == (int64_t) ptrc)
+        return true;
+    }
   }
   return false;
 }
@@ -235,9 +223,9 @@ TEST(process_cpp, return_value) {
   ASSERT_EQ(66, process.exit_code().peek_value(0));
   ASSERT_EQ(3, process.read_argc());
   char argbuf[1024];
-  ASSERT_C_STREQ(get_durian_main().chars, process.read_argv(0, argbuf));
-  ASSERT_C_STREQ("--exit-code", process.read_argv(1, argbuf));
-  ASSERT_C_STREQ("66", process.read_argv(2, argbuf));
+  ASSERT_C_STREQ(get_durian_main().chars, process.read_argv(0, argbuf, 1024));
+  ASSERT_C_STREQ("--exit-code", process.read_argv(1, argbuf, 1024));
+  ASSERT_C_STREQ("66", process.read_argv(2, argbuf, 1024));
 }
 
 static void test_arg_passing(int argc, utf8_t *argv) {
@@ -247,9 +235,9 @@ static void test_arg_passing(int argc, utf8_t *argv) {
   ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(argc + 1, process.read_argc());
   char argbuf[1024];
-  ASSERT_C_STREQ(get_durian_main().chars, process.read_argv(0, argbuf));
+  ASSERT_C_STREQ(get_durian_main().chars, process.read_argv(0, argbuf, 1024));
   for (int i = 0; i < argc; i++)
-    ASSERT_C_STREQ(argv[i].chars, process.read_argv(i + 1, argbuf));
+    ASSERT_C_STREQ(argv[i].chars, process.read_argv(i + 1, argbuf, 1024));
 }
 
 TEST(process_cpp, arg_spaces) {
@@ -311,7 +299,7 @@ TEST(process_cpp, env_simple) {
   ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(1, process.read_argc());
   char envbuf[1024];
-  ASSERT_C_STREQ("bar", process.read_env("FOO", envbuf));
+  ASSERT_C_STREQ("bar", process.read_env("FOO", envbuf, 1024));
 }
 
 class binding_t {
@@ -357,14 +345,14 @@ static void test_env_passing(size_t in_envc, binding_t *in_envv, size_t out_envc
   ASSERT_EQ(0, process.exit_code().peek_value(100));
   ASSERT_EQ(argc + 1, process.read_argc());
   char argbuf[1024];
-  ASSERT_C_STREQ(get_durian_main().chars, process.read_argv(0, argbuf));
+  ASSERT_C_STREQ(get_durian_main().chars, process.read_argv(0, argbuf, 1024));
   for (size_t i = 0; i < out_envc; i++) {
     binding_t out = out_envv[i];
     if (IF_MACH(!out.is_eq_generated(), true)) {
       // Mach doesn't have the same behavior for eq-generated bindings so don't
       // test that there.
-      ASSERT_C_STREQ(out.value().chars, process.read_env(out.key().chars, argbuf));
-      ASSERT_C_STREQ(out.value().chars, process.read_getenv(out.key().chars, argbuf));
+      ASSERT_C_STREQ(out.value().chars, process.read_env(out.key().chars, argbuf, 1024));
+      ASSERT_C_STREQ(out.value().chars, process.read_getenv(out.key().chars, argbuf, 1024));
     }
   }
   ASSERT_C_STREQ("", process.err());

@@ -41,6 +41,33 @@ int string_compare(utf8_t a, utf8_t b);
 // Returns true iff the given string is equal to the given c-string.
 bool string_equals_cstr(utf8_t a, const char *b);
 
+// The type of value extracted by scanf for a particular conversion character.
+typedef enum {
+  stUnknown,
+  stSignedInt,
+  stString,
+} scanf_conversion_type_t;
+
+// Description of a scanf conversion specifier.
+typedef struct {
+  scanf_conversion_type_t type;
+  int64_t width;
+  char chr;
+} scanf_conversion_t;
+
+// Scan the given scanf format string and store information about the conversion
+// specifiers in the given conversion vector that is at least convc long.
+// Returns the number of conversions seen unless the format is invalid in which
+// case -1 is returned.
+int64_t string_scanf_analyze_conversions(utf8_t format, scanf_conversion_t *convv,
+    size_t convc);
+
+// Scans the given input using the given format string whose format specifiers
+// are described by the given format vector. Stores outputs in the pointer
+// vector. Returns the number of formats matched or -1 if matching fails.
+int64_t string_scanf(utf8_t format, utf8_t input, scanf_conversion_t *convv,
+    size_t convc, void **ptrs);
+
 // A small snippet of a string that can be encoded as a 32-bit integer. Create
 // a hint cheaply using the STRING_HINT macro.
 typedef struct {

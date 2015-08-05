@@ -178,6 +178,44 @@ TEST(string, string_buffer_long) {
   string_buffer_dispose(&buf);
 }
 
+static void assert_conversion(scanf_conversion_t format, scanf_conversion_type_t type, char chr, size_t width) {
+  ASSERT_EQ(type, format.type);
+  ASSERT_EQ(chr, format.chr);
+  ASSERT_EQ(width, format.width);
+}
+
+TEST(string, scanf_analyze_format) {
+  scanf_conversion_t convs[8];
+  ASSERT_EQ(3, string_scanf_analyze_conversions(new_c_string("%i %32s %8x"), convs, 8));
+  assert_conversion(convs[0], stSignedInt, 'i', -1);
+  assert_conversion(convs[1], stString, 's', 32);
+  assert_conversion(convs[2], stSignedInt, 'x', 8);
+
+  ASSERT_EQ(1, string_scanf_analyze_conversions(new_c_string("foo %32s bar"), convs, 8));
+  assert_conversion(convs[0], stString, 's', 32);
+
+  ASSERT_EQ(-1, string_scanf_analyze_conversions(new_c_string("foo %s bar"), convs, 8));
+
+  ASSERT_EQ(2, string_scanf_analyze_conversions(new_c_string("%i %*32s %8x"), convs, 8));
+  assert_conversion(convs[0], stSignedInt, 'i', -1);
+  assert_conversion(convs[1], stSignedInt, 'x', 8);
+
+  ASSERT_EQ(0, string_scanf_analyze_conversions(new_c_string("%% %% %%"), convs, 8));
+}
+
+TEST(string, scanf) {
+  // Most of the format testing happens in the nunit string.n test.
+  scanf_conversion_t convs[8];
+  utf8_t fmt = new_c_string("%i %i %i");
+  ASSERT_EQ(3, string_scanf_analyze_conversions(fmt, convs, 8));
+  int ints[3];
+  void *args[3] = {&ints[0], &ints[1], &ints[2]};
+  ASSERT_EQ(3, string_scanf(fmt, new_c_string("123 656 532"), convs, 3, args));
+  ASSERT_EQ(123, ints[0]);
+  ASSERT_EQ(656, ints[1]);
+  ASSERT_EQ(532, ints[2]);
+}
+
 #define CHECK_HINT(HINT, EXPECTED) do {                                        \
   string_hint_t hint = STRING_HINT_INIT(HINT);                                 \
   char hint_str[7];                                                            \
