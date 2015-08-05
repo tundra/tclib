@@ -122,7 +122,7 @@ int64_t string_scanf_analyze_conversions(utf8_t format, scanf_conversion_t *conv
       p++;
     }
     // The optional width specifier.
-    int width = -1;
+    int64_t width = -1;
     while (('0' <= *p) && (*p <= '9')) {
       if (width == -1)
         // Only initialize to 0 if there is an actual width.

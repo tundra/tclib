@@ -178,7 +178,8 @@ TEST(string, string_buffer_long) {
   string_buffer_dispose(&buf);
 }
 
-static void assert_conversion(scanf_conversion_t format, scanf_conversion_type_t type, char chr, size_t width) {
+static void assert_conversion(scanf_conversion_t format, scanf_conversion_type_t type,
+    char chr, int64_t width) {
   ASSERT_EQ(type, format.type);
   ASSERT_EQ(chr, format.chr);
   ASSERT_EQ(width, format.width);
