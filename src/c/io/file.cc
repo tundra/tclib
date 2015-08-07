@@ -48,6 +48,7 @@ public:
   virtual bool write_sync(write_iop_state_t *op);
   virtual bool flush();
   virtual bool close();
+  virtual naked_file_handle_t to_raw_handle();
 
 private:
   FILE *file_;
@@ -80,6 +81,7 @@ bool StdioOpenFile::write_sync(write_iop_state_t *op) {
 bool StdioOpenFile::flush() {
   return fflush(file_) == 0;
 }
+
 // File system implementation that uses the standard stdio functions.
 class StdioFileSystem : public FileSystem {
 public:
@@ -165,4 +167,15 @@ out_stream_t *file_system_stdout(file_system_t *fs) {
 
 out_stream_t *file_system_stderr(file_system_t *fs) {
   return static_cast<FileSystem*>(fs)->std_err();
+}
+
+#ifdef IS_MSVC
+#include <io.h>
+#endif
+
+naked_file_handle_t StdioOpenFile::to_raw_handle() {
+  int fn = fileno(file_);
+  return IF_MSVC(
+      reinterpret_cast<naked_file_handle_t>(_get_osfhandle(fn)),
+      fn);
 }
