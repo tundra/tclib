@@ -4,17 +4,16 @@
 #ifndef _TCLIB_EVENTSEQ_H
 #define _TCLIB_EVENTSEQ_H
 
-#include "c/stdc.h"
-
-BEGIN_C_INCLUDES
+#include "io/stream.h"
 #include "sync/atomic.h"
 #include "sync/thread.h"
-END_C_INCLUDES
 
 // An individual event in an event sequence.
 typedef struct {
   // User provided tag.
   const char *tag;
+  // Arbitrary payload value optionally carried by this event.
+  void *payload;
   // The time this event occurred.
   uint64_t timestamp;
   // Thread that recorded the event.
@@ -38,6 +37,10 @@ void event_sequence_init(event_sequence_t *seq, size_t length);
 void event_sequence_dispose(event_sequence_t *seq);
 
 // Record an event with the given tag in the sequence.
-void event_sequence_record(event_sequence_t *seq, const char *tag);
+void event_sequence_record(event_sequence_t *seq, const char *tag, void *payload);
+
+// Dumps a textual representation of the given event sequence on the given
+// output stream.
+void event_sequence_dump(event_sequence_t *seq, out_stream_t *out);
 
 #endif // _TCLIB_EVENTSEQ_H
