@@ -43,3 +43,7 @@ void event_sequence_dump(event_sequence_t *seq, out_stream_t *out) {
         (void*) entry->thread, entry->tag, entry->payload);
   }
 }
+
+bool event_sequence_is_empty(event_sequence_t *seq) {
+  return atomic_int32_get(&seq->next_index) == 0;
+}

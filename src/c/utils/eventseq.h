@@ -43,4 +43,7 @@ void event_sequence_record(event_sequence_t *seq, const char *tag, void *payload
 // output stream.
 void event_sequence_dump(event_sequence_t *seq, out_stream_t *out);
 
+// Returns true iff at least one event has been recorded in the given sequence.
+bool event_sequence_is_empty(event_sequence_t *seq);
+
 #endif // _TCLIB_EVENTSEQ_H
