@@ -7,26 +7,37 @@
 
 #include "c/stdc.h"
 
-// By convention this is available even on windows. See man environ.
-extern char **environ;
+class Durian {
+public:
+  static int main(int argc, char *argv[]);
 
-int main(int argc, char *argv[]) {
+  // Bridge to call the right isatty for the given platform.
+  static bool is_a_tty(FILE *file);
+
+  // Returns the environ array.
+  static char **get_environment();
+
+  // Are these two strings equal?
+  static bool streq(const char *a, const char *b);
+};
+
+int Durian::main(int argc, char *argv[]) {
   int exit_code = 0;
   bool quiet = false;
   for (int i = 0; i < argc; ) {
     const char *next = argv[i++];
-    if (strcmp(next, "--exit-code") == 0) {
+    if (streq(next, "--exit-code")) {
       exit_code = atoi(argv[i++]);
-    } else if (strcmp(next, "--quiet") == 0) {
+    } else if (streq(next, "--quiet")) {
       quiet = true;
-    } else if (strcmp(next, "--getenv") == 0) {
+    } else if (streq(next, "--getenv")) {
       const char *key = argv[i++];
       const char *value = getenv(key);
       printf("GETENV(%s): {%s}\n", key, value);
-    } else if (strcmp(next, "--print-stderr") == 0) {
+    } else if (streq(next, "--print-stderr")) {
       const char *value = argv[i++];
       fprintf(stderr, "%s", value);
-    } else if (strcmp(next, "--echo-stdin") == 0) {
+    } else if (streq(next, "--echo-stdin")) {
       char buf[256];
       while (true) {
         size_t bytes_read = fread(buf, 1, 256, stdin);
@@ -44,10 +55,37 @@ int main(int argc, char *argv[]) {
   }
   if (!quiet) {
     printf("ARGC: {%i}\n", argc);
+    printf("ISATTY[in]: {%i}\n", is_a_tty(stdin));
+    printf("ISATTY[out]: {%i}\n", is_a_tty(stdout));
+    printf("ISATTY[err]: {%i}\n", is_a_tty(stderr));
     for (int i = 0; i < argc; i++)
       printf("ARGV[%i]: {%s}\n", i, argv[i]);
-    for (char **ep = environ; *ep; ep++)
+    for (char **ep = get_environment(); *ep; ep++)
       printf("ENV: {%s}\n", *ep);
   }
   return exit_code;
+}
+
+bool Durian::streq(const char *a, const char *b) {
+  return strcmp(a, b) == 0;
+}
+
+int main(int argc, char *argv[]) {
+  return Durian::main(argc, argv);
+}
+
+#ifdef IS_GCC
+#  include <unistd.h>
+#  define platform_isatty isatty
+#else
+#  include <io.h>
+#  define platform_isatty _isatty
+#endif
+
+char **Durian::get_environment() {
+  return environ;
+}
+
+bool Durian::is_a_tty(FILE *file) {
+  return platform_isatty(fileno(file));
 }

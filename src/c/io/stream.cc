@@ -14,11 +14,6 @@ bool AbstractStream::close() {
   return true;
 }
 
-// It's a coincidence that the convention on both platforms happens to be -1.
-naked_file_handle_t AbstractStream::kNullNakedFileHandle = IF_MSVC(
-    reinterpret_cast<naked_file_handle_t>(-1),
-    -1);
-
 naked_file_handle_t AbstractStream::to_raw_handle() {
   return kNullNakedFileHandle;
 }
@@ -112,3 +107,9 @@ bool ByteOutStream::write_sync(write_iop_state_t *op) {
 bool ByteOutStream::flush() {
   return true;
 }
+
+#ifdef IS_GCC
+#  include "stream-posix.cc"
+#else
+#  include "stream-msvc.cc"
+#endif

@@ -43,6 +43,12 @@ public:
   // The default implementation does nothing and consequently returns true.
   virtual bool close();
 
+  // Returns true if this stream represents a terminal.
+  //
+  // TODO: The implementation on windows is a bit dodgy so before using this for
+  //   anything but testing that should be fixed.
+  virtual bool is_a_tty();
+
   // If this stream has an underlying OS file handle (think file descriptor)
   // this method will return it. If not it returns a value equal to
   // kNullNakedFileHandle; this is the default behavior.
