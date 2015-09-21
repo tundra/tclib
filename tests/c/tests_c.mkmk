@@ -36,6 +36,7 @@ test_file_names = [
   "test_tinymt.cc",
   "test_vector.cc",
   "test_worklist.cc",
+  "test_workpool_cpp.cc",
 ]
 
 # Compile a single test file, ensuring that the include paths are hooked up
