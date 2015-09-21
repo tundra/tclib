@@ -17,11 +17,11 @@ TEST(workpool_cpp, simple) {
   ASSERT_TRUE(pool.initialize());
   ASSERT_TRUE(pool.start());
   int count = 0;
-  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 0, &count), wfRequired));
-  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 1, &count), wfRequired));
-  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 2, &count), wfRequired));
-  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 3, &count), wfRequired));
-  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 4, &count), wfRequired));
+  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 0, &count), tfRequired));
+  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 1, &count), tfRequired));
+  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 2, &count), tfRequired));
+  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 3, &count), tfRequired));
+  ASSERT_TRUE(pool.add_task(new_callback(inc_var, 4, &count), tfRequired));
   ASSERT_TRUE(pool.join());
   ASSERT_EQ(5, count);
 }
@@ -33,9 +33,9 @@ TEST(workpool_cpp, daemons) {
   int count = 0;
   int daemon_count = 0;
   for (int i = 0; i < 100; i++) {
-    ASSERT_TRUE(pool.add_task(new_callback(inc_var, 0, &daemon_count), wfDaemon));
+    ASSERT_TRUE(pool.add_task(new_callback(inc_var, 0, &daemon_count), tfDaemon));
     if ((i % 5) == 0)
-      ASSERT_TRUE(pool.add_task(new_callback(inc_var, i / 5, &count), wfRequired));
+      ASSERT_TRUE(pool.add_task(new_callback(inc_var, i / 5, &count), tfRequired));
   }
   ASSERT_TRUE(pool.start());
   ASSERT_TRUE(pool.join(true));
@@ -57,15 +57,15 @@ static void *run_producer(Workpool *pool) {
       // For every 256 tasks we wait for the pool to catch up such that the
       // speeds of the producers are kept similar to the pool such that the
       // chance of contention is increased.
-      ASSERT_TRUE(pool->add_task(new_callback(release_semaphore, &sema), wfRequired));
+      ASSERT_TRUE(pool->add_task(new_callback(release_semaphore, &sema), tfRequired));
       ASSERT_TRUE(sema.acquire());
       ASSERT_EQ(i, count);
     }
-    ASSERT_TRUE(pool->add_task(new_callback(inc_var, i, &count), wfRequired));
+    ASSERT_TRUE(pool->add_task(new_callback(inc_var, i, &count), tfRequired));
   }
   // Synchronize one last time to ensure that we're done accessing the count
   // variable.
-  ASSERT_TRUE(pool->add_task(new_callback(release_semaphore, &sema), wfRequired));
+  ASSERT_TRUE(pool->add_task(new_callback(release_semaphore, &sema), tfRequired));
   ASSERT_TRUE(sema.acquire());
   ASSERT_EQ(2048, count);
   return NULL;

@@ -14,30 +14,22 @@ END_C_INCLUDES
 
 namespace tclib {
 
+class Task;
+
 typedef enum {
   // The given task is required to be run before the workpool is allowed to shut
   // down.
-  wfRequired = 0x00,
+  tfRequired = 0x00,
 
   // It is acceptable if the given task is not executed before the workpool is
   // shut down.
-  wfDaemon = 0x01
-} workpool_flag_t;
-
-class Task {
-public:
-  typedef callback_t<opaque_t()> thunk_t;
-  Task(thunk_t thunk, int32_t flags);
-  bool is_daemon();
-private:
-  friend class Workpool;
-  thunk_t thunk_;
-  Task *successor_;
-  int32_t flags_;
-};
+  tfDaemon = 0x01
+} task_flag_t;
 
 class Workpool {
 public:
+  typedef callback_t<opaque_t()> task_thunk_t;
+
   Workpool();
 
   // Prepares this workpool for running. The worker thread(s) won't be started
@@ -50,7 +42,7 @@ public:
   // Adds a task to the set this workpool should run. By default the task will
   // keep the workpool running until the task has been executed but the flags
   // can use to control that. Thread safe.
-  bool add_task(Task::thunk_t task, int32_t flags);
+  bool add_task(task_thunk_t task, int32_t flags);
 
   // Runs this workpool until it has no more tasks. If the flag is true then
   // we execute daemon tasks, otherwise those are skipped.
@@ -67,10 +59,6 @@ private:
 
   // Adds the given task to the list run by this workpool.
   bool offer_task(Task *task);
-
-  // Dispose the given task after it has been processed, updating the internal
-  // state of the workpool appropriately.
-  bool delete_task(Task *task);
 
   // Waits for the next task to become available, then takes it and stores it in
   // the given out parameter. When shutting down this may return NULL, otherwise

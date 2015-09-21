@@ -13,13 +13,26 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-Task::Task(thunk_t thunk, int32_t flags)
+namespace tclib {
+class Task {
+public:
+  Task(Workpool::task_thunk_t thunk, int32_t flags);
+  bool is_daemon();
+private:
+  friend class Workpool;
+  Workpool::task_thunk_t thunk_;
+  Task *successor_;
+  int32_t flags_;
+};
+} // namespace tclib
+
+Task::Task(Workpool::task_thunk_t thunk, int32_t flags)
   : thunk_(thunk)
   , successor_(NULL)
   , flags_(flags) { }
 
 bool Task::is_daemon() {
-  return (flags_ & wfDaemon) != 0;
+  return (flags_ & tfDaemon) != 0;
 }
 
 Workpool::Workpool()
@@ -40,8 +53,7 @@ void *Workpool::run_worker() {
       return (void*) true;
     if (!(skip_daemons_ && task->is_daemon()))
       task->thunk_();
-    if (!delete_task(task))
-      return (void*) false;
+    default_delete_concrete(task);
   }
 }
 
@@ -75,7 +87,7 @@ bool Workpool::join(bool skip_daemons) {
   return result;
 }
 
-bool Workpool::add_task(Task::thunk_t callback, int32_t flags) {
+bool Workpool::add_task(task_thunk_t callback, int32_t flags) {
   Task *task = new (kDefaultAlloc) Task(callback, flags);
   if (task == NULL) {
     WARN("Failed to allocate task");
@@ -94,11 +106,6 @@ bool Workpool::offer_task(Task *task) {
     }
   B_TRY(guard_.unlock());
   B_TRY(action_count_.release());
-  return true;
-}
-
-bool Workpool::delete_task(Task *task) {
-  default_delete_concrete(task);
   return true;
 }
 
