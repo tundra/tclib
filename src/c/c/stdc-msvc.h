@@ -5,12 +5,14 @@
 // does seem to work.
 #define _HAS_EXCEPTIONS 0
 
-// Rename the built-in types to the names expected in the code base.
+// Rename the built-in types to the names expected in the code base. These
+// should be compatible with how those types are defined in stdint.h in case
+// this file gets included along with that.
 typedef signed char int8_t;
 typedef unsigned char uint8_t;
 typedef short int16_t;
 typedef unsigned short uint16_t;
-typedef long int32_t;
+typedef int int32_t;
 typedef unsigned int uint32_t;
 typedef __int64 int64_t;
 typedef unsigned __int64 uint64_t;

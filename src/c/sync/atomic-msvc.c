@@ -13,8 +13,9 @@ int32_t atomic_int32_decrement(atomic_int32_t *value) {
 
 int32_t atomic_int32_add(atomic_int32_t *value, int32_t delta) {
   // It'd be great if we could use InterlockedAdd but it's not available on
-  // 32-bit.
-  return InterlockedExchangeAdd(&value->value, delta) + delta;
+  // 32-bit. Also, long and int are synonymous under msvc but the compiler
+  // doesn't consider their pointers to be so they have to be cast explicitly.
+  return InterlockedExchangeAdd((long*) &value->value, delta) + delta;
 }
 
 int32_t atomic_int32_subtract(atomic_int32_t *value, int32_t delta) {
@@ -24,9 +25,9 @@ int32_t atomic_int32_subtract(atomic_int32_t *value, int32_t delta) {
 bool atomic_int32_compare_and_set(atomic_int32_t *value, int32_t old_value,
     int32_t new_value) {
   return old_value == InterlockedCompareExchange(
-      &value->value, // Destination
-      new_value,     // Exchange
-      old_value);    // Comparand
+      (long*) &value->value, // Destination
+      new_value,             // Exchange
+      old_value);            // Comparand
 }
 
 int64_t atomic_int64_increment(atomic_int64_t *value) {
