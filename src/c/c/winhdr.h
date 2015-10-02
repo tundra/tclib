@@ -4,6 +4,9 @@
 // The standard windows header with some alternative names for the built-in
 // windows types for consistency with the rest of the code.
 
+#define VC_EXTRALEAN 1
+#define WIN32_LEAN_AND_MEAN 1
+
 #pragma warning(push, 0)
 #include <windows.h>
 #pragma warning(pop)
@@ -35,3 +38,4 @@
 #define module_t HMODULE
 #define hwnd_t HWND
 #define hkey_t HKEY
+#define handle_t HANDLE
