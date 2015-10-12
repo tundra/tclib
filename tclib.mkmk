@@ -1,6 +1,62 @@
 # Copyright 2014 the Neutrino authors (see AUTHORS).
 # Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+c.get_settings().add_pervasive("cflags", "/nologo", toolchain="msvc")
+c.get_settings().add_pervasive("linkflags", "/nologo", toolchain="msvc")
+
+c.get_settings().add_pervasive('warnings',
+  "d4505", # Unreferenced local function
+  "d4514", # Unreferenced inline function
+  "d4127", # Conditional expression is a constant
+  "d4820", # Padding added after data member
+  "d4800", # Forcing value to bool
+  "d4061", # Enum not explicitly handled by case
+  "d4365", # Conversion, signed/unsigned mismatch
+  "d4510", # Default constructor could not be generated
+  "d4512", # Assignment operator could not be generated
+  "d4610", # Struct can never be instantiated
+  "d4245", # Conversion, signed/unsigned mismatch
+  "d4100", # Unreferenced formal parameter
+  "d4702", # Unreachable code
+  "d4711", # Function selected for inline expansion
+  "d4735", # Storing 64-bit float result in memory
+  "d4710", # Function not inlined
+  "d4738", # Storing 32-bit float result in memory
+  "d4121", # Alignment of member was sensitive to packing
+
+  # Maybe look into fixing these?
+  "d4244", # Possibly lossy conversion from int64 to int32
+  "d4242", # Possibly lossy conversion from int32 to int8
+  "d4146", # Unary minus applied to unsigned
+  "d4996", # Function may be unsafe
+  "d4826", # Conversion is sign-extended
+  "d4310", # Cast truncates constant
+  toolchain="msvc"
+)
+
+c.get_settings().add_pervasive("cflags", "-fPIC", toolchain="gcc")
+c.get_settings().add_pervasive("linkflags", "-rdynamic", "-lstdc++", toolchain="gcc")
+
+c.get_settings().add_pervasive("warnings",
+  "all",
+  "extra",                # More errors please.
+  "no-unused-parameter",  # Sometime you don't need all the params.
+  "no-unused-function",   # Not all header functions are used in all.
+                          #   the files that include them.
+  "conversion",           # Check conversions aggressively to match
+                          #   msvc.
+  "no-sign-conversion",   # Not sign conversions though, they're all
+                          #   over the place and warning on them
+                          #   doesn't seem helpful.
+  toolchain="gcc")
+
+c.get_settings().add_pervasive("cflags", "-std=c++11", toolchain="gcc", language="c++")
+c.get_settings().add_pervasive("warnings",
+  "c++-compat", # Consistency with msvc which compiles C as C++.
+  toolchain="gcc", language="c")
+
+c.get_settings().add_pervasive("cflags", "-std=c99", toolchain="gcc", language="c")
+
 include('src', 'c', 'src_c.mkmk')
 include('tests', 'c', 'tests_c.mkmk')
 
