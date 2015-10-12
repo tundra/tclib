@@ -5,6 +5,10 @@ compiler: gcc
 script: python ci.py run --debug --noisy -- all run-tests
 install: ./tools/ci.py begin --config tclib.mkmk
 sudo: false
+addons:
+  apt:
+    packages:
+    - virtualenv
 
 matrix:
   include:
