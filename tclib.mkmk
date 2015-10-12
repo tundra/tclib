@@ -50,7 +50,6 @@ c.get_settings().add_pervasive("warnings",
                           #   doesn't seem helpful.
   toolchain="gcc")
 
-c.get_settings().add_pervasive("cflags", "-std=c++11", toolchain="gcc", language="c++")
 c.get_settings().add_pervasive("warnings",
   "c++-compat", # Consistency with msvc which compiles C as C++.
   toolchain="gcc", language="c")
