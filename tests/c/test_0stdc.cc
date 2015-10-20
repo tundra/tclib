@@ -2,6 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "test/unittest.hh"
+#include <math.h>
 
 TEST(0stdc, int_types) {
   ASSERT_EQ(1, sizeof(uint8_t));
@@ -45,4 +46,14 @@ TEST(0stdc, format) {
   int64_t i64 = 100;
   sprintf(buf, "%" PRIi64, i64);
   sprintf(buf, "%" PRIx64, i64);
+}
+
+TEST(0stdc, infinities) {
+  float ifi = kFloatInfinity;
+  float nifi = -kFloatInfinity;
+  float nan = NAN;
+  ASSERT_FALSE(isfinite(ifi));
+  ASSERT_FALSE(isfinite(nifi));
+  ASSERT_FALSE(isfinite(nan));
+  ASSERT_TRUE(isnan(nan));
 }
