@@ -2,6 +2,11 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "test/unittest.hh"
+
+BEGIN_C_INCLUDES
+#include "c/stdc-inl.h"
+END_C_INCLUDES
+
 #include <math.h>
 
 TEST(0stdc, int_types) {

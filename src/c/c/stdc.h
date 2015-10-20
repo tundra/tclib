@@ -118,8 +118,4 @@ typedef size_t address_arith_t;
 // Macro argument that indicates false.
 #define _(T, F) F
 
-// The default definitions of infinity that should be used instead of the
-// built-in macros because those are messed up on MSVC 2013+. Thanks.
-#define kFloatInfinity INFINITY
-
 #endif // _STDC

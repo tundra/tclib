@@ -8,6 +8,10 @@
 
 #include <stdarg.h>
 
+// The default definitions of infinity that should be used instead of the
+// built-in macros because those are messed up on MSVC 2013+. Thanks.
+#define kFloatInfinity INFINITY
+
 #ifdef IS_MSVC
 #include "stdc-msvc-inl.h"
 #endif
