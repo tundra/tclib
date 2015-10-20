@@ -23,8 +23,11 @@ typedef unsigned __int64 uint64_t;
 #  define IS_32_BIT 1
 #endif
 
-// Windows doesn't have va_copy but this appears to work.
-#define va_copy(d,s) ((d) = (s))
+// Versions of vc before 2013 don't have va_copy but this appears to work for
+// them.
+#if _MSC_VER < 1800
+#  define va_copy(d,s) ((d) = (s))
+#endif
 
 // See stdc-posix.h for why this is lower case.
 #define always_inline __forceinline
