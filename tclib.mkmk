@@ -31,6 +31,7 @@ c.get_settings().add_pervasive('warnings',
   "d4996", # Function may be unsafe
   "d4826", # Conversion is sign-extended
   "d4310", # Cast truncates constant
+  "d4350", # Behavior change (?)
   toolchain="msvc"
 )
 
