@@ -8,7 +8,7 @@
 #define WIN32_LEAN_AND_MEAN 1
 
 #pragma warning(push, 0)
-#include <windows.h>
+#  include <windows.h>
 #pragma warning(pop)
 
 #define dword_t DWORD
@@ -17,7 +17,7 @@
 #define ushort_t USHORT
 #define win_size_t SIZE_T
 #define bool_t BOOL
-#define ntstatus_t NTSTATUS
+#define ntstatus_t LONG
 #define ulong_t ULONG
 #define uint_t UINT
 
