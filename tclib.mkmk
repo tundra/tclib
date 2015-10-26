@@ -23,6 +23,7 @@ c.get_settings().add_pervasive('warnings',
   "d4710", # Function not inlined
   "d4738", # Storing 32-bit float result in memory
   "d4121", # Alignment of member was sensitive to packing
+  "d4275", # Exported class derived from non exported class
 
   # Maybe look into fixing these?
   "d4244", # Possibly lossy conversion from int64 to int32
@@ -32,6 +33,7 @@ c.get_settings().add_pervasive('warnings',
   "d4826", # Conversion is sign-extended
   "d4310", # Cast truncates constant
   "d4350", # Behavior change (?)
+
   toolchain="msvc"
 )
 
