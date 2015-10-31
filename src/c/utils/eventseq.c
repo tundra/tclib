@@ -39,8 +39,9 @@ void event_sequence_dump(event_sequence_t *seq, out_stream_t *out) {
     first_abs = 0;
   for (int32_t i = first_abs; i < limit_abs; i++) {
     event_sequence_entry_t *entry = &seq->entries[i % seq->length];
+    native_thread_id_t id = entry->thread;
     out_stream_printf(out, "EVENT[%04i at %llx on %p]: %s(%p)\n", i, entry->timestamp,
-        (void*) entry->thread, entry->tag, entry->payload);
+        (void*) (address_arith_t) id, entry->tag, entry->payload);
   }
 }
 
