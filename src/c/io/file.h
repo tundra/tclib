@@ -10,9 +10,18 @@
 // Modes you can open files in. The values of the enums indicate whether opening
 // in that mode produces an in-stream, an out-stream, or both.
 typedef enum {
+  // Main modes, all files must be opened under one of these.
+
   OPEN_FILE_MODE_READ = 0x1,
   OPEN_FILE_MODE_WRITE = 0x2,
-  OPEN_FILE_MODE_READ_WRITE = 0x3
+  OPEN_FILE_MODE_READ_WRITE = 0x4,
+
+  // Additional flags that can be or'ed together with the modes to give fine-
+  // grained control.
+
+  // Force binary mode. Has no effect on posix systems, as far as I can tell,
+  // but makes a difference on windows.
+  OPEN_FILE_FLAG_BINARY = 0x8
 } open_file_mode_t;
 
 // Abstraction that represents a file system. A file system may represent

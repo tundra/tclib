@@ -86,7 +86,7 @@ bool StdioOpenFile::flush() {
 class StdioFileSystem : public FileSystem {
 public:
   StdioFileSystem();
-  virtual FileStreams open(utf8_t path, open_file_mode_t mode);
+  virtual FileStreams open(utf8_t path, int32_t mode);
   virtual InStream *std_in() { return &stdin_; }
   virtual OutStream *std_out() { return &stdout_; }
   virtual OutStream *std_err() { return &stderr_; }
@@ -101,20 +101,16 @@ StdioFileSystem::StdioFileSystem()
   , stdout_(stdout)
   , stderr_(stderr) { }
 
-FileStreams StdioFileSystem::open(utf8_t path, open_file_mode_t mode) {
+FileStreams StdioFileSystem::open(utf8_t path, int32_t mode) {
   const char *mode_str = NULL;
-  switch (mode) {
-    case OPEN_FILE_MODE_READ:
-      // If this is just "r" windows will sometimes think files end before they
-      // actually do for some reason. With "rb" it works correctly.
-      mode_str = "rb";
-      break;
-    case OPEN_FILE_MODE_WRITE:
-      mode_str = "w";
-      break;
-    case OPEN_FILE_MODE_READ_WRITE:
-      mode_str = "r+";
-      break;
+  if ((mode & OPEN_FILE_MODE_READ) != 0) {
+    // If this is just "r" windows will sometimes think files end before they
+    // actually do for some reason. With "rb" it works correctly.
+    mode_str = "rb";
+  } else if ((mode & OPEN_FILE_MODE_WRITE) != 0) {
+    mode_str = ((mode & OPEN_FILE_FLAG_BINARY) == 0) ? "w" : "wb";
+  } else if ((mode & OPEN_FILE_MODE_READ_WRITE) != 0) {
+    mode_str = "r+";
   }
   FILE *file = ::fopen(path.chars, mode_str);
   if (file == NULL) {
