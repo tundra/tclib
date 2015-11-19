@@ -28,6 +28,9 @@ int Durian::main(int argc, char *argv[]) {
     const char *next = argv[i++];
     if (streq(next, "--exit-code")) {
       exit_code = atoi(argv[i++]);
+    } else if (streq(next, "--exit-code-from-env")) {
+      const char *name = argv[i++];
+      exit_code = atoi(getenv(name));
     } else if (streq(next, "--quiet")) {
       quiet = true;
     } else if (streq(next, "--getenv")) {

@@ -311,11 +311,22 @@ bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   return result;
 }
 
+bool NativeProcess::resume() {
+  CHECK_TRUE("resuming non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  // Not supported.
+  return false;
+}
+
 bool NativeProcess::mark_terminated(int result) {
   bool fulfilled = this->exit_code_.fulfill(WEXITSTATUS(result));
   if (!fulfilled)
     WARN("Failed to fulfill for %lli", this->platform_data_->pid);
   return fulfilled;
+}
+
+bool NativeProcess::inject_library(utf8_t path) {
+  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  return false;
 }
 
 bool ProcessRegistry::handle_signal(int signum, siginfo_t *info, void *context) {

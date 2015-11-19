@@ -135,6 +135,9 @@ public:
   // indeed completes successfully.
   bool start(utf8_t executable, size_t argc, utf8_t *argv);
 
+  // If this thread was started in suspended mode resumes execution.
+  bool resume();
+
   // Adds an environment mapping to the set visible to the process. The process
   // copies the key and value so they can be released immediately after this
   // call. Note that if the key includes an equals sign it will cause not just
@@ -145,6 +148,17 @@ public:
   // viewpoint to be able to pass values with equals signs in them without
   // getting funky behavior, but it's not clear that there's a way to do that
   bool set_env(utf8_t key, utf8_t value);
+
+  // Returns the flags currently set on this process.
+  int32_t flags() { return flags_; }
+
+  // Sets this process' flags.
+  void set_flags(int32_t value) { flags_ = value; }
+
+  // On windows, loads a dll into a suspended process. Returns true if
+  // successful and false otherwise, including on linux where this is just not
+  // supported.
+  bool inject_library(utf8_t path);
 
   // Specifies that the given redirect should be used for the given stream. Must
   // be called before starting the process.
@@ -172,12 +186,15 @@ private:
   class PlatformData;
   friend class NativeProcessStart;
 
+  PlatformData *platform_data() { return platform_data_; }
+
   state_t state;
   PlatformData *platform_data_;
   sync_promise_t<int> exit_code_;
   opaque_promise_t *opaque_exit_code_;
   StreamRedirect stdio_[kStdioStreamCount];
   std::vector<std::string> env_;
+  int32_t flags_;
 };
 
 } // namespace tclib

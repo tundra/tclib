@@ -1,18 +1,18 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#include "test/unittest.hh"
+
 #include "async/promise-inl.hh"
+#include "helpers.hh"
 #include "io/iop.hh"
 #include "sync/pipe.hh"
 #include "sync/process.hh"
-#include "test/unittest.hh"
-#include "utils/callback.hh"
-
 #include "sync/thread.hh"
+#include "utils/callback.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/strbuf.h"
-#include "utils/string-inl.h"
 END_C_INCLUDES
 
 using namespace tclib;
@@ -24,13 +24,6 @@ TEST(process_cpp, exec_missing) {
   ProcessWaitIop wait(&process, o0());
   ASSERT_TRUE(wait.execute());
   ASSERT_TRUE(process.exit_code().peek_value(0) != 0);
-}
-
-// Returns the path to the durian executable.
-static utf8_t get_durian_main() {
-  const char *result = getenv("DURIAN_MAIN");
-  ASSERT_TRUE(result != NULL);
-  return new_c_string(result);
 }
 
 // A process that records interaction.

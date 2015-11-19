@@ -31,6 +31,13 @@ typedef enum {
   siStderr = 2
 } stdio_stream_t;
 
+// Flags that control how a process behaves.
+typedef enum {
+  // If this flag is set the process will be created in a suspended state and
+  // has to be explicitly unsuspended before it will run.
+  pfStartSuspendedOnWindows = 1
+} native_process_flags_t;
+
 // How many standard streams are there?
 #define kStdioStreamCount 3
 

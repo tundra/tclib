@@ -13,6 +13,9 @@ class NativeProcess::PlatformData {
 public:
   PlatformData();
   ~PlatformData();
+  handle_t child_process() { return info.hProcess; }
+  handle_t child_main_thread() { return info.hThread; }
+
 public:
   PROCESS_INFORMATION info;
   handle_t wait_handle;
@@ -59,6 +62,74 @@ void NativeProcess::mark_terminated(bool timer_or_wait_fired) {
   exit_code_.fulfill(exit_code);
 }
 
+bool NativeProcess::inject_library(utf8_t path) {
+  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  // Allocate a block of memory in the child process to hold the DLL name.
+  size_t dll_name_size = path.size + 1;
+  handle_t child_process = platform_data()->child_process();
+  void *remote_dll_name = VirtualAllocEx(child_process, NULL, dll_name_size,
+      MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  if (remote_dll_name == NULL) {
+    LOG_ERROR("Failed to allocate memory for DLL name in child process: %i",
+        GetLastError());
+    return false;
+  }
+
+  // Write the name into the child process.
+  win_size_t bytes_written = 0;
+  bool written = WriteProcessMemory(child_process, remote_dll_name,
+      (void*) path.chars, dll_name_size, &bytes_written);
+  if (!written) {
+    LOG_ERROR("Failed to write DLL name into child process: %i", GetLastError());
+    return false;
+  }
+  if (bytes_written != dll_name_size) {
+    LOG_ERROR("Write of DLL name into child process was incomplete: %i < %i.",
+        bytes_written, dll_name_size);
+    return false;
+  }
+
+  // Grab the address of LoadLibrary. What we'll actually get is the address
+  // within this process but kernel32.dll is always located in the same place
+  // so the address will also work in the child process.
+  module_t kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
+  void *load_library_a = GetProcAddress(kernel32, TEXT("LoadLibraryA"));
+  if (load_library_a == NULL) {
+    LOG_ERROR("Failed to resolve LoadLibraryA: %i", GetLastError());
+    return false;
+  }
+
+  // Create a thread in the child process that loads the DLL.
+  handle_t loader_thread = CreateRemoteThread(child_process, NULL, 0,
+      (LPTHREAD_START_ROUTINE) load_library_a, remote_dll_name, NULL, NULL);
+  if (loader_thread == NULL) {
+    LOG_ERROR("Failed to create remote DLL loader thread: %i", GetLastError());
+    return false;
+  }
+
+  // Start the loader thread running.
+  dword_t retval = ResumeThread(loader_thread);
+  if (retval == -1) {
+    LOG_ERROR("Failed to start loader thread: %i", GetLastError());
+    return false;
+  }
+
+  // Wait the the loader thread to complete.
+  WaitForSingleObject(loader_thread, INFINITE);
+
+  return true;
+}
+
+bool NativeProcess::resume() {
+  CHECK_TRUE("resuming non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  dword_t retval = ResumeThread(platform_data()->child_main_thread());
+  if (retval == -1) {
+    LOG_ERROR("Failed to resume suspended process: %i", GetLastError());
+    return false;
+  }
+  return true;
+}
+
 namespace tclib {
 class NativeProcessStart {
 public:
@@ -74,6 +145,8 @@ public:
   // a couple of times so it seems worth it.
   bool maybe_redirect_standard_stream(const char *name, stdio_stream_t stream,
       handle_t *handle_out, bool *has_redirected);
+
+  NativeProcess *process() { return process_; }
   bool configure_sub_environment();
   bool launch(utf8_t executable);
   bool post_launch();
@@ -154,7 +227,7 @@ utf8_t NativeProcessStart::build_cmdline(utf8_t executable, size_t argc,
 
 bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
     stdio_stream_t stream, handle_t *handle_out, bool *has_redirected) {
-  StreamRedirect redirect = process_->stdio_[stream];
+  StreamRedirect redirect = process()->stdio_[stream];
   if (redirect.is_empty())
     return true;
   if (!redirect.prepare_launch())
@@ -191,14 +264,14 @@ bool NativeProcessStart::configure_standard_streams() {
 }
 
 bool NativeProcessStart::configure_sub_environment() {
-  if (process_->env_.empty())
+  if (process()->env_.empty())
     // If we don't want the environment to change we just leave new_env_ empty
     // and launch will do the right thing.
     return true;
 
   // Copy the new variables also.
-  for (size_t i = process_->env_.size(); i > 0; i--) {
-    std::string entry = process_->env_[i - 1];
+  for (size_t i = process()->env_.size(); i > 0; i--) {
+    std::string entry = process()->env_[i - 1];
     string_buffer_append(&new_env_buf_, new_string(entry.c_str(), entry.length()));
     string_buffer_putc(&new_env_buf_, '\0');
   }
@@ -225,23 +298,26 @@ bool NativeProcessStart::launch(utf8_t executable) {
   if (!string_is_empty(new_env_))
     env = static_cast<void*>(const_cast<char*>(new_env_.chars));
 
-  NativeProcess::PlatformData *data = process_->platform_data_;
+  NativeProcess::PlatformData *data = process()->platform_data_;
   // Create the child process.
+  dword_t creation_flags = 0;
+  if ((process()->flags() & pfStartSuspendedOnWindows) != 0)
+    creation_flags |= CREATE_SUSPENDED;
   bool created = CreateProcess(
     executable.chars,// lpApplicationName
     cmdline_chars,   // lpCommandLine
     NULL,            // lpProcessAttributes
     NULL,            // lpThreadAttributes
     true,            // bInheritHandles
-    0,               // dwCreationFlags
+    creation_flags,  // dwCreationFlags
     env,             // lpEnvironment
     NULL,            // lpCurrentDirectory
     &startup_info_,  // lpStartupInfo
     &data->info);    // lpProcessInformation
 
   if (!created) {
-    process_->state = NativeProcess::nsCouldntCreate;
-    process_->exit_code_.fulfill(GetLastError());
+    process()->state = NativeProcess::nsCouldntCreate;
+    process()->exit_code_.fulfill(GetLastError());
 
     // It might seem counter-intuitive to succeed when CreateProcess returns
     // false, but it is done to keep the interface consistent across platforms.
@@ -252,12 +328,12 @@ bool NativeProcessStart::launch(utf8_t executable) {
     return true;
   }
 
-  process_->state = NativeProcess::nsRunning;
+  process()->state = NativeProcess::nsRunning;
   if (!RegisterWaitForSingleObject(
       &data->wait_handle,      // phNewWaitObject
       data->info.hProcess,     // hObject
       &mark_terminated_bridge, // Callback
-      process_,                // Context
+      process(),               // Context
       INFINITE,                // dwMilliseconds
       WT_EXECUTEONLYONCE))     // dwFlags
     WARN("Call to RegisterWaitForSingleObject failed: %i", GetLastError());
@@ -270,7 +346,7 @@ bool NativeProcessStart::post_launch() {
   // child now.
   bool succeeded = true;
   for (size_t i = 0; i < kStdioStreamCount; i++) {
-    StreamRedirect redirect = process_->stdio_[i];
+    StreamRedirect redirect = process()->stdio_[i];
     succeeded = (redirect.is_empty() || redirect.parent_side_close()) || succeeded;
   }
   return succeeded;

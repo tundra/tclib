@@ -142,10 +142,14 @@ log_o *set_global_log(log_o *log);
 
 // Emits an error if the static log level is at least error, otherwise does
 // nothing (including doesn't evaluate arguments).
-#define ERROR(...) do {                                                        \
+#define LOG_ERROR(...) do {                                                    \
   if (LOG_LEVEL_AT_LEAST(llError))                                             \
     log_message(llError, __FILE__, __LINE__, __VA_ARGS__);                     \
 } while (false)
+
+// Make these two aliases of each other so there's another one to use when
+// someone (*ahem-windows*) clobbers the other.
+#define ERROR LOG_ERROR
 
 // Emits an info if the static log level is at least info, otherwise does
 // nothing (including doesn't evaluate arguments).

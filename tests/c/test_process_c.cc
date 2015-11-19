@@ -2,6 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "test/unittest.hh"
+#include "helpers.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/pipe.h"
@@ -12,13 +13,6 @@ BEGIN_C_INCLUDES
 END_C_INCLUDES
 
 using namespace tclib;
-
-// Returns the path to the durian executable.
-static utf8_t get_durian_main() {
-  const char *result = getenv("DURIAN_MAIN");
-  ASSERT_TRUE(result != NULL);
-  return new_c_string(result);
-}
 
 TEST(process_c, return_value) {
   // Create a subprocess with out and err redirected.
