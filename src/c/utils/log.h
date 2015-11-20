@@ -147,9 +147,10 @@ log_o *set_global_log(log_o *log);
     log_message(llError, __FILE__, __LINE__, __VA_ARGS__);                     \
 } while (false)
 
-// Make these two aliases of each other so there's another one to use when
-// someone (*ahem-windows*) clobbers the other.
-#define ERROR LOG_ERROR
+// Unless someone else has clobbered ERROR (*ahem-windows*) we define it.
+#ifndef ERROR
+#  define ERROR LOG_ERROR
+#endif
 
 // Emits an info if the static log level is at least info, otherwise does
 // nothing (including doesn't evaluate arguments).
