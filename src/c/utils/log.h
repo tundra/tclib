@@ -34,6 +34,7 @@ typedef enum {
 //
 //  Name     char value stream    action      fail exit code
 #define ENUM_LOG_LEVELS(C)                                                     \
+  C(Debug,   D,   0,    lsStdout, lbContinue, _)                               \
   C(Info,    I,   1,    lsStdout, lbContinue, _)                               \
   C(Warning, W,   2,    lsStderr, lbContinue, _)                               \
   C(Error,   E,   3,    lsStderr, lbContinue, X)                               \
@@ -157,6 +158,13 @@ log_o *set_global_log(log_o *log);
 #define INFO(...) do {                                                         \
   if (LOG_LEVEL_AT_LEAST(llInfo))                                              \
     log_message(llInfo, __FILE__, __LINE__, __VA_ARGS__);                      \
+} while (false)
+
+// Emits an debug if the static log level is at least debug (which it's not by
+// default), otherwise does nothing (including doesn't evaluate arguments).
+#define DEBUG(...) do {                                                        \
+  if (LOG_LEVEL_AT_LEAST(llDebug))                                             \
+    log_message(llDebug, __FILE__, __LINE__, __VA_ARGS__);                     \
 } while (false)
 
 // Works the same way as INFO but doesn't print file:line such that the output
