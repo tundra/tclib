@@ -162,10 +162,14 @@ log_o *set_global_log(log_o *log);
 
 // Emits an debug if the static log level is at least debug (which it's not by
 // default), otherwise does nothing (including doesn't evaluate arguments).
-#define DEBUG(...) do {                                                        \
+#define LOG_DEBUG(...) do {                                                    \
   if (LOG_LEVEL_AT_LEAST(llDebug))                                             \
     log_message(llDebug, __FILE__, __LINE__, __VA_ARGS__);                     \
 } while (false)
+
+#ifndef DEBUG
+#  define DEBUG LOG_DEBUG
+#endif
 
 // Works the same way as INFO but doesn't print file:line such that the output
 // is the same regardless of how the binary has been compiled. Useful for tests.
