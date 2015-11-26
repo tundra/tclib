@@ -19,6 +19,7 @@ test_file_names = [
   "test_intex_c.cc",
   "test_intex_cpp.cc",
   "test_lifetime.cc",
+  "test_macro.cc",
   "test_mutex_c.cc",
   "test_mutex_cpp.cc",
   "test_ook.cc",
