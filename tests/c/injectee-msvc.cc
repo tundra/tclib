@@ -29,7 +29,7 @@ bool APIENTRY DllMain(module_t module, dword_t reason, void *reserved) {
   return true;
 }
 
-extern "C" __declspec(dllexport) dword_t __stdcall InjecteeDllConnect(blob_t data_in,
+extern "C" __declspec(dllexport) dword_t InjecteeDllConnect(blob_t data_in,
     blob_t *data_out) {
   if (data_in.size != 85)
     return 85;
