@@ -128,7 +128,7 @@ private:
   static bool read_data_from_process(handle_t process, const void *addr, size_t offset,
       T *dest, size_t size);
 
-  static const size_t kMaxEntryPointSize = 2048;
+  static const size_t kMaxEntryPointSize = 4096;
 };
 
 dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {

@@ -93,5 +93,6 @@ for test_file_name in test_file_names:
   test_case.add_env("DURIAN_MAIN", durian_main.get_output_path())
   test_case.add_env("INJECTEE", injectee.get_output_path())
   test_case.add_dependency(durian_main)
+  test_case.add_dependency(injectee)
   run_tests.add_member(test_case)
   add_alias("run-test-%s" % stripped_test_case_name, test_case)

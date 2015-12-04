@@ -2,7 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "c/winhdr.h"
-#include "utils/alloc.h"
+#include "sync/injectee.hh"
 
 static void on_attach() {
   int a = atoi(getenv("A"));
@@ -29,8 +29,7 @@ bool APIENTRY DllMain(module_t module, dword_t reason, void *reserved) {
   return true;
 }
 
-extern "C" __declspec(dllexport) dword_t InjecteeDllConnect(blob_t data_in,
-    blob_t *data_out) {
+CONNECTOR_IMPL(TestInjecteeConnect, data_in, data_out) {
   if (data_in.size != 85)
     return 85;
   uint8_t *bytes_in = static_cast<uint8_t*>(data_in.start);

@@ -48,7 +48,7 @@ TEST(dll_inject, exec_durian) {
     if (do_inject) {
       blob_t data_out = blob_empty();
       ASSERT_TRUE(process.inject_library(get_injectee_dll(),
-          new_c_string("InjecteeDllConnect"), data_in, &data_out));
+          new_c_string("TestInjecteeConnect"), data_in, &data_out));
       ASSERT_EQ(73, data_out.size);
       uint8_t *bytes_out = static_cast<uint8_t*>(data_out.start);
       for (size_t i = 0; i < data_out.size; i++)
