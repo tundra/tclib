@@ -158,6 +158,8 @@ public:
   // On windows, loads a dll into a suspended process. Returns true if
   // successful and false otherwise, including on linux where this is just not
   // supported.
+  bool inject_library(utf8_t path, utf8_t connect_name, blob_t blob_in, blob_t *blob_out);
+
   bool inject_library(utf8_t path);
 
   // Specifies that the given redirect should be used for the given stream. Must

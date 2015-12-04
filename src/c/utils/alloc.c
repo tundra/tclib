@@ -9,21 +9,6 @@
 static const uint8_t kMallocHeapMarker = 0xB0;
 static const uint8_t kMallocFreedMarker = 0xC0;
 
-blob_t blob_empty() {
-  return blob_new(NULL, 0);
-}
-
-blob_t blob_new(void *start, size_t size) {
-  blob_t result;
-  result.start = start;
-  result.size = size;
-  return result;
-}
-
-bool blob_is_empty(blob_t block) {
-  return block.start == NULL;
-}
-
 void blob_fill(blob_t block, byte_t value) {
   memset(block.start, value, block.size);
 }

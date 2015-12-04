@@ -20,6 +20,12 @@ using namespace tclib;
 
 TEST(dll_inject, exec_durian) {
   UNLESS_MSVC(return);
+  byte_t fib[85];
+  fib[0] = 1;
+  fib[1] = 1;
+  for (int i = 2; i < 85; i++)
+    fib[i] = static_cast<byte_t>(fib[i-1] + fib[i-2]);
+  blob_t data_in = blob_new(fib, 85);
   for (int i = 0; i < 3; i++) {
     // Launch three variants of durian, which in all cases exits the value of
     // the C env variable. First time there is no injection so the exit code
@@ -39,8 +45,16 @@ TEST(dll_inject, exec_durian) {
     utf8_t args[3] = {new_c_string("--quiet"), new_c_string("--exit-code-from-env"),
         new_c_string("C")};
     ASSERT_TRUE(process.start(get_durian_main(), 3, args));
-    if (do_inject)
-      ASSERT_TRUE(process.inject_library(get_injectee_dll()));
+    if (do_inject) {
+      blob_t data_out = blob_empty();
+      ASSERT_TRUE(process.inject_library(get_injectee_dll(),
+          new_c_string("InjecteeDllConnect"), data_in, &data_out));
+      ASSERT_EQ(73, data_out.size);
+      uint8_t *bytes_out = static_cast<uint8_t*>(data_out.start);
+      for (size_t i = 0; i < data_out.size; i++)
+        ASSERT_EQ(static_cast<byte_t>(fib[i] + 13), bytes_out[i]);
+      allocator_default_free(data_out);
+    }
     ASSERT_TRUE(process.resume());
     ProcessWaitIop wait(&process, o0());
     ASSERT_TRUE(wait.execute());

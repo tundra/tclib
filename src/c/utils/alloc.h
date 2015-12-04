@@ -17,16 +17,26 @@ typedef struct {
   size_t size;
 } blob_t;
 
-// Returns true iff the given block is empty, say because allocation failed.
-bool blob_is_empty(blob_t block);
-
-// Resets the given block to the empty state.
-blob_t blob_empty();
 
 // Creates a new memory block with the given contents. Be sure to note that this
 // doesn't allocate anything, just bundles previously allocated memory into a
 // struct.
-blob_t blob_new(void *start, size_t size);
+static blob_t blob_new(void *start, size_t size) {
+  blob_t result;
+  result.start = start;
+  result.size = size;
+  return result;
+}
+
+// Returns true iff the given block is empty, say because allocation failed.
+static inline bool blob_is_empty(blob_t block) {
+  return block.start == NULL;
+}
+
+// Resets the given block to the empty state.
+static inline blob_t blob_empty() {
+  return blob_new(NULL, 0);
+}
 
 // Fills this memory block's data with the given value.
 void blob_fill(blob_t block, byte_t value);

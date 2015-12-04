@@ -9,6 +9,7 @@
 BEGIN_C_INCLUDES
 #include "utils/log.h"
 #include "utils/strbuf.h"
+#include "utils/string-inl.h"
 END_C_INCLUDES
 
 using namespace tclib;
@@ -95,6 +96,10 @@ bool NativeProcess::wait_sync(Duration timeout) {
   if (passed)
     this->state = nsComplete;
   return passed;
+}
+
+bool NativeProcess::inject_library(utf8_t path) {
+  return inject_library(path, string_empty(), blob_empty(), NULL);
 }
 
 PipeRedirector::PipeRedirector(pipe_direction_t direction)

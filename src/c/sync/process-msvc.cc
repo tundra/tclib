@@ -62,46 +62,210 @@ void NativeProcess::mark_terminated(bool timer_or_wait_fired) {
   exit_code_.fulfill(exit_code);
 }
 
-bool NativeProcess::inject_library(utf8_t path) {
-  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
-  // Allocate a block of memory in the child process to hold the DLL name.
-  size_t dll_name_size = path.size + 1;
-  handle_t child_process = platform_data()->child_process();
-  void *remote_dll_name = VirtualAllocEx(child_process, NULL, dll_name_size,
-      MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-  if (remote_dll_name == NULL) {
-    LOG_ERROR("Failed to allocate memory for DLL name in child process: %i",
-        GetLastError());
-    return false;
-  }
+// Various utilities for injecting a dll.
+class DllInjectHelper {
+public:
+  // Injects the dll with the given path into the given process.
+  static bool inject_dll(handle_t process, utf8_t dll_path, utf8_t connector_name,
+      blob_t blob_in, blob_t *blob_out);
 
+private:
+  // Types of the functions being passed in.
+  typedef module_t (WINAPI *load_library_a_t)(const char *filename);
+  typedef FARPROC (WINAPI *get_proc_address_t)(module_t module, const char *proc_name);
+  typedef dword_t (WINAPI *get_last_error_t)();
+
+  // Type of the function defined in the DLL that we'll call to initialize
+  // the DLL.
+  typedef dword_t (WINAPI *dll_connect_t)(blob_t data_in, blob_t *data_out);
+
+  // The block of data that is passed to the injectee.
+  typedef struct {
+    // The name of the DLL to load.
+    const char *dll_name;
+    const char *connect_name;
+    blob_t data_in;
+    // The address of these functions are actually available within the process
+    // but we need the call to be absolute since if it's relative then it breaks
+    // when we copy the function to what will almost certainly be a different
+    // place. Passing the address explicitly ensures that the call is absolute.
+    load_library_a_t load_library_a;
+    get_proc_address_t get_proc_address;
+    get_last_error_t get_last_error;
+  } inject_in_t;
+
+  typedef struct {
+    // Outgoing data -- note that it points within the child process' memory so
+    // you can't read it directly in the parent.
+    blob_t data_out;
+    // A character that identifies which step of injection failed if it failed,
+    // otherwise 0.
+    char error_step;
+    // If error_step is not 0 this holds an error code that indicates what the
+    // problem is.
+    dword_t error_code;
+  } inject_out_t;
+
+  typedef struct {
+    inject_in_t in;
+    inject_out_t out;
+  } inject_data_t;
+
+  // Entry point that is copied into the process and called.
+  static dword_t __stdcall inject_entry_point(void *raw_data);
+
+  // Allocates a block of memory in the given process and copies the given data
+  // into it.
+  template <typename T>
+  static bool copy_data_into_process(handle_t process, const T *src, size_t size,
+      const T **dest_out);
+
+  template <typename T>
+  static bool write_data_into_process(handle_t process, const T *src,
+      size_t size, void *dest);
+
+  template <typename T>
+  static bool read_data_from_process(handle_t process, const void *addr, size_t offset,
+      T *dest, size_t size);
+
+  static const size_t kMaxEntryPointSize = 2048;
+};
+
+dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
+  // This code is *very* special indeed because it will be copied into the
+  // child process. It must be smaller than kMaxEntryPointSize bytes long,
+  // can't use literal strings (because they won't be copied along with it) and
+  // can't call library functions (because the calls may be relative and will
+  // break when the code moves). I'm sure other restrictions apply too so just
+  // be super careful.
+  inject_data_t *data = static_cast<inject_data_t*>(raw_data);
+  inject_in_t *in = &data->in;
+  inject_out_t *out = &data->out;
+  // Set the error code *before* doing an operation that might fail because
+  // that way, if we crash the step will already be set and should be visible
+  // to the parent process.
+  out->error_step = 'L';
+  module_t module = (in->load_library_a)(in->dll_name);
+  if (module == NULL) {
+    out->error_code = (in->get_last_error)();
+    return 1;
+  }
+  if (in->connect_name != NULL) {
+    out->error_step = 'P';
+    void *raw_connect = (in->get_proc_address)(module, in->connect_name);
+    if (raw_connect == NULL) {
+      out->error_code = (in->get_last_error)();
+      return 1;
+    }
+    out->error_step = 'C';
+    dword_t result = reinterpret_cast<dll_connect_t>(raw_connect)(in->data_in,
+        &out->data_out);
+    if (result != 0) {
+      out->error_code = result;
+      return 1;
+    }
+  }
+  out->error_step = 0;
+  return 0;
+}
+
+template <typename T>
+bool DllInjectHelper::write_data_into_process(handle_t process,
+    const T *src, size_t size, void *dest) {
   // Write the name into the child process.
   win_size_t bytes_written = 0;
-  bool written = WriteProcessMemory(child_process, remote_dll_name,
-      (void*) path.chars, dll_name_size, &bytes_written);
-  if (!written) {
-    LOG_ERROR("Failed to write DLL name into child process: %i", GetLastError());
+  if (!WriteProcessMemory(process, dest, src, size, &bytes_written)) {
+    LOG_ERROR("Failed to write into child process: %i", GetLastError());
     return false;
   }
-  if (bytes_written != dll_name_size) {
-    LOG_ERROR("Write of DLL name into child process was incomplete: %i < %i.",
-        bytes_written, dll_name_size);
+  if (bytes_written != size) {
+    LOG_ERROR("Write of data into child process was incomplete: %i < %i.",
+        bytes_written, size);
     return false;
+  }
+  return true;
+}
+
+template <typename T>
+bool DllInjectHelper::read_data_from_process(handle_t process, const void *addr,
+    size_t offset, T *dest, size_t size) {
+  win_size_t bytes_read = 0;
+  if (!ReadProcessMemory(process, static_cast<const byte_t*>(addr) + offset,
+      dest, size, &bytes_read)) {
+    LOG_ERROR("Failed to read from child process: %i", GetLastError());
+    return false;
+  }
+  return true;
+}
+
+
+template <typename T>
+bool DllInjectHelper::copy_data_into_process(handle_t process, const T *src,
+    size_t size, const T **dest_out) {
+  void *dest = VirtualAllocEx(process, NULL, size, MEM_RESERVE | MEM_COMMIT,
+      PAGE_EXECUTE_READWRITE);
+  if (dest == NULL) {
+    LOG_ERROR("Failed to allocate memory in child process: %i", GetLastError());
+    return false;
+  }
+  *dest_out = static_cast<T*>(dest);
+  return write_data_into_process(process, src, size, dest);
+}
+
+bool NativeProcess::inject_library(utf8_t path, utf8_t connector_name,
+    blob_t blob_in, blob_t *blob_out) {
+  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  return DllInjectHelper::inject_dll(platform_data()->child_process(), path,
+      connector_name, blob_in, blob_out);
+}
+
+bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
+    utf8_t connector_name, blob_t data_in, blob_t *data_out) {
+  // Create a local version of the injected data which we'll later copy into
+  // the process.
+  inject_data_t proto_data;
+  struct_zero_fill(proto_data);
+  proto_data.in.load_library_a = LoadLibraryA;
+  proto_data.in.get_proc_address = GetProcAddress;
+  proto_data.in.get_last_error = GetLastError;
+
+  // Copy the dll name and store it in the data.
+  if (!copy_data_into_process(child_process, path.chars, path.size + 1,
+      &proto_data.in.dll_name))
+    return false;
+
+  // If there's a connector copy that too.
+  if (!string_is_empty(connector_name)) {
+    if (!copy_data_into_process(child_process, connector_name.chars,
+        connector_name.size + 1, &proto_data.in.connect_name))
+      return false;
   }
 
-  // Grab the address of LoadLibrary. What we'll actually get is the address
-  // within this process but kernel32.dll is always located in the same place
-  // so the address will also work in the child process.
-  module_t kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
-  void *load_library_a = GetProcAddress(kernel32, TEXT("LoadLibraryA"));
-  if (load_library_a == NULL) {
-    LOG_ERROR("Failed to resolve LoadLibraryA: %i", GetLastError());
-    return false;
+  // If there's input data copy that.
+  if (!blob_is_empty(data_in)) {
+    void *child_data = NULL;
+    if (!copy_data_into_process(child_process, data_in.start, data_in.size,
+        const_cast<const void**>(&child_data)))
+      return false;
+    proto_data.in.data_in = blob_new(child_data, data_in.size);
   }
 
-  // Create a thread in the child process that loads the DLL.
+  // Copy the injected data into the process.
+  const inject_data_t *remote_data = NULL;
+  if (!copy_data_into_process(child_process, &proto_data, sizeof(proto_data),
+      &remote_data))
+    return false;
+
+  // Copy the binary code of the entry point function into the process.
+  LPTHREAD_START_ROUTINE remote_entry_point = NULL;
+  if (!copy_data_into_process(child_process, inject_entry_point, kMaxEntryPointSize,
+      &remote_entry_point))
+    return false;
+
+  // Create a thread in the child process that runs the entry point.
   handle_t loader_thread = CreateRemoteThread(child_process, NULL, 0,
-      (LPTHREAD_START_ROUTINE) load_library_a, remote_dll_name, NULL, NULL);
+      remote_entry_point, const_cast<inject_data_t*>(remote_data),
+      NULL, NULL);
   if (loader_thread == NULL) {
     LOG_ERROR("Failed to create remote DLL loader thread: %i", GetLastError());
     return false;
@@ -117,6 +281,26 @@ bool NativeProcess::inject_library(utf8_t path) {
   // Wait the the loader thread to complete.
   WaitForSingleObject(loader_thread, INFINITE);
 
+  // Copy the output data back from the process.
+  inject_out_t out;
+  struct_zero_fill(out);
+  if (!read_data_from_process(child_process, remote_data, offsetof(inject_data_t, out),
+      &out, sizeof(out)))
+    return false;
+
+  if (out.error_step != 0) {
+    LOG_ERROR("Injecting failed at step %c: %i", out.error_step, out.error_code);
+    return false;
+  }
+
+  if (data_out != NULL) {
+    // If there's a data_out parameter we copy the output data into it.
+    blob_t copy = allocator_default_malloc(out.data_out.size);
+    if (!read_data_from_process(child_process, out.data_out.start, 0, copy.start,
+        copy.size))
+      return false;
+    *data_out = copy;
+  }
   return true;
 }
 
