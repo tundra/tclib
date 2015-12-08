@@ -7,6 +7,7 @@
 #include "c/stdc.h"
 
 #include "sync/atomic.h"
+#include "utils/check.h"
 
 // A block of memory as returned from an allocator. Bundling the length with the
 // memory allows us to check how much memory is live at any given time.
@@ -42,7 +43,10 @@ static inline blob_t blob_empty() {
 void blob_fill(blob_t block, byte_t value);
 
 // Write the contents of the source blob into the destination.
-void blob_copy_to(blob_t src, blob_t dest);
+static inline void blob_copy_to(blob_t src, blob_t dest) {
+  CHECK_REL("blob copy destination too small", dest.size, >=, src.size);
+  memcpy(dest.start, src.start, src.size);
+}
 
 // Given a struct by value, fills the memory occupied by the struct with zeroes.
 #define struct_zero_fill(V) blob_fill(blob_new(&(V), sizeof(V)), 0)

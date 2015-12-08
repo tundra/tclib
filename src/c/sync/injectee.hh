@@ -11,6 +11,6 @@ BEGIN_C_INCLUDES
 END_C_INCLUDES
 
 #define CONNECTOR_IMPL(Name, DATA_IN_NAME, DATA_OUT_NAME)                                                   \
-  extern "C" __declspec(dllexport) dword_t Name(blob_t DATA_IN_NAME, blob_t *DATA_OUT_NAME)
+  extern "C" __declspec(dllexport) dword_t Name(blob_t DATA_IN_NAME, blob_t DATA_OUT_NAME)
 
 #endif // _INJECTEE_HH

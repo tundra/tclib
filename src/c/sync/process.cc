@@ -99,7 +99,7 @@ bool NativeProcess::wait_sync(Duration timeout) {
 }
 
 bool NativeProcess::inject_library(utf8_t path) {
-  return inject_library(path, string_empty(), blob_empty(), NULL);
+  return inject_library(path, string_empty(), blob_empty(), blob_empty());
 }
 
 PipeRedirector::PipeRedirector(pipe_direction_t direction)

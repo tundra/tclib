@@ -158,7 +158,15 @@ public:
   // On windows, loads a dll into a suspended process. Returns true if
   // successful and false otherwise, including on linux where this is just not
   // supported.
-  bool inject_library(utf8_t path, utf8_t connect_name, blob_t blob_in, blob_t *blob_out);
+  //
+  // If a nonempty connect_name is passed it will be used as the name of an
+  // exported function within the dll to call to connect with the caller; if the
+  // method doesn't exist inject_library will fail. The connect function will
+  // be passed a copy of the data in blob_in and a piece of scratch memory the
+  // same size as blob_out, whose contents will be copied back into blob_out
+  // once the call has completed.
+  bool inject_library(utf8_t path, utf8_t connect_name, blob_t blob_in,
+      blob_t blob_out);
 
   bool inject_library(utf8_t path);
 

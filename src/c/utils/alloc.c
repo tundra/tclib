@@ -2,7 +2,6 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "utils/alloc.h"
-#include "utils/check.h"
 #include "utils/log.h"
 #include "sync/mutex.h"
 
@@ -11,11 +10,6 @@ static const uint8_t kMallocFreedMarker = 0xC0;
 
 void blob_fill(blob_t block, byte_t value) {
   memset(block.start, value, block.size);
-}
-
-void blob_copy_to(blob_t src, blob_t dest) {
-  CHECK_REL("blob copy destination too small", dest.size, >=, src.size);
-  memcpy(dest.start, src.start, src.size);
 }
 
 // Throws away the data argument and just calls malloc.

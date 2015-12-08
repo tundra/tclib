@@ -1,6 +1,8 @@
 //- Copyright 2015 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#include "process.hh"
+
 BEGIN_C_INCLUDES
 #include "utils/string-inl.h"
 END_C_INCLUDES
@@ -67,7 +69,7 @@ class DllInjectHelper {
 public:
   // Injects the dll with the given path into the given process.
   static bool inject_dll(handle_t process, utf8_t dll_path, utf8_t connector_name,
-      blob_t blob_in, blob_t *blob_out);
+      blob_t blob_in, blob_t blob_out);
 
 private:
   // Types of the functions being passed in.
@@ -77,7 +79,7 @@ private:
 
   // Type of the function defined in the DLL that we'll call to initialize
   // the DLL.
-  typedef dword_t (WINAPI *dll_connect_t)(blob_t data_in, blob_t *data_out);
+  typedef dword_t (*dll_connect_t)(blob_t data_in, blob_t data_out);
 
   // The block of data that is passed to the injectee.
   typedef struct {
@@ -85,6 +87,7 @@ private:
     const char *dll_name;
     const char *connect_name;
     blob_t data_in;
+    blob_t data_out_scratch;
     // The address of these functions are actually available within the process
     // but we need the call to be absolute since if it's relative then it breaks
     // when we copy the function to what will almost certainly be a different
@@ -95,9 +98,6 @@ private:
   } inject_in_t;
 
   typedef struct {
-    // Outgoing data -- note that it points within the child process' memory so
-    // you can't read it directly in the parent.
-    blob_t data_out;
     // A character that identifies which step of injection failed if it failed,
     // otherwise 0.
     char error_step;
@@ -122,13 +122,15 @@ private:
 
   template <typename T>
   static bool write_data_into_process(handle_t process, const T *src,
-      size_t size, void *dest);
+      size_t size, blob_t dest);
 
   template <typename T>
-  static bool read_data_from_process(handle_t process, const void *addr, size_t offset,
-      T *dest, size_t size);
+  static bool read_data_from_process(handle_t process, const void *addr, T *dest,
+      size_t size);
 
-  static const size_t kMaxEntryPointSize = 4096;
+  static bool alloc_remote(handle_t process, size_t size, blob_t *data_out);
+
+  static const size_t kMaxEntryPointSize = 2048;
 };
 
 dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
@@ -139,7 +141,7 @@ dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
   // break when the code moves). I'm sure other restrictions apply too so just
   // be super careful.
   inject_data_t *data = static_cast<inject_data_t*>(raw_data);
-  inject_in_t *in = &data->in;
+  const inject_in_t *in = &data->in;
   inject_out_t *out = &data->out;
   // Set the error code *before* doing an operation that might fail because
   // that way, if we crash the step will already be set and should be visible
@@ -158,8 +160,8 @@ dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
       return 1;
     }
     out->error_step = 'C';
-    dword_t result = reinterpret_cast<dll_connect_t>(raw_connect)(in->data_in,
-        &out->data_out);
+    dll_connect_t connect = reinterpret_cast<dll_connect_t>(raw_connect);
+    dword_t result = connect(in->data_in, in->data_out_scratch);
     if (result != 0) {
       out->error_code = result;
       return 1;
@@ -169,13 +171,26 @@ dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
   return 0;
 }
 
+bool DllInjectHelper::alloc_remote(handle_t process, size_t size,
+    blob_t *data_out) {
+  void *start = VirtualAllocEx(process, NULL, size, MEM_RESERVE | MEM_COMMIT,
+        PAGE_EXECUTE_READWRITE);
+  if (start == NULL) {
+    LOG_ERROR("VirtualAllocEx(_, _, %i, _, _): %i", size, GetLastError());
+    return false;
+  }
+  *data_out = blob_new(start, size);
+  return true;
+}
+
 template <typename T>
 bool DllInjectHelper::write_data_into_process(handle_t process,
-    const T *src, size_t size, void *dest) {
+    const T *src, size_t size, blob_t dest) {
   // Write the name into the child process.
   win_size_t bytes_written = 0;
-  if (!WriteProcessMemory(process, dest, src, size, &bytes_written)) {
-    LOG_ERROR("Failed to write into child process: %i", GetLastError());
+  if (!WriteProcessMemory(process, dest.start, src, size, &bytes_written)) {
+    LOG_ERROR("WriteProcessMemory(_, %p, %p, %i, _): %i", dest.start, src, size,
+        GetLastError());
     return false;
   }
   if (bytes_written != size) {
@@ -188,11 +203,10 @@ bool DllInjectHelper::write_data_into_process(handle_t process,
 
 template <typename T>
 bool DllInjectHelper::read_data_from_process(handle_t process, const void *addr,
-    size_t offset, T *dest, size_t size) {
+     T *dest, size_t size) {
   win_size_t bytes_read = 0;
-  if (!ReadProcessMemory(process, static_cast<const byte_t*>(addr) + offset,
-      dest, size, &bytes_read)) {
-    LOG_ERROR("Failed to read from child process: %i", GetLastError());
+  if (!ReadProcessMemory(process, addr, dest, size, &bytes_read)) {
+    LOG_ERROR("ReadProcessMemory(-, %p, -, %i, -): %i", addr, size, GetLastError());
     return false;
   }
   return true;
@@ -202,52 +216,57 @@ bool DllInjectHelper::read_data_from_process(handle_t process, const void *addr,
 template <typename T>
 bool DllInjectHelper::copy_data_into_process(handle_t process, const T *src,
     size_t size, const T **dest_out) {
-  void *dest = VirtualAllocEx(process, NULL, size, MEM_RESERVE | MEM_COMMIT,
-      PAGE_EXECUTE_READWRITE);
-  if (dest == NULL) {
-    LOG_ERROR("Failed to allocate memory in child process: %i", GetLastError());
+  blob_t dest = blob_empty();
+  if (!alloc_remote(process, size, &dest))
     return false;
-  }
-  *dest_out = static_cast<T*>(dest);
+  *dest_out = static_cast<T*>(dest.start);
   return write_data_into_process(process, src, size, dest);
 }
 
 bool NativeProcess::inject_library(utf8_t path, utf8_t connector_name,
-    blob_t blob_in, blob_t *blob_out) {
+    blob_t blob_in, blob_t blob_out) {
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   return DllInjectHelper::inject_dll(platform_data()->child_process(), path,
       connector_name, blob_in, blob_out);
 }
 
 bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
-    utf8_t connector_name, blob_t data_in, blob_t *data_out) {
+    utf8_t connector_name, blob_t data_in, blob_t data_out) {
   // Create a local version of the injected data which we'll later copy into
   // the process.
   inject_data_t proto_data;
   struct_zero_fill(proto_data);
-  proto_data.in.load_library_a = LoadLibraryA;
-  proto_data.in.get_proc_address = GetProcAddress;
-  proto_data.in.get_last_error = GetLastError;
+
+  inject_in_t *in = &proto_data.in;
+  in->load_library_a = LoadLibraryA;
+  in->get_proc_address = GetProcAddress;
+  in->get_last_error = GetLastError;
 
   // Copy the dll name and store it in the data.
   if (!copy_data_into_process(child_process, path.chars, path.size + 1,
-      &proto_data.in.dll_name))
+      &in->dll_name))
     return false;
 
   // If there's a connector copy that too.
   if (!string_is_empty(connector_name)) {
     if (!copy_data_into_process(child_process, connector_name.chars,
-        connector_name.size + 1, &proto_data.in.connect_name))
+        connector_name.size + 1, &in->connect_name))
       return false;
   }
 
-  // If there's input data copy that.
+  // If there's input data copy that into the process.
   if (!blob_is_empty(data_in)) {
     void *child_data = NULL;
     if (!copy_data_into_process(child_process, data_in.start, data_in.size,
         const_cast<const void**>(&child_data)))
       return false;
     proto_data.in.data_in = blob_new(child_data, data_in.size);
+  }
+
+  // If the caller expects output data also copy that into the process.
+  if (!blob_is_empty(data_out)) {
+    if (!alloc_remote(child_process, data_out.size, &in->data_out_scratch))
+      return false;
   }
 
   // Copy the injected data into the process.
@@ -284,8 +303,7 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
   // Copy the output data back from the process.
   inject_out_t out;
   struct_zero_fill(out);
-  if (!read_data_from_process(child_process, remote_data, offsetof(inject_data_t, out),
-      &out, sizeof(out)))
+  if (!read_data_from_process(child_process, &remote_data->out, &out, sizeof(out)))
     return false;
 
   if (out.error_step != 0) {
@@ -293,13 +311,11 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
     return false;
   }
 
-  if (data_out != NULL) {
+  if (!blob_is_empty(data_out)) {
     // If there's a data_out parameter we copy the output data into it.
-    blob_t copy = allocator_default_malloc(out.data_out.size);
-    if (!read_data_from_process(child_process, out.data_out.start, 0, copy.start,
-        copy.size))
+    if (!read_data_from_process(child_process, in->data_out_scratch.start,
+        data_out.start, in->data_out_scratch.size))
       return false;
-    *data_out = copy;
   }
   return true;
 }
