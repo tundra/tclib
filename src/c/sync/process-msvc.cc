@@ -327,6 +327,19 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
   // Wait the the loader thread to complete.
   WaitForSingleObject(loader_thread, INFINITE);
 
+  // If the injector messes up we may kill the process. Check whether we've done
+  // that because it's easier to debug when you know this happened rather than
+  // chase down why reading fails below.
+  dword_t exit_code = 0;
+  if (!GetExitCodeProcess(child_process, &exit_code)) {
+    LOG_ERROR("GetExitCodeProcess(_): %i", GetLastError());
+    return false;
+  }
+  if (exit_code != STILL_ACTIVE) {
+    LOG_ERROR("Process died during DLL injection: %p", exit_code);
+    return false;
+  }
+
   // Copy the output data back from the process.
   inject_out_t out;
   struct_zero_fill(out);
