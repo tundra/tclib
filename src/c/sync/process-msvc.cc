@@ -114,21 +114,9 @@ private:
   // Entry point that is copied into the process and called.
   static dword_t __stdcall inject_entry_point(void *raw_data);
 
-  // Allocates a block of memory in the given process and copies the given data
-  // into it.
-  template <typename T>
-  static bool copy_data_into_process(handle_t process, const T *src, size_t size,
-      const T **dest_out);
-
-  template <typename T>
-  static bool write_data_into_process(handle_t process, const T *src,
-      size_t size, blob_t dest);
-
   template <typename T>
   static bool read_data_from_process(handle_t process, const void *addr, T *dest,
       size_t size);
-
-  static bool alloc_remote(handle_t process, size_t size, blob_t *data_out);
 
   static const size_t kMaxEntryPointSize = 2048;
 };
@@ -161,6 +149,7 @@ dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
     }
     out->error_step = 'C';
     dll_connect_t connect = reinterpret_cast<dll_connect_t>(raw_connect);
+    out->error_step = 'R';
     dword_t result = connect(in->data_in, in->data_out_scratch);
     if (result != 0) {
       out->error_code = result;
@@ -169,36 +158,6 @@ dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
   }
   out->error_step = 0;
   return 0;
-}
-
-bool DllInjectHelper::alloc_remote(handle_t process, size_t size,
-    blob_t *data_out) {
-  void *start = VirtualAllocEx(process, NULL, size, MEM_RESERVE | MEM_COMMIT,
-        PAGE_EXECUTE_READWRITE);
-  if (start == NULL) {
-    LOG_ERROR("VirtualAllocEx(_, _, %i, _, _): %i", size, GetLastError());
-    return false;
-  }
-  *data_out = blob_new(start, size);
-  return true;
-}
-
-template <typename T>
-bool DllInjectHelper::write_data_into_process(handle_t process,
-    const T *src, size_t size, blob_t dest) {
-  // Write the name into the child process.
-  win_size_t bytes_written = 0;
-  if (!WriteProcessMemory(process, dest.start, src, size, &bytes_written)) {
-    LOG_ERROR("WriteProcessMemory(_, %p, %p, %i, _): %i", dest.start, src, size,
-        GetLastError());
-    return false;
-  }
-  if (bytes_written != size) {
-    LOG_ERROR("Write of data into child process was incomplete: %i < %i.",
-        bytes_written, size);
-    return false;
-  }
-  return true;
 }
 
 template <typename T>
@@ -213,21 +172,85 @@ bool DllInjectHelper::read_data_from_process(handle_t process, const void *addr,
 }
 
 
-template <typename T>
-bool DllInjectHelper::copy_data_into_process(handle_t process, const T *src,
-    size_t size, const T **dest_out) {
-  blob_t dest = blob_empty();
-  if (!alloc_remote(process, size, &dest))
-    return false;
-  *dest_out = static_cast<T*>(dest.start);
-  return write_data_into_process(process, src, size, dest);
-}
-
 bool NativeProcess::inject_library(utf8_t path, utf8_t connector_name,
     blob_t blob_in, blob_t blob_out) {
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   return DllInjectHelper::inject_dll(platform_data()->child_process(), path,
       connector_name, blob_in, blob_out);
+}
+
+// A wrapper around a reference to memory in a different process.
+template <typename T>
+class RemoteMemory {
+public:
+  // Creates a new empty reference.
+  RemoteMemory();
+
+  // If this reference has been allocated, frees the memory.
+  ~RemoteMemory();
+
+  // Allocates a block of memory and fills it with the given data.
+  bool copy_into(handle_t process, const void* start, size_t size, bool is_executable);
+
+  // Allocates an empty block of memory of the given size.
+  bool alloc(handle_t process, size_t size, bool is_executable = false);
+
+  // Returns a pointer to the remote memory.
+  T* operator*() { return static_cast<T*>(remote_data_.start); }
+  T* operator->() { return this->operator*(); }
+
+  // Returns the remote memory as a blob.
+  blob_t remote() { return remote_data_; }
+
+private:
+  handle_t process_;
+  blob_t remote_data_;
+};
+
+template <typename T>
+RemoteMemory<T>::RemoteMemory()
+  : process_(INVALID_HANDLE_VALUE)
+  , remote_data_(blob_empty()) { }
+
+template <typename T>
+RemoteMemory<T>::~RemoteMemory() {
+  if (blob_is_empty(remote_data_))
+    return;
+  if (!VirtualFreeEx(process_, remote_data_.start, 0, MEM_RELEASE))
+    WARN("VirtualFreeEx(_): %i", GetLastError());
+  remote_data_ = blob_empty();
+}
+
+template <typename T>
+bool RemoteMemory<T>::copy_into(handle_t process, const void* start, size_t size,
+    bool is_executable) {
+  if (!alloc(process, size, is_executable))
+    return false;
+  win_size_t bytes_written = 0;
+  if (!WriteProcessMemory(process, remote_data_.start, start, size, &bytes_written)) {
+    LOG_ERROR("WriteProcessMemory(_, %p, %p, %i, _): %i", remote_data_.start,
+        start, size, GetLastError());
+    return false;
+  }
+  if (bytes_written != size) {
+    LOG_ERROR("Write of data into child process was incomplete: %i < %i.",
+        bytes_written, size);
+    return false;
+  }
+  return true;
+}
+
+template <typename T>
+bool RemoteMemory<T>::alloc(handle_t process, size_t size, bool is_executable) {
+  process_ = process;
+  void *start = VirtualAllocEx(process, NULL, size, MEM_RESERVE | MEM_COMMIT,
+      is_executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE);
+  if (start == NULL) {
+    LOG_ERROR("VirtualAllocEx(_, _, %i, _, _): %i", size, GetLastError());
+    return false;
+  }
+  remote_data_ = blob_new(start, size);
+  return true;
 }
 
 bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
@@ -243,48 +266,52 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
   in->get_last_error = GetLastError;
 
   // Copy the dll name and store it in the data.
-  if (!copy_data_into_process(child_process, path.chars, path.size + 1,
-      &in->dll_name))
+  RemoteMemory<char> remote_path;
+  if (!remote_path.copy_into(child_process, path.chars, path.size + 1, false))
     return false;
+  in->dll_name = *remote_path;
 
   // If there's a connector copy that too.
+  RemoteMemory<char> remote_connector_name;
   if (!string_is_empty(connector_name)) {
-    if (!copy_data_into_process(child_process, connector_name.chars,
-        connector_name.size + 1, &in->connect_name))
+    if (!remote_connector_name.copy_into(child_process, connector_name.chars,
+        connector_name.size + 1, false))
       return false;
+    in->connect_name = *remote_connector_name;
   }
 
   // If there's input data copy that into the process.
+  RemoteMemory<uint8_t> remote_data_in;
   if (!blob_is_empty(data_in)) {
-    void *child_data = NULL;
-    if (!copy_data_into_process(child_process, data_in.start, data_in.size,
-        const_cast<const void**>(&child_data)))
+    if (!remote_data_in.copy_into(child_process, data_in.start, data_in.size, false))
       return false;
-    proto_data.in.data_in = blob_new(child_data, data_in.size);
+    in->data_in = blob_new(*remote_data_in, data_in.size);
   }
 
   // If the caller expects output data also copy that into the process.
+  RemoteMemory<uint8_t> remote_data_out;
   if (!blob_is_empty(data_out)) {
-    if (!alloc_remote(child_process, data_out.size, &in->data_out_scratch))
+    if (!remote_data_out.alloc(child_process, data_out.size))
       return false;
+    in->data_out_scratch = remote_data_out.remote();
   }
 
   // Copy the injected data into the process.
-  const inject_data_t *remote_data = NULL;
-  if (!copy_data_into_process(child_process, &proto_data, sizeof(proto_data),
-      &remote_data))
+  RemoteMemory<inject_data_t> remote_data;
+  if (!remote_data.copy_into(child_process, &proto_data, sizeof(proto_data),
+      false))
     return false;
 
   // Copy the binary code of the entry point function into the process.
-  LPTHREAD_START_ROUTINE remote_entry_point = NULL;
-  if (!copy_data_into_process(child_process, inject_entry_point, kMaxEntryPointSize,
-      &remote_entry_point))
+  RemoteMemory<byte_t> remote_entry_point;
+  if (!remote_entry_point.copy_into(child_process, inject_entry_point,
+      kMaxEntryPointSize, true))
     return false;
+  LPTHREAD_START_ROUTINE start = reinterpret_cast<LPTHREAD_START_ROUTINE>(*remote_entry_point);
 
   // Create a thread in the child process that runs the entry point.
-  handle_t loader_thread = CreateRemoteThread(child_process, NULL, 0,
-      remote_entry_point, const_cast<inject_data_t*>(remote_data),
-      NULL, NULL);
+  handle_t loader_thread = CreateRemoteThread(child_process, NULL, 0, start,
+      *remote_data, NULL, NULL);
   if (loader_thread == NULL) {
     LOG_ERROR("Failed to create remote DLL loader thread: %i", GetLastError());
     return false;
@@ -317,6 +344,7 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
         data_out.start, in->data_out_scratch.size))
       return false;
   }
+
   return true;
 }
 
