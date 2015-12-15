@@ -20,10 +20,13 @@ public:
   // Creates a new blob with the given contents.
   Blob(void *start, size_t size) { *static_cast<blob_t*>(this) = blob_new(start, size); }
 
+  // Returns the address of the beginning of this block.
   void *start() { return blob_t::start; }
 
+  // Returns the address immediately past the end of this block.
   void *end() { return static_cast<byte_t*>(start()) + size(); }
 
+  // The size in bytes of this block.
   size_t size() { return blob_t::size; }
 
 };
