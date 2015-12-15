@@ -8,10 +8,6 @@
 static const uint8_t kMallocHeapMarker = 0xB0;
 static const uint8_t kMallocFreedMarker = 0xC0;
 
-void blob_fill(blob_t block, byte_t value) {
-  memset(block.start, value, block.size);
-}
-
 // Throws away the data argument and just calls malloc.
 static blob_t system_malloc_trampoline(allocator_t *self, size_t size) {
   void *chunk = malloc(size);

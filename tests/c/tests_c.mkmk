@@ -8,6 +8,7 @@ test_file_names = [
   "test_0stdc.cc",
   "test_alloc.cc",
   "test_atomic.cc",
+  "test_blob.cc",
   "test_boundbuf.cc",
   "test_callback_c.cc",
   "test_callback_cpp.cc",

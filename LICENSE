@@ -1,0 +1,7 @@
+This source code is, with the exceptions listed below, covered by the apache 2.0
+license which is included in the file APACHE.
+
+The exceptions are:
+
+  - The valgrind header in third_party/c/valgrind which is covered by the BSD-
+    style license included in that file.
