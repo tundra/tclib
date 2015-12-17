@@ -149,7 +149,6 @@ dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
     }
     out->error_step = 'C';
     dll_connect_t connect = reinterpret_cast<dll_connect_t>(raw_connect);
-    out->error_step = 'R';
     dword_t result = connect(in->data_in, in->data_out_scratch);
     if (result != 0) {
       out->error_code = result;
@@ -347,7 +346,7 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
     return false;
 
   if (out.error_step != 0) {
-    LOG_ERROR("Injecting failed at step %c: %i", out.error_step, out.error_code);
+    LOG_ERROR("Injecting failed at step %c: 0x%8x", out.error_step, out.error_code);
     return false;
   }
 

@@ -95,6 +95,16 @@ protected:
   virtual bool write_sync(write_iop_state_t *op) = 0;
 };
 
+// A stream that allows both reading and writing. You generally don't want to
+// use this type, it exists primarily so there's a way to express calls that
+// produce a handle that works both ways because it happens to be the case that
+// the underlying abstractions do.
+class InOutStream : public InStream, public OutStream {
+public:
+  // Wraps a stream around a naked file handle.
+  static InOutStream *from_raw_handle(naked_file_handle_t handle);
+};
+
 // An io stream that reads data from a block of bytes and ignores writes.
 class ByteInStream : public InStream {
 public:
