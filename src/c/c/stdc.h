@@ -74,6 +74,11 @@
 #  define WORD_SIZE 8
 #endif
 
+#define ONLY_32_BIT(E) IF_32_BIT(E, )
+#define UNLESS_32_BIT(E) IF_32_BIT(, E)
+#define ONLY_64_BIT(E) IF_64_BIT(E, )
+#define UNLESS_64_BIT(E) IF_64_BIT(, E)
+
 // Includes of C headers from C++ files should be surrounded by these macros to
 // ensure that they're linked appropriately.
 #ifdef IS_GCC
