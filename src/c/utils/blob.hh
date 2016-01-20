@@ -29,6 +29,9 @@ public:
   // The size in bytes of this block.
   size_t size() { return blob_t::size; }
 
+  // Is this the empty blob?
+  bool is_empty() { return blob_is_empty(*this); }
+
 };
 
 } // namespace tclib
