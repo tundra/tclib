@@ -4,6 +4,10 @@
 #include <errno.h>
 #include <unistd.h>
 
+BEGIN_C_INCLUDES
+#include "utils/string-inl.h"
+END_C_INCLUDES
+
 // It's a coincidence that the convention on both platforms happens to be -1.
 naked_file_handle_t AbstractStream::kNullNakedFileHandle = -1;
 
@@ -68,4 +72,29 @@ naked_file_handle_t FdStream::to_raw_handle() {
 
 InOutStream *InOutStream::from_raw_handle(naked_file_handle_t handle) {
   return new FdStream(handle);
+}
+
+utf8_t FileSystem::get_temporary_file_name(utf8_t unique, char *dest, size_t dest_size) {
+  snprintf(dest, dest_size, "/tmp/%sXXXXXX", unique.chars);
+  // Open a temporary file in the OS. This is because mktemp is discouraged and
+  // supposedly not standard, so we take the long way.
+  errno = 0;
+  int fd = mkstemp(dest);
+  if (fd == -1) {
+    ERROR("Failed to create temporary file %s: %i", unique.chars, errno);
+    return string_empty();
+  }
+  // Close the file.
+  errno = 0;
+  if (close(fd) == -1) {
+    ERROR("Failed to close temporary file %s: %i", unique.chars, errno);
+    return string_empty();
+  }
+  // Delete the file.
+  errno = 0;
+  if (unlink(dest) == -1) {
+    ERROR("Failed to unlink temporary file %s: %i", unique.chars, errno);
+    return string_empty();
+  }
+  return new_c_string(dest);
 }

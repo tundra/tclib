@@ -2,6 +2,7 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "io/stream.hh"
+#include "io/file.hh"
 
 BEGIN_C_INCLUDES
 #include "utils/log.h"

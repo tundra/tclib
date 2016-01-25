@@ -4,6 +4,10 @@
 #include <io.h>
 #include "c/winhdr.h"
 
+BEGIN_C_INCLUDES
+#include "utils/string-inl.h"
+END_C_INCLUDES
+
 naked_file_handle_t AbstractStream::kNullNakedFileHandle = reinterpret_cast<naked_file_handle_t>(-1);
 
 bool AbstractStream::is_a_tty() {
@@ -111,4 +115,19 @@ naked_file_handle_t HandleStream::to_raw_handle() {
 
 InOutStream *InOutStream::from_raw_handle(naked_file_handle_t handle) {
   return new HandleStream(handle);
+}
+
+utf8_t FileSystem::get_temporary_file_name(utf8_t unique, char *dest, size_t dest_size) {
+  CHECK_REL("buffer too small", dest_size, >=, MAX_PATH);
+  char temp_path_buf[MAX_PATH];
+  if (GetTempPath(MAX_PATH, temp_path_buf) == 0) {
+    LOG_ERROR("GetTempPath(%i, -): %i", MAX_PATH, GetLastError());
+    return string_empty();
+  }
+  if (GetTempFileName(temp_path_buf, unique.chars, 0, dest) == 0) {
+    LOG_ERROR("GetTempFileName(%s, %s, 0, -): %i", temp_path_buf, unique.chars,
+        GetLastError());
+    return string_empty();
+  }
+  return new_c_string(dest);
 }

@@ -56,6 +56,14 @@ public:
 
   virtual ~FileSystem() { }
 
+  // Creates a temporary file name somewhere in the file system. Returns a
+  // string value backed by the given buffer. The size must be large enough to
+  // hold the platform's preferred path length, typically 1024 is sufficient.
+  // No file is created with the returned name. Note that there is no guarantee
+  // that another program doesn't generate the same file name if this is called
+  // from multiple places.
+  static utf8_t get_temporary_file_name(utf8_t unique, char *dest, size_t dest_size);
+
   // Returns the native file system implementation.
   static FileSystem *native();
 };

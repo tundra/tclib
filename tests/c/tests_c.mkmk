@@ -17,6 +17,7 @@ test_file_names = [
   "test_dll_inject.cc",
   "test_duration.cc",
   "test_eventseq.cc",
+  "test_file.cc",
   "test_intex_c.cc",
   "test_intex_cpp.cc",
   "test_lifetime.cc",
