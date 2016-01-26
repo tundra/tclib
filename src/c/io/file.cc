@@ -24,11 +24,13 @@ public:
 
 }
 
-FileStreams::FileStreams(FileHandle *file, InStream *in, OutStream *out) {
+FileStreams::FileStreams(FileHandle *file, InStream *in, OutStream *out,
+    bool in_is_out) {
   file_streams_t::is_open = (file != NULL);
   file_streams_t::file = file;
   file_streams_t::in = in;
   file_streams_t::out = out;
+  file_streams_t::in_is_out = in_is_out;
 }
 
 InStream *FileStreams::in() {
@@ -103,23 +105,24 @@ StdioFileSystem::StdioFileSystem()
 
 FileStreams StdioFileSystem::open(utf8_t path, int32_t mode) {
   const char *mode_str = NULL;
-  if ((mode & OPEN_FILE_MODE_READ) != 0) {
+  if ((mode & OPEN_FILE_MODE_READ_WRITE) == OPEN_FILE_MODE_READ_WRITE) {
+    mode_str = "r+";
+  } else if ((mode & OPEN_FILE_MODE_READ) != 0) {
     // If this is just "r" windows will sometimes think files end before they
     // actually do for some reason. With "rb" it works correctly.
     mode_str = "rb";
-  } else if ((mode & OPEN_FILE_MODE_WRITE) != 0) {
+  } else {
     mode_str = ((mode & OPEN_FILE_FLAG_BINARY) == 0) ? "w" : "wb";
-  } else if ((mode & OPEN_FILE_MODE_READ_WRITE) != 0) {
-    mode_str = "r+";
   }
   FILE *file = ::fopen(path.chars, mode_str);
   if (file == NULL) {
-    return FileStreams(NULL, NULL, NULL);
+    return FileStreams(NULL, NULL, NULL, false);
   } else {
     FileHandle *handle = new StdioOpenFile(file);
     return FileStreams(handle,
         (mode & OPEN_FILE_MODE_READ) ? handle : NULL,
-        (mode & OPEN_FILE_MODE_WRITE) ? handle : NULL);
+        (mode & OPEN_FILE_MODE_WRITE) ? handle : NULL,
+        true);
   }
 }
 

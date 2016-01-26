@@ -5,8 +5,9 @@
 
 using namespace tclib;
 
-static bool create_overlapped_pipe(handle_t *read_pipe, handle_t *write_pipe,
-    SECURITY_ATTRIBUTES *pipe_attributes, dword_t size) {
+static bool create_overlapped_pipe(uint32_t flags, handle_t *read_pipe,
+    handle_t *write_pipe, utf8_t *name_out, SECURITY_ATTRIBUTES *pipe_attributes,
+    dword_t size) {
   static size_t next_pipe_serial = 0;
   char pipe_name[MAX_PATH];
 
@@ -16,6 +17,8 @@ static bool create_overlapped_pipe(handle_t *read_pipe, handle_t *write_pipe,
   // be fine. I think we're fine. Pretty sure we're fine.
   sprintf(pipe_name, "\\\\.\\Pipe\\TclibPipe-%016x-%016x-%016x",
       GetCurrentProcessId(), GetCurrentThreadId(), next_pipe_serial++);
+  if ((flags & NativePipe::pfGenerateName) != 0)
+    *name_out = string_default_dup(new_c_string(pipe_name));
 
   if (size == 0)
     size = 4096;
@@ -58,14 +61,20 @@ bool NativePipe::open(uint32_t flags) {
   attrs.lpSecurityDescriptor = NULL;
 
   bool result = create_overlapped_pipe(
-      &this->pipe_.read_,  // hReadPipe
-      &this->pipe_.write_, // hWritePipe,
-      &attrs,              // lpPipeAttributes,
-      0);                  // nSize
+      flags,
+      &this->pipe_.read_,
+      &this->pipe_.write_,
+      &this->name_,
+      &attrs,
+      0);
 
   if (result) {
     in_ = InOutStream::from_raw_handle(this->pipe_.read_);
     out_ = InOutStream::from_raw_handle(this->pipe_.write_);
   }
   return result;
+}
+
+bool NativePipe::ensure_destroyed(utf8_t name) {
+  return true;
 }

@@ -14,7 +14,7 @@ typedef enum {
 
   OPEN_FILE_MODE_READ = 0x1,
   OPEN_FILE_MODE_WRITE = 0x2,
-  OPEN_FILE_MODE_READ_WRITE = 0x4,
+  OPEN_FILE_MODE_READ_WRITE = 0x3,
 
   // Additional flags that can be or'ed together with the modes to give fine-
   // grained control.
@@ -38,6 +38,7 @@ typedef struct {
   file_handle_t *file;
   in_stream_t *in;
   out_stream_t *out;
+  bool in_is_out;
 } file_streams_t;
 
 // Attempts to open the file with the given name. If opening succeeds returns

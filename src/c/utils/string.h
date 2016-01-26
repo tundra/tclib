@@ -26,6 +26,13 @@ uint8_t string_byte_at(utf8_t str, size_t index);
 // input string's boundaries.
 utf8_t string_substring(utf8_t str, int64_t from, int64_t to);
 
+// Allocates and returns a copy of the given string using the default allocator.
+utf8_t string_default_dup(utf8_t str);
+
+// Deletes the characters of the given string using the default allocator unless
+// the string is empty in which case this does nothing.
+void string_default_delete(utf8_t str);
+
 // Write the contents of this string into the given buffer, which must hold
 // at least count characters.
 void string_copy_to(utf8_t str, char *dest, size_t count);

@@ -24,7 +24,10 @@ public:
     // Default settings.
     pfDefault = 0,
     // The pipe is inherited by child processes.
-    pfInherit = 1
+    pfInherit = 1,
+    // The pipe should be bound to a name such that it can be opened by that
+    // name.
+    pfGenerateName = 2,
   };
 
   // Create a new uninitialized pipe.
@@ -44,8 +47,18 @@ public:
   // Returns the write-end of this pipe.
   OutStream *out() { return static_cast<OutStream*>(out_); }
 
+  // If this pipe was created with a name using pfGenerateName this will return
+  // that name. If not it will return the empty string.
+  utf8_t name();
+
   // Returns a redirect wrapper for this pipe going in the specified direction.
   StreamRedirect redirect(pipe_direction_t dir);
+
+  // Given the name of a pipe ensures that it has been completely destroyed.
+  // After a pipe has been closed there is no guarantee that it can still be
+  // used but it is possible that resources associated with it are still being
+  // held so you should call this once you're done using it.
+  static bool ensure_destroyed(utf8_t name);
 
 private:
   static const PipeRedirector kInRedir;

@@ -250,3 +250,15 @@ TEST(string, string_hint) {
 #  pragma warning(pop)
 #endif
 }
+
+TEST(string, dup_free) {
+  utf8_t str = new_c_string("booh!");
+  utf8_t str2 = string_default_dup(str);
+  ASSERT_TRUE(str.chars != str2.chars);
+  ASSERT_STREQ(str, str2);
+  string_default_delete(str2);
+
+  utf8_t e2 = string_default_dup(string_empty());
+  ASSERT_TRUE(string_is_empty(e2));
+  string_default_delete(e2);
+}

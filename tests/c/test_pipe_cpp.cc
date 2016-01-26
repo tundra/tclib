@@ -14,6 +14,7 @@ using namespace tclib;
 TEST(pipe_cpp, simple) {
   NativePipe pipe;
   ASSERT_TRUE(pipe.open(NativePipe::pfDefault));
+  ASSERT_TRUE(string_is_empty(pipe.name()));
   ASSERT_FALSE(pipe.in()->is_a_tty());
   ASSERT_FALSE(pipe.out()->is_a_tty());
   ASSERT_EQ(12, pipe.out()->printf("Hello, pipe!"));
@@ -339,4 +340,13 @@ TEST(pipe_cpp, sync_twins) {
   ASSERT_TRUE(other.start());
   run_sibling(blue.out(), red.in());
   ASSERT_PTREQ(NULL, other.join());
+}
+
+TEST(pipe_cpp, pipe_name) {
+  NativePipe pipe;
+  ASSERT_TRUE(pipe.open(NativePipe::pfGenerateName));
+  utf8_t name = pipe.name();
+  ASSERT_FALSE(string_is_empty(name));
+  ASSERT_TRUE(pipe.out()->close());
+  NativePipe::ensure_destroyed(name);
 }

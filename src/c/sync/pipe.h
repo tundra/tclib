@@ -13,6 +13,8 @@ typedef struct {
   platform_pipe_t pipe_;
   in_stream_t *in_;
   out_stream_t *out_;
+  utf8_t name_;
+  bool in_is_out_;
 } native_pipe_t;
 
 // Create a new pipe with a read-end and a write-end. Returns true iff

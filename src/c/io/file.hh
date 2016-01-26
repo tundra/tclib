@@ -20,7 +20,7 @@ class FileHandle;
 // A collection of file handles that gives access to a file.
 class FileStreams : public file_streams_t {
 public:
-  FileStreams(FileHandle *file, InStream *in, OutStream *out);
+  FileStreams(FileHandle *file, InStream *in, OutStream *out, bool in_is_out);
 
   // Returns the file input stream, or NULL if the file was not opened in read
   // mode.
@@ -29,6 +29,9 @@ public:
   // Returns the file output stream, or NULL if the file was not opened in write
   // mode.
   OutStream *out();
+
+  // Returns true iff the in and out streams are backed by the same object.
+  bool in_is_out() { return file_streams_t::in_is_out; }
 
   // Closes this file.
   void close();

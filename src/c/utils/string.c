@@ -1,7 +1,8 @@
 //- Copyright 2014 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
-#include "string-inl.h"
+#include "utils/alloc.h"
+#include "utils/string-inl.h"
 
 size_t string_size(utf8_t str) {
   return str.size;
@@ -28,6 +29,22 @@ void string_copy_to(utf8_t str, char *dest, size_t count) {
   CHECK_REL("string copy destination too small", length, <, count);
   strncpy(dest, str.chars, length);
   dest[length] = '\0';
+}
+
+utf8_t string_default_dup(utf8_t str) {
+  if (string_is_empty(str))
+    return str;
+  size_t size = sizeof(char) * (str.size + 1);
+  blob_t buf = allocator_default_malloc(size);
+  blob_copy_to(blob_new((void*) str.chars, size), buf);
+  return new_string((char*) buf.start, str.size);
+}
+
+void string_default_delete(utf8_t str) {
+  if (string_is_empty(str))
+    return;
+  size_t size = sizeof(char) * (str.size + 1);
+  allocator_default_free(blob_new((void*) str.chars, size));
 }
 
 bool string_equals(utf8_t a, utf8_t b) {

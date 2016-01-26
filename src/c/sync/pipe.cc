@@ -4,8 +4,9 @@
 #include "sync/pipe.hh"
 
 BEGIN_C_INCLUDES
-#include "utils/log.h"
 #include "sync/pipe.h"
+#include "utils/log.h"
+#include "utils/string-inl.h"
 END_C_INCLUDES
 
 using namespace tclib;
@@ -13,6 +14,12 @@ using namespace tclib;
 NativePipe::NativePipe() {
   in_ = NULL;
   out_ = NULL;
+  name_ = string_empty();
+  in_is_out_ = false;
+}
+
+utf8_t NativePipe::name() {
+  return name_;
 }
 
 bool native_pipe_open(native_pipe_t *raw_pipe) {
@@ -36,8 +43,11 @@ out_stream_t *native_pipe_out(native_pipe_t *pipe) {
 NativePipe::~NativePipe() {
   delete in();
   in_ = NULL;
-  delete out();
-  out_ = NULL;
+  if (!in_is_out_) {
+    delete out();
+    out_ = NULL;
+  }
+  string_default_delete(name_);
 }
 
 const PipeRedirector NativePipe::kInRedir(pdIn);
