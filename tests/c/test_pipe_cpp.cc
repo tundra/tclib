@@ -344,9 +344,27 @@ TEST(pipe_cpp, sync_twins) {
 
 TEST(pipe_cpp, pipe_name) {
   NativePipe pipe;
+
+  // Opening.
   ASSERT_TRUE(pipe.open(NativePipe::pfGenerateName));
   utf8_t name = pipe.name();
   ASSERT_FALSE(string_is_empty(name));
+
+  // Reading and writing.
+  utf8_t str = new_c_string("Hubble?");
+  WriteIop write(pipe.out(), str.chars, str.size);
+  ASSERT_TRUE(write.execute());
+  ASSERT_TRUE(write.has_succeeded());
+  ASSERT_EQ(str.size, write.bytes_written());
+  char buf[1024];
+  memset(buf, 0, 1024);
+  ReadIop read(pipe.in(), buf, str.size);
+  ASSERT_TRUE(read.execute());
+  ASSERT_TRUE(read.has_succeeded());
+  ASSERT_EQ(str.size, read.bytes_read());
+  ASSERT_C_STREQ(str.chars, buf);
+
+  // Closing.
   ASSERT_TRUE(pipe.out()->close());
   NativePipe::ensure_destroyed(name);
 }
