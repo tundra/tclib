@@ -366,5 +366,5 @@ TEST(pipe_cpp, pipe_name) {
 
   // Closing.
   ASSERT_TRUE(pipe.out()->close());
-  NativePipe::ensure_destroyed(name);
+  ASSERT_TRUE(NativePipe::ensure_destroyed(name));
 }
