@@ -340,3 +340,8 @@ TEST(pipe_cpp, sync_twins) {
   run_sibling(blue.out(), red.in());
   ASSERT_PTREQ(NULL, other.join());
 }
+
+TEST(pipe_cpp, client_server_pipe) {
+  ServerPipe *server = ServerPipe::create();
+  ASSERT_TRUE(server->open(NativePipe::pfDefault));
+}

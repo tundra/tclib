@@ -52,6 +52,34 @@ private:
   static const PipeRedirector kOutRedir;
 };
 
+class ServerPipe {
+public:
+  virtual ~ServerPipe() { }
+
+  virtual bool open(uint32_t flags) = 0;
+
+  virtual utf8_t name() = 0;
+
+  virtual InStream *in() = 0;
+
+  virtual OutStream *out() = 0;
+
+  static ServerPipe *create();
+};
+
+class ClientPipe {
+public:
+  virtual ~ClientPipe() { }
+
+  virtual bool open(utf8_t name) = 0;
+
+  virtual InStream *in() = 0;
+
+  virtual OutStream *out() = 0;
+
+  static ClientPipe *create();
+};
+
 } // namespace tclib
 
 #endif // _TCLIB_PIPE_HH
