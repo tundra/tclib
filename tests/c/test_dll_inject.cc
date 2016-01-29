@@ -19,7 +19,9 @@ END_C_INCLUDES
 using namespace tclib;
 
 TEST(dll_inject, exec_durian) {
-  UNLESS_MSVC(return);
+  // Dll injections only works under msvc and not in debug mode.
+  if (IF_MSVC(true, false) && IF_DEBUG(true, false))
+    return;
   size_t fib_size = 85;
   byte_t fib[85];
   fib[0] = 1;

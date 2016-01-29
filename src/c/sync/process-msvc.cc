@@ -173,6 +173,9 @@ bool DllInjectHelper::read_data_from_process(handle_t process, const void *addr,
 
 bool NativeProcess::inject_library(utf8_t path, utf8_t connector_name,
     blob_t blob_in, blob_t blob_out) {
+  // Injection only works in relese mode because the code generated for the
+  // injected function jumps all over the place in debug mode.
+  ONLY_DEBUG(return false);
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   return DllInjectHelper::inject_dll(platform_data()->child_process(), path,
       connector_name, blob_in, blob_out);
