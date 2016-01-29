@@ -42,6 +42,23 @@
 #define ONLY_GCC(E) IF_GCC(E, )
 #define UNLESS_GCC(E) IF_GCC(, E)
 
+// The debug mode macro is set depending on how code is generated, whether it is
+// highly optimized and debug symbols are retained, so you should very rarely,
+// ideally never, need to depend on it. It is orthogonal to whether checks or
+// indeed expensive checks are enabled.
+#ifdef DEBUG_MODE
+#  define IS_DEBUG
+#endif
+
+#ifdef IS_DEBUG
+#  define IF_DEBUG(T, E) T
+#else
+#  define IF_DEBUG(T, E) E
+#endif
+
+#define ONLY_DEBUG(E) IF_DEBUG(E, )
+#define UNLESS_DEBUG(E) IF_DEBUG(, E)
+
 #ifndef PRIi64
 #  define PRIi64 "li"
 #endif
