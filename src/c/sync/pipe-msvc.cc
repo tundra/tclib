@@ -140,6 +140,8 @@ public:
   WindowsServerPipe();
   virtual ~WindowsServerPipe();
 
+  virtual void self_destruct() { default_delete_concrete(this); }
+
   virtual bool open(uint32_t flags);
 
   virtual utf8_t name() { return string_empty(); }
@@ -166,5 +168,5 @@ bool WindowsServerPipe::open(uint32_t flags) {
 }
 
 ServerPipe *ServerPipe::create() {
-  return new WindowsServerPipe();
+  return new (kDefaultAlloc) WindowsServerPipe();
 }

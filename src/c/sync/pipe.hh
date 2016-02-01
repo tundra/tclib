@@ -56,6 +56,8 @@ class ServerPipe {
 public:
   virtual ~ServerPipe() { }
 
+  virtual void self_destruct() = 0;
+
   virtual bool open(uint32_t flags) = 0;
 
   virtual utf8_t name() = 0;

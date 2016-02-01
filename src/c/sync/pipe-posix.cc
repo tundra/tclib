@@ -27,6 +27,8 @@ public:
   PosixServerPipe();
   virtual ~PosixServerPipe();
 
+  virtual void self_destruct() { default_delete_concrete(this); }
+
   virtual bool open(uint32_t flags);
 
   virtual utf8_t name() { return string_empty(); }
@@ -53,5 +55,5 @@ bool PosixServerPipe::open(uint32_t flags) {
 }
 
 ServerPipe *ServerPipe::create() {
-  return new PosixServerPipe();
+  return new (kDefaultAlloc) PosixServerPipe();
 }
