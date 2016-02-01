@@ -341,8 +341,54 @@ TEST(pipe_cpp, sync_twins) {
   ASSERT_PTREQ(NULL, other.join());
 }
 
-TEST(pipe_cpp, client_server_pipe) {
-  ServerPipe *server = ServerPipe::create();
-  ASSERT_TRUE(server->open(NativePipe::pfDefault));
+static void *run_client_thread(utf8_t name) {
+  // Connect to the channel.
+  ClientChannel *client = ClientChannel::create();
+  ASSERT_TRUE(client->open(name));
+
+  // Try reading.
+  char buf[256];
+  memset(buf, 0, 256);
+  ReadIop read(client->in(), buf, 9);
+  ASSERT_TRUE(read.execute());
+  ASSERT_EQ(9, read.bytes_read());
+  ASSERT_C_STREQ(buf, "Manitoba?");
+
+  WriteIop write(client->out(), "Ontario!", 8);
+  ASSERT_TRUE(write.execute());
+  ASSERT_EQ(8, write.bytes_written());
+  ASSERT_TRUE(client->out()->flush());
+
+  default_delete(client);
+  return 0;
+}
+
+TEST(pipe_cpp, same_process_channel) {
+  // Create the channel.
+  ServerChannel *server = ServerChannel::create();
+  ASSERT_TRUE(server->create(NativePipe::pfDefault));
+  ASSERT_FALSE(string_is_empty(server->name()));
+
+  // Spin off the client thread.
+  NativeThread client_thread(new_callback(run_client_thread, server->name()));
+  ASSERT_TRUE(client_thread.start());
+
+  // Open the channel and communicate.
+  ASSERT_TRUE(server->open());
+  WriteIop write(server->out(), "Manitoba?", 9);
+  ASSERT_TRUE(write.execute());
+  ASSERT_EQ(9, write.bytes_written());
+  ASSERT_TRUE(server->out()->flush());
+
+  char buf[256];
+  memset(buf, 0, 256);
+  ReadIop read(server->in(), buf, 8);
+  ASSERT_TRUE(read.execute());
+  ASSERT_EQ(8, read.bytes_read());
+  ASSERT_C_STREQ("Ontario!", buf);
+
+  // Close the channel.
+  ASSERT_TRUE(server->close());
+  ASSERT_TRUE(client_thread.join() == NULL);
   default_delete(server);
 }

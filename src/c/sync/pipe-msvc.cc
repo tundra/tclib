@@ -135,38 +135,84 @@ bool NativePipe::open(uint32_t flags) {
   return result;
 }
 
-class WindowsServerPipe : public ServerPipe {
+class WindowsServerChannel : public ServerChannel {
 public:
-  WindowsServerPipe();
-  virtual ~WindowsServerPipe();
-
+  WindowsServerChannel();
+  virtual ~WindowsServerChannel();
   virtual void default_destroy() { default_delete_concrete(this); }
-
-  virtual bool open(uint32_t flags);
-
-  virtual utf8_t name() { return string_empty(); }
-
-  virtual InStream *in() { return incoming_.in(); }
-
-  virtual OutStream *out() { return outgoing_.out(); }
-
-  static ServerPipe *create();
+  virtual bool create(uint32_t flags);
+  virtual bool open();
+  virtual bool close();
+  virtual utf8_t name() { return name_; }
+  virtual InStream *in() { return stream_; }
+  virtual OutStream *out() { return stream_; }
+  static ServerChannel *create();
 
 private:
-  NativePipe incoming_;
-  NativePipe outgoing_;
+  utf8_t name_;
+  handle_t handle_;
+  InOutStream *stream_;
 };
 
-WindowsServerPipe::WindowsServerPipe() { }
+WindowsServerChannel::WindowsServerChannel()
+  : name_(string_empty())
+  , handle_(INVALID_HANDLE_VALUE)
+  , stream_(NULL) { }
 
-WindowsServerPipe::~WindowsServerPipe() {
-
+WindowsServerChannel::~WindowsServerChannel() {
+  string_default_delete(name_);
+  delete stream_;
 }
 
-bool WindowsServerPipe::open(uint32_t flags) {
-  return incoming_.open(flags) && outgoing_.open(flags);
+bool WindowsServerChannel::create(uint32_t flags) {
+  char scratch[MAX_PATH];
+  utf8_t temp_name = WindowsPipeUtils::gen_pipe_name(scratch, MAX_PATH);
+  name_ = string_default_dup(temp_name);
+  if (!WindowsPipeUtils::create_named_pipe(name_, false, &handle_))
+    return false;
+  stream_ = InOutStream::from_raw_handle(handle_);
+  return true;
 }
 
-ServerPipe *ServerPipe::create() {
-  return new (kDefaultAlloc) WindowsServerPipe();
+bool WindowsServerChannel::open() {
+  return ConnectNamedPipe(handle_, NULL);
+}
+
+bool WindowsServerChannel::close() {
+  return (stream_ == NULL) ? false : out()->close();
+}
+
+ServerChannel *ServerChannel::create() {
+  return new (kDefaultAlloc) WindowsServerChannel();
+}
+
+class WindowsClientChannel : public ClientChannel {
+public:
+  WindowsClientChannel();
+  virtual ~WindowsClientChannel();
+  virtual void default_destroy() { default_delete_concrete(this); }
+  virtual bool open(utf8_t name);
+  virtual InStream *in() { return stream_; }
+  virtual OutStream *out() { return stream_; }
+private:
+  InOutStream *stream_;
+};
+
+WindowsClientChannel::WindowsClientChannel()
+  : stream_(NULL) { }
+
+WindowsClientChannel::~WindowsClientChannel() {
+  delete stream_;
+}
+
+bool WindowsClientChannel::open(utf8_t name) {
+  handle_t handle = INVALID_HANDLE_VALUE;
+  if (!WindowsPipeUtils::connect_named_pipe(name, false, &handle))
+    return false;
+  stream_ = InOutStream::from_raw_handle(handle);
+  return true;
+}
+
+ClientChannel *ClientChannel::create() {
+  return new (kDefaultAlloc) WindowsClientChannel();
 }

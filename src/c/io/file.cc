@@ -24,6 +24,13 @@ public:
 
 }
 
+FileStreams::FileStreams() {
+  file_streams_t::is_open = false;
+  file_streams_t::file = NULL;
+  file_streams_t::in = NULL;
+  file_streams_t::out = NULL;
+}
+
 FileStreams::FileStreams(FileHandle *file, InStream *in, OutStream *out) {
   file_streams_t::is_open = (file != NULL);
   file_streams_t::file = file;

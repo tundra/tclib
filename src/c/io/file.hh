@@ -20,6 +20,7 @@ class FileHandle;
 // A collection of file handles that gives access to a file.
 class FileStreams : public file_streams_t {
 public:
+  FileStreams();
   FileStreams(FileHandle *file, InStream *in, OutStream *out);
 
   // Returns the file input stream, or NULL if the file was not opened in read
