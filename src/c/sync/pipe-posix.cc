@@ -27,7 +27,7 @@ public:
   PosixServerPipe();
   virtual ~PosixServerPipe();
 
-  virtual void self_destruct() { default_delete_concrete(this); }
+  virtual void default_destroy() { default_delete_concrete(this); }
 
   virtual bool open(uint32_t flags);
 

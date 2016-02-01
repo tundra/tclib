@@ -344,5 +344,5 @@ TEST(pipe_cpp, sync_twins) {
 TEST(pipe_cpp, client_server_pipe) {
   ServerPipe *server = ServerPipe::create();
   ASSERT_TRUE(server->open(NativePipe::pfDefault));
-  server->self_destruct();
+  default_delete(server);
 }

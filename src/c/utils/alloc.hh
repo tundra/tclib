@@ -13,6 +13,18 @@ END_C_INCLUDES
 
 namespace tclib {
 
+// Subclasses of this type know how to delete themselves using the default
+// allocator. We need this extra machinery because, unlike plain C++, the
+// allocation framework in tclib needs to know the concrete size of the type
+// being deallocated so each concrete type needs special handling.
+class DefaultDestructable {
+public:
+  // Call this instance's destructor and then deallocate this instance using the
+  // default allocator. Typically, as an implementor, you want to do this by
+  // calling default_delete_concrete(this).
+  virtual void default_destroy() = 0;
+};
+
 // A marker that can be passed to placement new to indicate that the allocation
 // should be done using the default allocator from the allocator framework.
 typedef enum {
@@ -26,6 +38,12 @@ template <typename T>
 void default_delete_concrete(T *ptr) {
   ptr->~T();
   allocator_default_free_struct(T, ptr);
+}
+
+// Delete the given object. Unlike default_delete_concrete the concrete type
+// of the object does not have to be known to call this.
+inline void default_delete(DefaultDestructable *that) {
+  that->default_destroy();
 }
 
 } // namespace tclib

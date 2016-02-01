@@ -52,11 +52,9 @@ private:
   static const PipeRedirector kOutRedir;
 };
 
-class ServerPipe {
+class ServerPipe : public DefaultDestructable {
 public:
   virtual ~ServerPipe() { }
-
-  virtual void self_destruct() = 0;
 
   virtual bool open(uint32_t flags) = 0;
 
@@ -66,6 +64,8 @@ public:
 
   virtual OutStream *out() = 0;
 
+  // Create and return a new server pipe. The result is allocated using the
+  // default allocator and should be deleted using tclib::default_delete.
   static ServerPipe *create();
 };
 
