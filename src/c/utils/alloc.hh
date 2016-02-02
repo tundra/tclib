@@ -68,9 +68,11 @@ template <typename T, typename D = T>
 class def_ref_t {
 public:
   def_ref_t() : ptr_(NULL) { }
-  def_ref_t(const pass_def_ref_t<T> &pass) : ptr_(*pass) { }
+  template <typename S>
+  def_ref_t(const pass_def_ref_t<S> &pass) : ptr_(*pass) { }
   ~def_ref_t() { default_delete(static_cast<D*>(ptr_)); }
-  void operator=(const pass_def_ref_t<T> &pass) { ptr_ = *pass; }
+  template <typename S>
+  void operator=(const pass_def_ref_t<S> &pass) { ptr_ = *pass; }
   T *operator->() { return ptr_; }
   T *operator*() { return ptr_; }
 
