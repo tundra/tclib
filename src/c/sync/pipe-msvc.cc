@@ -129,8 +129,8 @@ bool NativePipe::open(uint32_t flags) {
       NULL);
 
   if (result) {
-    in_ = InOutStream::from_raw_handle(this->pipe_.read_);
-    out_ = InOutStream::from_raw_handle(this->pipe_.write_);
+    in_ = *InOutStream::from_raw_handle(this->pipe_.read_);
+    out_ = *InOutStream::from_raw_handle(this->pipe_.write_);
   }
   return result;
 }
@@ -144,24 +144,21 @@ public:
   virtual bool open();
   virtual bool close();
   virtual utf8_t name() { return name_; }
-  virtual InStream *in() { return stream_; }
-  virtual OutStream *out() { return stream_; }
-  static ServerChannel *create();
+  virtual InStream *in() { return *stream_; }
+  virtual OutStream *out() { return *stream_; }
 
 private:
   utf8_t name_;
   handle_t handle_;
-  InOutStream *stream_;
+  def_ref_t<InOutStream, InStream> stream_;
 };
 
 WindowsServerChannel::WindowsServerChannel()
   : name_(string_empty())
-  , handle_(INVALID_HANDLE_VALUE)
-  , stream_(NULL) { }
+  , handle_(INVALID_HANDLE_VALUE) { }
 
 WindowsServerChannel::~WindowsServerChannel() {
   string_default_delete(name_);
-  delete stream_;
 }
 
 bool WindowsServerChannel::create(uint32_t flags) {
@@ -179,31 +176,22 @@ bool WindowsServerChannel::open() {
 }
 
 bool WindowsServerChannel::close() {
-  return (stream_ == NULL) ? false : out()->close();
+  return (*stream_ == NULL) ? false : out()->close();
 }
 
-ServerChannel *ServerChannel::create() {
-  return new (kDefaultAlloc) WindowsServerChannel();
+pass_def_ref_t<ServerChannel> ServerChannel::create() {
+  return pass_def_ref_t<ServerChannel>(new (kDefaultAlloc) WindowsServerChannel());
 }
 
 class WindowsClientChannel : public ClientChannel {
 public:
-  WindowsClientChannel();
-  virtual ~WindowsClientChannel();
   virtual void default_destroy() { default_delete_concrete(this); }
   virtual bool open(utf8_t name);
-  virtual InStream *in() { return stream_; }
-  virtual OutStream *out() { return stream_; }
+  virtual InStream *in() { return *stream_; }
+  virtual OutStream *out() { return *stream_; }
 private:
-  InOutStream *stream_;
+  def_ref_t<InOutStream, InStream> stream_;
 };
-
-WindowsClientChannel::WindowsClientChannel()
-  : stream_(NULL) { }
-
-WindowsClientChannel::~WindowsClientChannel() {
-  delete stream_;
-}
 
 bool WindowsClientChannel::open(utf8_t name) {
   handle_t handle = INVALID_HANDLE_VALUE;
@@ -213,6 +201,6 @@ bool WindowsClientChannel::open(utf8_t name) {
   return true;
 }
 
-ClientChannel *ClientChannel::create() {
-  return new (kDefaultAlloc) WindowsClientChannel();
+pass_def_ref_t<ClientChannel> ClientChannel::create() {
+  return pass_def_ref_t<ClientChannel>(new (kDefaultAlloc) WindowsClientChannel());
 }

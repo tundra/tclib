@@ -87,7 +87,7 @@ public:
 
   // Create and return a new server channel. The result is allocated using the
   // default allocator and should be deleted using tclib::default_delete.
-  static ServerChannel *create();
+  static pass_def_ref_t<ServerChannel> create();
 };
 
 // The remote end of a bi-directional client/server connection.
@@ -111,7 +111,7 @@ public:
 
   // Creates and returns a new client channel. The result is allocated using the
   // default allocator and should be deleted using tclib::default_delete.
-  static ClientChannel *create();
+  static pass_def_ref_t<ClientChannel> create();
 };
 
 } // namespace tclib

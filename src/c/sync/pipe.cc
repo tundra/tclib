@@ -34,9 +34,9 @@ out_stream_t *native_pipe_out(native_pipe_t *pipe) {
 }
 
 NativePipe::~NativePipe() {
-  delete in();
+  default_delete(in());
   in_ = NULL;
-  delete out();
+  default_delete(out());
   out_ = NULL;
 }
 

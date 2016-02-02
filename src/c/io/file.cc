@@ -51,6 +51,7 @@ class StdioOpenFile : public FileHandle {
 public:
   explicit StdioOpenFile(FILE *file) : file_(file) { }
   virtual ~StdioOpenFile();
+  virtual void default_destroy() { default_delete_concrete(this); }
   virtual bool read_sync(read_iop_state_t *op);
   virtual bool write_sync(write_iop_state_t *op);
   virtual bool flush();

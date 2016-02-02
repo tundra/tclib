@@ -343,7 +343,7 @@ TEST(pipe_cpp, sync_twins) {
 
 static void *run_client_thread(utf8_t name) {
   // Connect to the channel.
-  ClientChannel *client = ClientChannel::create();
+  def_ref_t<ClientChannel> client = ClientChannel::create();
   ASSERT_TRUE(client->open(name));
 
   // Try reading.
@@ -359,13 +359,12 @@ static void *run_client_thread(utf8_t name) {
   ASSERT_EQ(8, write.bytes_written());
   ASSERT_TRUE(client->out()->flush());
 
-  default_delete(client);
   return 0;
 }
 
 TEST(pipe_cpp, same_process_channel) {
   // Create the channel.
-  ServerChannel *server = ServerChannel::create();
+  def_ref_t<ServerChannel> server = ServerChannel::create();
   ASSERT_TRUE(server->create(NativePipe::pfDefault));
   ASSERT_FALSE(string_is_empty(server->name()));
 
@@ -390,5 +389,4 @@ TEST(pipe_cpp, same_process_channel) {
   // Close the channel.
   ASSERT_TRUE(server->close());
   ASSERT_TRUE(client_thread.join() == NULL);
-  default_delete(server);
 }

@@ -8,6 +8,7 @@
 
 #include "c/stdvector.hh"
 #include "io/iop.hh"
+#include "utils/alloc.hh"
 
 BEGIN_C_INCLUDES
 #include "io/stream.h"
@@ -30,7 +31,7 @@ class OutStream;
 class Iop;
 
 // Behavior shared between in- and out-streams.
-class AbstractStream {
+class AbstractStream : public DefaultDestructable {
 public:
   virtual ~AbstractStream() { }
 
@@ -102,13 +103,14 @@ protected:
 class InOutStream : public InStream, public OutStream {
 public:
   // Wraps a stream around a naked file handle.
-  static InOutStream *from_raw_handle(naked_file_handle_t handle);
+  static pass_def_ref_t<InOutStream> from_raw_handle(naked_file_handle_t handle);
 };
 
 // An io stream that reads data from a block of bytes and ignores writes.
 class ByteInStream : public InStream {
 public:
   ByteInStream(const void *data, size_t size);
+  virtual void default_destroy() { default_delete_concrete(this); }
 
 protected:
   virtual bool read_sync(read_iop_state_t *op);
@@ -123,6 +125,7 @@ private:
 class ByteOutStream : public OutStream {
 public:
   ByteOutStream();
+  virtual void default_destroy() { default_delete_concrete(this); }
   virtual bool flush();
 
   // Returns the number of bytes written to this stream.

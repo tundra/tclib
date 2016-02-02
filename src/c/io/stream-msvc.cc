@@ -26,6 +26,7 @@ class HandleStream : public InOutStream {
 public:
   explicit HandleStream(handle_t handle);
   virtual ~HandleStream();
+  virtual void default_destroy() { default_delete_concrete(this); }
   virtual bool read_sync(read_iop_state_t *op);
   virtual bool write_sync(write_iop_state_t *op);
   virtual bool flush();
@@ -112,9 +113,8 @@ naked_file_handle_t HandleStream::to_raw_handle() {
   return handle_;
 }
 
-
-InOutStream *InOutStream::from_raw_handle(naked_file_handle_t handle) {
-  return new HandleStream(handle);
+pass_def_ref_t<InOutStream> InOutStream::from_raw_handle(naked_file_handle_t handle) {
+  return pass_def_ref_t<InOutStream>(new (kDefaultAlloc) HandleStream(handle));
 }
 
 utf8_t FileSystem::get_temporary_file_name(utf8_t unique, char *dest, size_t dest_size) {

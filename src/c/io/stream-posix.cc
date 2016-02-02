@@ -23,6 +23,7 @@ class FdStream : public InOutStream {
 public:
   explicit FdStream(int fd) : is_closed_(false), fd_(fd) { }
   virtual ~FdStream();
+  virtual void default_destroy() { default_delete_concrete(this); }
   virtual bool read_sync(read_iop_state_t *op);
   virtual bool write_sync(write_iop_state_t *op);
   virtual bool flush();
@@ -70,8 +71,8 @@ naked_file_handle_t FdStream::to_raw_handle() {
   return fd_;
 }
 
-InOutStream *InOutStream::from_raw_handle(naked_file_handle_t handle) {
-  return new FdStream(handle);
+pass_def_ref_t<InOutStream> InOutStream::from_raw_handle(naked_file_handle_t handle) {
+  return pass_def_ref_t<InOutStream>(new (kDefaultAlloc) FdStream(handle));
 }
 
 utf8_t FileSystem::get_temporary_file_name(utf8_t unique, char *dest, size_t dest_size) {

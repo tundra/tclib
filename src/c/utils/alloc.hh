@@ -43,8 +43,40 @@ void default_delete_concrete(T *ptr) {
 // Delete the given object. Unlike default_delete_concrete the concrete type
 // of the object does not have to be known to call this.
 inline void default_delete(DefaultDestructable *that) {
-  that->default_destroy();
+  if (that != NULL)
+    that->default_destroy();
 }
+
+// A reference to a value allocated with the default allocator. These are
+// intended to be passed around and eventually stored in a def_ref_t which will
+// deal with the lifetime of the object.
+template <typename T>
+class pass_def_ref_t {
+public:
+  explicit pass_def_ref_t(T *ptr) : ptr_(ptr) { }
+  T *operator*() const { return ptr_; }
+
+private:
+  T *ptr_;
+};
+
+// A reference to a default-allocated value that will be automatically disposed
+// appropriately when this ref is destroyed. The first type parameter is the
+// type of the pointer contained, the second one can be used to indicate how to
+// destroy the value.
+template <typename T, typename D = T>
+class def_ref_t {
+public:
+  def_ref_t() : ptr_(NULL) { }
+  def_ref_t(const pass_def_ref_t<T> &pass) : ptr_(*pass) { }
+  ~def_ref_t() { default_delete(static_cast<D*>(ptr_)); }
+  void operator=(const pass_def_ref_t<T> &pass) { ptr_ = *pass; }
+  T *operator->() { return ptr_; }
+  T *operator*() { return ptr_; }
+
+private:
+  T *ptr_;
+};
 
 } // namespace tclib
 

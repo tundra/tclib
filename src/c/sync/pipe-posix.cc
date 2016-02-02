@@ -17,8 +17,8 @@ bool NativePipe::open(uint32_t flags) {
   errno = 0;
   int result = ::pipe(this->pipe_);
   if (result == 0) {
-    in_ = InOutStream::from_raw_handle(this->pipe_[0]);
-    out_ = InOutStream::from_raw_handle(this->pipe_[1]);
+    in_ = *InOutStream::from_raw_handle(this->pipe_[0]);
+    out_ = *InOutStream::from_raw_handle(this->pipe_[1]);
     return true;
   }
   WARN("Call to pipe failed: %i (error: %s)", errno, strerror(errno));
@@ -127,8 +127,8 @@ bool PosixServerChannel::close() {
   return (unlink_up == 0) && (unlink_down == 0);
 }
 
-ServerChannel *ServerChannel::create() {
-  return new (kDefaultAlloc) PosixServerChannel();
+pass_def_ref_t<ServerChannel> ServerChannel::create() {
+  return pass_def_ref_t<ServerChannel>(new (kDefaultAlloc) PosixServerChannel());
 }
 
 class PosixClientChannel : public ClientChannel {
@@ -165,6 +165,6 @@ bool PosixClientChannel::open(utf8_t basename) {
   return true;
 }
 
-ClientChannel *ClientChannel::create() {
-  return new (kDefaultAlloc) PosixClientChannel();
+pass_def_ref_t<ClientChannel> ClientChannel::create() {
+  return pass_def_ref_t<ClientChannel>(new (kDefaultAlloc) PosixClientChannel());
 }
