@@ -90,16 +90,27 @@ public:
   static ServerChannel *create();
 };
 
+// The remote end of a bi-directional client/server connection.
 class ClientChannel : public DefaultDestructable {
 public:
   virtual ~ClientChannel() { }
 
+  // Open a connection to the server, possibly blocking until the connection has
+  // been made.
   virtual bool open(utf8_t name) = 0;
 
+  // Returns the input stream that allows the client to read data that was
+  // written by the server. Don't close this directly, instead it is closed
+  // automatically when the channel is closed.
   virtual InStream *in() = 0;
 
+  // Returns the output stream that allows the client to write data that can be
+  // read by the server. Don't close this directly, instead it is closed
+  // automatically when the channel is closed.
   virtual OutStream *out() = 0;
 
+  // Creates and returns a new client channel. The result is allocated using the
+  // default allocator and should be deleted using tclib::default_delete.
   static ClientChannel *create();
 };
 
