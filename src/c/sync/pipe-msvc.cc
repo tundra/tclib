@@ -172,7 +172,25 @@ bool WindowsServerChannel::create(uint32_t flags) {
 }
 
 bool WindowsServerChannel::open() {
-  return ConnectNamedPipe(handle_, NULL);
+  // Because the pipe uses overlapped io to read/write we also need to do that
+  // when connecting it, so it's a little elaborate.
+  OVERLAPPED overlapped;
+  ZeroMemory(&overlapped, sizeof(overlapped));
+  if (ConnectNamedPipe(handle_, &overlapped))
+    // It's unclear if this will ever happen but if it does, fine.
+    return true;
+  dword_t cnp_error = GetLastError();
+  if (cnp_error == ERROR_PIPE_CONNECTED)
+    // Counter-intuitively, if the client gets there first the call to
+    // ConnectNamedPipe will fail so we have to check for that and succeed
+    // anyway in that case.
+    return true;
+  if (cnp_error != ERROR_IO_PENDING) {
+    LOG_ERROR("ConnectNamedPipe(...): %i", cnp_error);
+    return false;
+  }
+  dword_t dummy = 0;
+  return GetOverlappedResult(handle_, &overlapped, &dummy, true);
 }
 
 bool WindowsServerChannel::close() {
