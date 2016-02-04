@@ -70,9 +70,13 @@ public:
   def_ref_t() : ptr_(NULL) { }
   template <typename S>
   def_ref_t(const pass_def_ref_t<S> &pass) : ptr_(*pass) { }
+  template <typename S>
+  def_ref_t(const S* ptr) : ptr_(ptr) { }
   ~def_ref_t() { default_delete(static_cast<D*>(ptr_)); }
   template <typename S>
   void operator=(const pass_def_ref_t<S> &pass) { ptr_ = *pass; }
+  template <typename S>
+  void operator=(S *ptr) { ptr_ = ptr; }
   T *operator->() { return ptr_; }
   T *operator*() { return ptr_; }
 
