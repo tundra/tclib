@@ -10,7 +10,7 @@ library_files = [
   "duration.c",
   "eventseq.c",
   "lifetime.c",
-  "log.c",
+  "log.cc",
   "strbuf.c",
   "string.c",
   "tinymt.c",

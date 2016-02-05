@@ -1,12 +1,19 @@
 //- Copyright 2013 the Neutrino authors (see AUTHORS).
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
+#include "c/stdc.h"
+
+#include "utils/log.hh"
+
+BEGIN_C_INCLUDES
 #include "io/file.h"
-#include "utils/log.h"
 #include "utils/ook.h"
 #include "utils/strbuf.h"
 #include "utils/string-inl.h"
 #include "utils/trybool.h"
+END_C_INCLUDES
+
+using namespace tclib;
 
 #include <time.h>
 
@@ -183,4 +190,32 @@ bool vlog_message(log_level_t level, const char *file, int line, const char *fmt
 bool log_entry(log_entry_t *entry) {
   log_o *log = get_global_log();
   return METHOD(log, log)(log, entry);
+}
+
+log_o_vtable_t Log::kVTable = {log_trampoline};
+
+bool Log::log_trampoline(log_o *self, log_entry_t *entry) {
+  return static_cast<Log*>(self)->record(entry);
+}
+
+Log::Log()
+  : outer_(NULL) {
+  header.vtable = &kVTable;
+}
+
+void Log::ensure_installed() {
+  if (is_installed())
+    return;
+  outer_ = set_global_log(this);
+}
+
+void Log::ensure_uninstalled() {
+  if (!is_installed())
+    return;
+  set_global_log(outer_);
+  outer_ = NULL;
+}
+
+bool Log::propagate(log_entry_t *entry) {
+  return METHOD(outer_, log)(outer_, entry);
 }

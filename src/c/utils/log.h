@@ -131,10 +131,14 @@ log_o *set_global_log(log_o *log);
 
 // Emits a warning if the static log level is at least warning, otherwise does
 // nothing (including doesn't evaluate arguments).
-#define WARN(...) do {                                                         \
+#define LOG_WARN(...) do {                                                     \
   if (LOG_LEVEL_AT_LEAST(llWarning))                                           \
     log_message(llWarning, __FILE__, __LINE__, __VA_ARGS__);                   \
 } while (false)
+
+#ifndef WARN
+#  define WARN LOG_WARN
+#endif
 
 // Emits an error and aborts execution.
 #define FATAL(...) do {                                                        \
@@ -155,10 +159,14 @@ log_o *set_global_log(log_o *log);
 
 // Emits an info if the static log level is at least info, otherwise does
 // nothing (including doesn't evaluate arguments).
-#define INFO(...) do {                                                         \
+#define LOG_INFO(...) do {                                                     \
   if (LOG_LEVEL_AT_LEAST(llInfo))                                              \
     log_message(llInfo, __FILE__, __LINE__, __VA_ARGS__);                      \
 } while (false)
+
+#ifndef INFO
+#  define INFO LOG_INFO
+#endif
 
 // Emits an debug if the static log level is at least debug (which it's not by
 // default), otherwise does nothing (including doesn't evaluate arguments).
