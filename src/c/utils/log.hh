@@ -12,16 +12,30 @@ END_C_INCLUDES
 
 namespace tclib {
 
+// C++ wrapper around a log.
 class Log : public log_o {
 public:
   Log();
+
+  // Implicitly uninstalls this log if it is installed.
   virtual ~Log() { ensure_uninstalled(); }
+
+  // Override this to implement your custom logging behavior.
   virtual bool record(log_entry_t *entry) = 0;
+
+  // If this log is not already installed, installs it. If it is installed
+  // nothing happens.
   void ensure_installed();
+
+  // If this log is installed, uninstalls it. If it is installed it must be the
+  // top one.
   void ensure_uninstalled();
+
+  // Is this log installed?
   bool is_installed() { return outer_ != NULL; }
 
 protected:
+  // Passed the given entry on to the enclosing logger.
   bool propagate(log_entry_t *entry);
 
 private:
