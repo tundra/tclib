@@ -53,8 +53,11 @@ inline void default_delete(DefaultDestructable *that) {
 template <typename T>
 class pass_def_ref_t {
 public:
+  pass_def_ref_t() : ptr_(NULL) { }
   explicit pass_def_ref_t(T *ptr) : ptr_(ptr) { }
   T *operator*() const { return ptr_; }
+  bool is_null() { return ptr_ == NULL; }
+  static pass_def_ref_t<T> null() { return pass_def_ref_t<T>(); }
 
 private:
   T *ptr_;
@@ -79,6 +82,7 @@ public:
   void operator=(S *ptr) { ptr_ = ptr; }
   T *operator->() { return ptr_; }
   T *operator*() { return ptr_; }
+  bool is_null() { return ptr_ == NULL; }
 
 private:
   T *ptr_;
