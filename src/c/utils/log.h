@@ -193,10 +193,14 @@ log_o *set_global_log(log_o *log);
     INFO(__VA_ARGS__);                                                         \
 } while (false)
 
-// Works the same as INFO but any occurrences of this macro will cause the
-// linter to choke if you try to submit. If you use this when debugging/tracing
-// by hest the linter will help you remember to get rid of all the debug print
-// statements before submitting.
-#define HEST(...) log_message(llHest, __FILE__, __LINE__, __VA_ARGS__)
+// Works the same as INFO but any occurrences of this macro will cause
+// compilation to fail if devutils are disallowed. If you use this when
+// debugging/tracing by hest this will help you remember to get rid of all the
+// debug print statements before submitting.
+#ifdef ALLOW_DEVUTILS
+#  define HEST(...) log_message(llHest, __FILE__, __LINE__, __VA_ARGS__)
+#else
+#  define HEST(...) devutils_not_allowed
+#endif
 
 #endif // _LOG

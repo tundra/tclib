@@ -113,6 +113,16 @@
 #  define END_C_INCLUDES
 #endif
 
+#ifdef FAIL_ON_DEVUTILS
+#  define IF_ALLOW_DEVUTILS(T, F) F
+#else
+#  define ALLOW_DEVUTILS
+#  define IF_ALLOW_DEVUTILS(T, F) T
+#endif
+
+#define ONLY_ALLOW_DEVUTILS(E) IF_ALLOW_DEVUTILS(E, )
+#define UNLESS_ALLOW_DEVUTILS(E) IF_ALLOW_DEVUTILS(, E)
+
 // Ensures that the compiler knows that the expression is used but doesn't cause
 // it to be executed. The 'if (false)' ensures that the code is not run, the
 // 'do while (false)' ensures that the macro doesn't leave a potential dangling

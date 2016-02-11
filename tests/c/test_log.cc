@@ -35,6 +35,7 @@ bool InfoCounter::record(log_entry_t *entry) {
 }
 
 TEST(log, replace) {
+  HEST("Foo?");
   InfoCounter outer;
   outer.ensure_installed();
   ASSERT_EQ(0, outer.count());
