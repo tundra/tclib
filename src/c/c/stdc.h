@@ -36,11 +36,13 @@
 #  define IF_GCC(T, E) T
 #endif
 
-// Convenience macros because the empty argument thing looks bad.
+// Convenience macros.
 #define ONLY_MSVC(E) IF_MSVC(E, )
 #define UNLESS_MSVC(E) IF_MSVC(, E)
+#define kIsMsvc IF_MSVC(true, false)
 #define ONLY_GCC(E) IF_GCC(E, )
 #define UNLESS_GCC(E) IF_GCC(, E)
+#define kIsGcc IF_GCC(true, false)
 
 // The debug mode macro is set depending on how code is generated, whether it is
 // highly optimized and debug symbols are retained, so you should very rarely,
@@ -56,8 +58,10 @@
 #  define IF_DEBUG(T, E) E
 #endif
 
+
 #define ONLY_DEBUG(E) IF_DEBUG(E, )
 #define UNLESS_DEBUG(E) IF_DEBUG(, E)
+#define kIsDebug IF_DEBUG(true, false)
 
 #ifndef PRIi64
 #  define PRIi64 "li"
@@ -93,8 +97,10 @@
 
 #define ONLY_32_BIT(E) IF_32_BIT(E, )
 #define UNLESS_32_BIT(E) IF_32_BIT(, E)
+#define kIs32Bit IF_32_BIT(true, false)
 #define ONLY_64_BIT(E) IF_64_BIT(E, )
 #define UNLESS_64_BIT(E) IF_64_BIT(, E)
+#define kIs64Bit IF_64_BIT(true, false)
 
 // Includes of C headers from C++ files should be surrounded by these macros to
 // ensure that they're linked appropriately.
@@ -122,6 +128,7 @@
 
 #define ONLY_ALLOW_DEVUTILS(E) IF_ALLOW_DEVUTILS(E, )
 #define UNLESS_ALLOW_DEVUTILS(E) IF_ALLOW_DEVUTILS(, E)
+#define kAllowDevutils IF_ALLOW_DEVUTILS(true, false)
 
 // Ensures that the compiler knows that the expression is used but doesn't cause
 // it to be executed. The 'if (false)' ensures that the code is not run, the

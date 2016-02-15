@@ -20,7 +20,7 @@ using namespace tclib;
 
 TEST(dll_inject, exec_durian) {
   // Dll injections only works under msvc and not in debug mode.
-  if (IF_GCC(true, false) || IF_DEBUG(true, false))
+  if (kIsGcc || kIsDebug)
     return;
   size_t fib_size = 85;
   byte_t fib[85];
