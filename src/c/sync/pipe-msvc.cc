@@ -161,7 +161,7 @@ WindowsServerChannel::~WindowsServerChannel() {
   string_default_delete(name_);
 }
 
-bool WindowsServerChannel::create(uint32_t flags) {
+bool WindowsServerChannel::allocate(uint32_t flags) {
   char scratch[MAX_PATH];
   utf8_t temp_name = WindowsPipeUtils::gen_pipe_name(scratch, MAX_PATH);
   name_ = string_default_dup(temp_name);

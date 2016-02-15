@@ -60,10 +60,10 @@ class ServerChannel : public DefaultDestructable {
 public:
   virtual ~ServerChannel() { }
 
-  // Create this server channel. A new name will be generated for clients to
-  // connect through. This call will not block. After this has been called you
-  // can call name() to get the channel's name.
-  virtual bool create(uint32_t flags) = 0;
+  // Allocate the resources required to support this channel. A new name will be
+  // generated for clients to connect through. This call will not block. After
+  // this has been called you can call name() to get the channel's name.
+  virtual bool allocate(uint32_t flags = NativePipe::pfDefault) = 0;
 
   // Ensure that we can write to and read from the channel. This call may block
   // until the client side has connected.

@@ -365,7 +365,7 @@ static void *run_client_thread(utf8_t name) {
 TEST(pipe_cpp, same_process_channel) {
   // Create the channel.
   def_ref_t<ServerChannel> server = ServerChannel::create();
-  ASSERT_TRUE(server->create(NativePipe::pfDefault));
+  ASSERT_TRUE(server->allocate());
   ASSERT_FALSE(string_is_empty(server->name()));
 
   // Spin off the client thread.

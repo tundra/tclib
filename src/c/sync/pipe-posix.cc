@@ -30,7 +30,7 @@ public:
   PosixServerChannel();
   virtual ~PosixServerChannel();
   virtual void default_destroy() { default_delete_concrete(this); }
-  virtual bool create(uint32_t flags);
+  virtual bool allocate(uint32_t flags);
   virtual bool open();
   virtual bool close();
   virtual utf8_t name() { return basename_; }
@@ -87,7 +87,7 @@ bool PosixServerChannel::make_fifo(const char *suffix) {
   return true;
 }
 
-bool PosixServerChannel::create(uint32_t flags) {
+bool PosixServerChannel::allocate(uint32_t flags) {
   char scratch[1024];
   utf8_t temp_name = FileSystem::get_temporary_file_name(new_c_string("srvchn"),
       scratch, 1024);
