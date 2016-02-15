@@ -140,7 +140,7 @@ public:
   WindowsServerChannel();
   virtual ~WindowsServerChannel();
   virtual void default_destroy() { default_delete_concrete(this); }
-  virtual bool create(uint32_t flags);
+  virtual bool allocate(uint32_t flags);
   virtual bool open();
   virtual bool close();
   virtual utf8_t name() { return name_; }
