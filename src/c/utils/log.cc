@@ -160,6 +160,12 @@ void log_entry_init(log_entry_t *entry, log_stream_t destination,
   entry->timestamp = timestamp;
 }
 
+void log_entry_default_init(log_entry_t *entry, log_level_t level,
+    const char *file, int line, utf8_t message, utf8_t timestamp) {
+  log_entry_init(entry, get_log_level_destination(level),
+      get_log_level_behavior(level), file, line, level, message, timestamp);
+}
+
 bool vlog_message(log_level_t level, const char *file, int line, const char *fmt,
     va_list argp) {
   // Write the error message into a string buffer.
@@ -176,12 +182,9 @@ bool vlog_message(log_level_t level, const char *file, int line, const char *fmt
   char timestamp[128];
   size_t timestamp_chars = strftime(timestamp, 128, "%d%m%H%M%S", &local_time);
   utf8_t timestamp_str = new_string(timestamp, timestamp_chars);
-  log_stream_t destination = get_log_level_destination(level);
-  log_behavior_t behavior = get_log_level_behavior(level);
   // Print the result.
   log_entry_t entry;
-  log_entry_init(&entry, destination, behavior, file, line, level, message_str,
-      timestamp_str);
+  log_entry_default_init(&entry, level, file, line, message_str, timestamp_str);
   B_TRY(log_entry(&entry));
   string_buffer_dispose(&buf);
   return true;

@@ -103,6 +103,11 @@ void log_entry_init(log_entry_t *entry, log_stream_t destination,
     log_behavior_t behavior, const char *file, int line, log_level_t level,
     utf8_t message, utf8_t timestamp);
 
+// Initialize a log entry using defaults for the fields that can be derived from
+// the given arguments, rather than specifying all the fields explicitly.
+void log_entry_default_init(log_entry_t *entry, log_level_t level,
+    const char *file, int line, utf8_t message, utf8_t timestamp);
+
 // Logs a message that has already been processed into an entry.
 bool log_entry(log_entry_t *entry);
 
