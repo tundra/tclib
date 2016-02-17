@@ -26,14 +26,14 @@
 // The way it works is that it pairs each argument with an action that expands
 // for that argument. The actions are picked out in reverse order so the action
 // to terminate is last, the actions to continue before it.
-#define FOR_EACH_VA_ARG(F, ...)                                                \
-  __E16__(__FOR_EACH_VA_ARG_HELPER__(F, __VA_ARGS__,                           \
+#define FOR_EACH_VA_ARG(F, D, ...)                                             \
+  __E16__(__FOR_EACH_VA_ARG_HELPER__(F, D, __VA_ARGS__,                        \
       __C__, __C__, __C__, __C__, __C__, __C__, __C__, __C__, __C__, __C__, __T__))
 
 // Kicks things off by invoking the first action which, if necessary, will take
 // care of invoking the remaining ones.
-#define __FOR_EACH_VA_ARG_HELPER__(F, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, ACTION, ...)\
-  DEFER(ACTION)()(F, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, __VA_ARGS__)
+#define __FOR_EACH_VA_ARG_HELPER__(F, D, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, ACTION, ...)\
+  DEFER(ACTION)()(F, D, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, __VA_ARGS__)
 
 // The __EN__ macro expands N times. This is because the preprocessor doesn't
 // allow macros to expand themselves recursively so instead we generate an
@@ -56,9 +56,9 @@
 
 // Apply the callback to the first argument, shift down the arguments and
 // actions, and continue recursively.
-#define __DO_C__(F, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, NEXT, ...)         \
-  F(_0)                                                                        \
-  DEFER(NEXT)()(F, _1, _2, _3, _4, _5, _6, _7, _8, _9, NEXT, __VA_ARGS__)
+#define __DO_C__(F, D, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, NEXT, ...)      \
+  F(_0, D)                                                                     \
+  DEFER(NEXT)()(F, D, _1, _2, _3, _4, _5, _6, _7, _8, _9, NEXT, __VA_ARGS__)
 
 // Stop expanding.
 #define __DO_T__(...)

@@ -36,25 +36,32 @@ log_o *silence_global_log() {
 
 // Match the given suite and test name against the given unit test data, return
 // true iff the test should be run.
-bool unit_test_selector_t::matches(const char *test_suite, const char *test_name) {
+bool unit_test_selector_t::matches(const char *test_suite, const char *test_name,
+    const char *test_flavor) {
   if (suite_ == NULL)
     return true;
   if (strcmp(suite_, test_suite) != 0)
     return false;
   if (name_ == NULL)
     return true;
-  return strcmp(name_, test_name) == 0;
+  if (strcmp(name_, test_name) != 0)
+    return false;
+  if (test_flavor == NULL || flavor_ == NULL)
+    return true;
+  return strcmp(flavor_, test_flavor) == 0;
 }
 
-void unit_test_selector_t::init(char *suite, char *name) {
+void unit_test_selector_t::init(char *suite, char *name, char *flavor) {
   suite_ = suite;
   name_ = name;
+  flavor_ = flavor;
 }
 
 void unit_test_selector_t::dispose() {
   free(suite_);
   suite_ = NULL;
   name_ = NULL;
+  flavor_ = NULL;
 }
 
 void TestCaseInfo::print_time(tclib::OutStream *out, size_t current_column,
@@ -65,7 +72,8 @@ void TestCaseInfo::print_time(tclib::OutStream *out, size_t current_column,
   out->flush();
 }
 
-double TestCaseInfo::run(tclib::OutStream *out) {
+void SingleTestCaseInfo::run(unit_test_selector_t *selector, tclib::OutStream *out,
+    TestRunInfo *info) {
   size_t column = out->printf("- %s/%s", suite, name);
   out->flush();
   double start = get_current_time_seconds();
@@ -73,30 +81,65 @@ double TestCaseInfo::run(tclib::OutStream *out) {
   double end = get_current_time_seconds();
   double duration = end - start;
   print_time(out, column, duration);
-  return duration;
+  info->record_run(duration);
+}
+
+void MultiTestCaseInfo::run(unit_test_selector_t *selector, tclib::OutStream *out,
+    TestRunInfo *info) {
+  for (size_t fi = 0; fi < flavorc; fi++) {
+    const char *flavor = flavorv[fi];
+    if (!selector->matches(suite, name, flavor))
+      continue;
+    size_t column = out->printf("- %s/%s/%s", suite, name, flavor);
+    out->flush();
+    double start = get_current_time_seconds();
+    testv[fi]();
+    double end = get_current_time_seconds();
+    double duration = end - start;
+    print_time(out, column, duration);
+    info->record_run(duration);
+  }
+}
+
+bool SingleTestCaseInfo::matches(unit_test_selector_t *selector) {
+  return selector->matches(suite, name, NULL);
+}
+
+bool MultiTestCaseInfo::matches(unit_test_selector_t *selector) {
+  for (size_t i = 0; i < flavorc; i++) {
+    if (selector->matches(suite, name, flavorv[i]))
+      return true;
+  }
+  return false;
 }
 
 static void parse_test_selector(const char *str, unit_test_selector_t *selector) {
   char *name = NULL;
+  char *flavor = NULL;
   char *suite = strdup(str);
-  char *test = strchr(suite, '/');
-  if (test != NULL) {
-    test[0] = 0;
-    name = &test[1];
-  } else {
-    name = NULL;
+  char *name_part = strchr(suite, '/');
+  if (name_part != NULL) {
+    name_part[0] = 0;
+    name = &name_part[1];
+    char *flavor_part = strchr(name, '/');
+    if (flavor_part != NULL) {
+      flavor_part[0] = 0;
+      flavor = &flavor_part[1];
+    }
   }
-  selector->init(suite, name);
+  selector->init(suite, name, flavor);
 }
 
 TestCaseInfo *TestCaseInfo::chain = NULL;
 
-TestCaseInfo::TestCaseInfo(const char *file, const char *suite, const char *name,
-    unit_test_t unit_test) {
+TestCaseInfo::TestCaseInfo(const char *file, const char *suite, const char *name) {
   this->file = file;
   this->suite = suite;
   this->name = name;
-  this->unit_test = unit_test;
+  insert_into_chain();
+}
+
+void TestCaseInfo::insert_into_chain() {
   this->next = NULL;
   // Add this test at the end of the chain. This makes setting up the tests
   // quadratic in the number of cases but on the other hand it's a simple way
@@ -112,6 +155,21 @@ TestCaseInfo::TestCaseInfo(const char *file, const char *suite, const char *name
   }
 }
 
+SingleTestCaseInfo::SingleTestCaseInfo(const char *file, const char *suite,
+    const char *name, unit_test_t unit_test)
+  : TestCaseInfo(file, suite, name) {
+  this->unit_test = unit_test;
+}
+
+
+MultiTestCaseInfo::MultiTestCaseInfo(const char *file, const char *suite, const char *name,
+    size_t flavorc, const char **flavorv, unit_test_t *testv)
+  : TestCaseInfo(file, suite, name) {
+  this->flavorc = flavorc;
+  this->flavorv = flavorv;
+  this->testv = testv;
+}
+
 void TestCaseInfo::validate() {
   // Look for the test case marker in the filename.
   const char *marker = "test_";
@@ -124,15 +182,14 @@ void TestCaseInfo::validate() {
     FATAL("Test %s/%s defined in file %s", this->suite, this->name, this->file);
 }
 
-double TestCaseInfo::run_tests(unit_test_selector_t *selector, tclib::OutStream *out) {
+void TestCaseInfo::run_tests(unit_test_selector_t *selector, tclib::OutStream *out,
+    TestRunInfo *info) {
   TestCaseInfo *current = TestCaseInfo::chain;
-  double duration = 0;
   while (current != NULL) {
-    if (selector->matches(current->suite, current->name))
-      duration += current->run(out);
+    if (current->matches(selector))
+      current->run(selector, out, info);
     current = current->next;
   }
-  return duration;
 }
 
 void TestCaseInfo::validate_all() {
@@ -155,29 +212,42 @@ int main(int argc, char *argv[]) {
   ASSERT_TRUE(lifetime_begin_default(&lifetime));
   install_crash_handler();
   tclib::OutStream *out = tclib::FileSystem::native()->std_out();
-  double duration;
+
   TestCaseInfo::validate_all();
+  TestRunInfo run_info;
   if (argc >= 2) {
     // If there are arguments run the relevant test suites.
-    duration = 0;
     for (int i = 1; i < argc; i++) {
       unit_test_selector_t selector;
       parse_test_selector(argv[i], &selector);
-      duration += TestCaseInfo::run_tests(&selector, out);
+      TestCaseInfo::run_tests(&selector, out, &run_info);
       selector.dispose();
     }
   } else {
     // If there are no arguments just run everything.
     unit_test_selector_t selector;
-    duration = TestCaseInfo::run_tests(&selector, out);
+    TestCaseInfo::run_tests(&selector, out, &run_info);
   }
   lifetime_end_default(&lifetime);
-  size_t column = out->printf("  all tests passed");
-  TestCaseInfo::print_time(out, column, duration);
+  int default_exit_code = 0;
+  if (run_info.count() == 0) {
+    // If we didn't run any tests print a message and force the run to fail --
+    // it's a sign something's off.
+    out->printf("  no tests run\n");
+    out->flush();
+    default_exit_code = 1;
+  } else {
+    size_t column;
+    if (run_info.count() == 1)
+      column = out->printf("  test passed");
+    else
+      column = out->printf("  all %i tests passed", run_info.count());
+    TestCaseInfo::print_time(out, column, run_info.duration());
+  }
   // Return a successful error code only if there were no allocator leaks.
   if (fingerprinting_allocator_uninstall(&fingerprinter)
       && limited_allocator_uninstall(&limiter)) {
-    return 0;
+    return default_exit_code;
   } else {
     return 1;
   }

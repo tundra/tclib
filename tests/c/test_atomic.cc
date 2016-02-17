@@ -36,8 +36,8 @@ public:
   static int64_t sub(atomic_t *v, int64_t d) { return atomic_int64_subtract(v, d); }
 };
 
-template <typename A>
-static void test_simple() {
+MULTITEST(atomic, simple, typename, ("32", A32), ("64", A64)) {
+  typedef Flavor A;
   typename A::atomic_t atomic = A::init(0);
   ASSERT_EQ(0, A::get(&atomic));
   ASSERT_EQ(1, A::inc(&atomic));
@@ -50,14 +50,6 @@ static void test_simple() {
   ASSERT_EQ(101, A::get(&atomic));
   ASSERT_EQ(51, A::sub(&atomic, 50));
   ASSERT_EQ(51, A::get(&atomic));
-}
-
-TEST(atomic, simple32) {
-  test_simple<A32>();
-}
-
-TEST(atomic, simple64) {
-  test_simple<A64>();
 }
 
 #define kThreadCount 16
@@ -75,8 +67,8 @@ static void *hammer_counter(Drawbridge *start, typename A::atomic_t *count) {
   return NULL;
 }
 
-template <typename A>
-static void test_contended() {
+MULTITEST(atomic, contended, typename, ("32", A32), ("64", A64)) {
+  typedef Flavor A;
   typename A::atomic_t counter = A::init(0);
   Drawbridge start;
   ASSERT_TRUE(start.initialize());
@@ -94,14 +86,6 @@ static void test_contended() {
     threads[i].join();
 
   ASSERT_EQ(0, A::get(&counter));
-}
-
-TEST(atomic, contended32) {
-  test_contended<A32>();
-}
-
-TEST(atomic, contended64) {
-  test_contended<A64>();
 }
 
 static void *hammer_compare_and_set(Drawbridge *start, atomic_int32_t *a,

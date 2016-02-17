@@ -8,13 +8,13 @@ BEGIN_C_INCLUDES
 END_C_INCLUDES
 
 // Record that this macro has been invoked with the given argument.
-#define RECORD(N) record[count++] = N;
+#define RECORD(N, D) record[count++] = N;
 
 TEST(macro, for_each_va_arg) {
   int count = 0;
   int record[8];
 
-  FOR_EACH_VA_ARG(RECORD, 1, 4, 6, 9, 34, 54, 2, 3);
+  FOR_EACH_VA_ARG(RECORD, _, 1, 4, 6, 9, 34, 54, 2, 3);
   ASSERT_EQ(8, count);
   ASSERT_EQ(record[0], 1);
   ASSERT_EQ(record[1], 4);
@@ -26,7 +26,7 @@ TEST(macro, for_each_va_arg) {
   ASSERT_EQ(record[7], 3);
 
   count = 0;
-  FOR_EACH_VA_ARG(RECORD, 6, 5, 4);
+  FOR_EACH_VA_ARG(RECORD, _, 6, 5, 4);
   ASSERT_EQ(3, count);
   ASSERT_EQ(record[0], 6);
   ASSERT_EQ(record[1], 5);
