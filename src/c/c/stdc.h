@@ -48,20 +48,20 @@
 // highly optimized and debug symbols are retained, so you should very rarely,
 // ideally never, need to depend on it. It is orthogonal to whether checks or
 // indeed expensive checks are enabled.
-#ifdef DEBUG_MODE
-#  define IS_DEBUG
+#ifdef DEBUG_CODEGEN
+#  define IS_DEBUG_CODEGEN
 #endif
 
-#ifdef IS_DEBUG
-#  define IF_DEBUG(T, E) T
+#ifdef IS_DEBUG_CODEGEN
+#  define IF_DEBUG_CODEGEN(T, E) T
 #else
-#  define IF_DEBUG(T, E) E
+#  define IF_DEBUG_CODEGEN(T, E) E
 #endif
 
 
-#define ONLY_DEBUG(E) IF_DEBUG(E, )
-#define UNLESS_DEBUG(E) IF_DEBUG(, E)
-#define kIsDebug IF_DEBUG(true, false)
+#define ONLY_DEBUG_CODEGEN(E) IF_DEBUG_CODEGEN(E, )
+#define UNLESS_DEBUG_CODEGEN(E) IF_DEBUG_CODEGEN(, E)
+#define kIsDebugCodegen IF_DEBUG_CODEGEN(true, false)
 
 #ifndef PRIi64
 #  define PRIi64 "li"

@@ -136,7 +136,7 @@ private:
 // Declares and registers a test case.
 #define TEST(suite, name)                                                      \
   static void run_##suite##_##name();                                          \
-  static SingleTestCaseInfo* const test_case_info_##suite##_##name = new SingleTestCaseInfo(__FILE__, #suite, #name, run_##suite##_##name); \
+  SingleTestCaseInfo* const test_case_info_##suite##_##name = new SingleTestCaseInfo(__FILE__, #suite, #name, run_##suite##_##name); \
   static void run_##suite##_##name()
 
 #define __PICK_FLAVOR_NAME__(V, I) X V,
@@ -159,7 +159,7 @@ private:
   static const char *suite##_##name##_flavors[VA_ARGC(__VA_ARGS__) + 1] = {FOR_EACH_VA_ARG(__PICK_FLAVOR_NAME__, _, __VA_ARGS__) NULL}; \
   template <type_t Flavor> static void run_##suite##_##name();                 \
   static TestCaseInfo::unit_test_t suite##_##name##_tests[VA_ARGC(__VA_ARGS__) + 1] = {FOR_EACH_VA_ARG(__BUILD_FLAVOR_FUNCTION_NAME__, run_##suite##_##name, __VA_ARGS__) NULL}; \
-  static MultiTestCaseInfo *const test_case_info_##suite##_##name = new MultiTestCaseInfo(__FILE__, #suite, #name, VA_ARGC(__VA_ARGS__), suite##_##name##_flavors, suite##_##name##_tests); \
+  MultiTestCaseInfo *const test_case_info_##suite##_##name = new MultiTestCaseInfo(__FILE__, #suite, #name, VA_ARGC(__VA_ARGS__), suite##_##name##_flavors, suite##_##name##_tests); \
   template <type_t Flavor> static void run_##suite##_##name()
 
 // Sets the global log to a value that ignores all messages. Returns the current

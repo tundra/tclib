@@ -98,8 +98,18 @@ bool NativeProcess::wait_sync(Duration timeout) {
   return passed;
 }
 
-bool NativeProcess::inject_library(utf8_t path) {
-  return inject_library(path, string_empty(), blob_empty(), blob_empty());
+NativeProcess::InjectRequest::InjectRequest(utf8_t path)
+  : path_(path)
+  , connector_name_(string_empty())
+  , data_in_(blob_empty())
+  , data_out_(blob_empty())
+  , state_(NULL) { }
+
+void NativeProcess::InjectRequest::set_connector(utf8_t name, blob_t data_in,
+    blob_t data_out) {
+  connector_name_ = name;
+  data_in_ = data_in;
+  data_out_ = data_out;
 }
 
 PipeRedirector::PipeRedirector(pipe_direction_t direction)

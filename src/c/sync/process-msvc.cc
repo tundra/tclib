@@ -64,12 +64,44 @@ void NativeProcess::mark_terminated(bool timer_or_wait_fired) {
   exit_code_.fulfill(exit_code);
 }
 
-// Various utilities for injecting a dll.
-class DllInjectHelper {
+// A wrapper around a reference to memory in a different process.
+template <typename T>
+class RemoteMemory {
 public:
-  // Injects the dll with the given path into the given process.
-  static bool inject_dll(handle_t process, utf8_t dll_path, utf8_t connector_name,
-      blob_t blob_in, blob_t blob_out);
+  // Creates a new empty reference.
+  RemoteMemory();
+
+  // If this reference has been allocated, frees the memory.
+  ~RemoteMemory();
+
+  // Allocates a block of memory and fills it with the given data.
+  bool copy_into(handle_t process, const void* start, size_t size, bool is_executable);
+
+  // Allocates an empty block of memory of the given size.
+  bool alloc(handle_t process, size_t size, bool is_executable = false);
+
+  // Returns a pointer to the remote memory.
+  T* operator*() { return static_cast<T*>(remote_data_.start); }
+  T* operator->() { return this->operator*(); }
+
+  // Returns the remote memory as a blob.
+  blob_t remote() { return remote_data_; }
+
+private:
+  handle_t process_;
+  blob_t remote_data_;
+};
+
+class NativeProcess::InjectState {
+public:
+  InjectState(InjectRequest *request, handle_t child_process)
+    : request_(request)
+    , child_process_(child_process)
+    , loader_thread_(INVALID_HANDLE_VALUE) { }
+
+  bool start_inject_dll();
+
+  bool complete_inject_dll(Duration timeout);
 
 private:
   // Types of the functions being passed in.
@@ -111,17 +143,29 @@ private:
     inject_out_t out;
   } inject_data_t;
 
+  InjectRequest *request_;
+  InjectRequest *request() { return request_; }
+
+  handle_t child_process_;
+  handle_t loader_thread_;
+
+  RemoteMemory<char> remote_path_;
+  RemoteMemory<char> remote_connector_name_;
+  RemoteMemory<uint8_t> remote_data_in_;
+  RemoteMemory<uint8_t> remote_data_out_;
+  RemoteMemory<inject_data_t> remote_data_;
+  RemoteMemory<byte_t> remote_entry_point_;
+
+  static const size_t kMaxEntryPointSize = 2048;
+
   // Entry point that is copied into the process and called.
   static dword_t __stdcall inject_entry_point(void *raw_data);
 
   template <typename T>
-  static bool read_data_from_process(handle_t process, const void *addr, T *dest,
-      size_t size);
-
-  static const size_t kMaxEntryPointSize = 2048;
+  bool read_data_from_child_process(const void *addr, T *dest, size_t size);
 };
 
-dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
+dword_t __stdcall NativeProcess::InjectState::inject_entry_point(void *raw_data) {
   // This code is *very* special indeed because it will be copied into the
   // child process. It must be smaller than kMaxEntryPointSize bytes long,
   // can't use literal strings (because they won't be copied along with it) and
@@ -160,54 +204,39 @@ dword_t __stdcall DllInjectHelper::inject_entry_point(void *raw_data) {
 }
 
 template <typename T>
-bool DllInjectHelper::read_data_from_process(handle_t process, const void *addr,
-     T *dest, size_t size) {
+bool NativeProcess::InjectState::read_data_from_child_process(const void *addr,
+    T *dest, size_t size) {
   win_size_t bytes_read = 0;
-  if (!ReadProcessMemory(process, addr, dest, size, &bytes_read)) {
+  if (!ReadProcessMemory(child_process_, addr, dest, size, &bytes_read)) {
     LOG_ERROR("ReadProcessMemory(-, %p, -, %i, -): %i", addr, size, GetLastError());
     return false;
   }
   return true;
 }
 
-
-bool NativeProcess::inject_library(utf8_t path, utf8_t connector_name,
-    blob_t blob_in, blob_t blob_out) {
-  // Injection only works in relese mode because the code generated for the
-  // injected function jumps all over the place in debug mode.
-  ONLY_DEBUG(return false);
-  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
-  return DllInjectHelper::inject_dll(platform_data()->child_process(), path,
-      connector_name, blob_in, blob_out);
+bool NativeProcess::inject_library(InjectRequest *request) {
+  return start_inject_library(request) && complete_inject_library(request);
 }
 
-// A wrapper around a reference to memory in a different process.
-template <typename T>
-class RemoteMemory {
-public:
-  // Creates a new empty reference.
-  RemoteMemory();
+bool NativeProcess::start_inject_library(InjectRequest *request) {
+  if (kIsDebugCodegen)
+    return false;
+  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  CHECK_TRUE("already injecting", request->state() == NULL);
+  NativeProcess::InjectState *state = new (kDefaultAlloc) NativeProcess::InjectState(
+      request, platform_data()->child_process());
+  request->set_state(state);
+  return state->start_inject_dll();
+}
 
-  // If this reference has been allocated, frees the memory.
-  ~RemoteMemory();
-
-  // Allocates a block of memory and fills it with the given data.
-  bool copy_into(handle_t process, const void* start, size_t size, bool is_executable);
-
-  // Allocates an empty block of memory of the given size.
-  bool alloc(handle_t process, size_t size, bool is_executable = false);
-
-  // Returns a pointer to the remote memory.
-  T* operator*() { return static_cast<T*>(remote_data_.start); }
-  T* operator->() { return this->operator*(); }
-
-  // Returns the remote memory as a blob.
-  blob_t remote() { return remote_data_; }
-
-private:
-  handle_t process_;
-  blob_t remote_data_;
-};
+bool NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
+  CHECK_TRUE("not injecting", request->state() != NULL);
+  NativeProcess::InjectState *state = request->state();
+  request->set_state(NULL);
+  bool result = state->complete_inject_dll(timeout);
+  default_delete_concrete(state);
+  return result;
+}
 
 template <typename T>
 RemoteMemory<T>::RemoteMemory()
@@ -255,8 +284,7 @@ bool RemoteMemory<T>::alloc(handle_t process, size_t size, bool is_executable) {
   return true;
 }
 
-bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
-    utf8_t connector_name, blob_t data_in, blob_t data_out) {
+bool NativeProcess::InjectState::start_inject_dll() {
   // Create a local version of the injected data which we'll later copy into
   // the process.
   inject_data_t proto_data;
@@ -268,72 +296,75 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
   in->get_last_error = GetLastError;
 
   // Copy the dll name and store it in the data.
-  RemoteMemory<char> remote_path;
-  if (!remote_path.copy_into(child_process, path.chars, path.size + 1, false))
+  utf8_t path = request()->path();
+  if (!remote_path_.copy_into(child_process_, path.chars, path.size + 1, false))
     return false;
-  in->dll_name = *remote_path;
+  in->dll_name = *remote_path_;
 
   // If there's a connector copy that too.
-  RemoteMemory<char> remote_connector_name;
+  utf8_t connector_name = request()->connector_name();
   if (!string_is_empty(connector_name)) {
-    if (!remote_connector_name.copy_into(child_process, connector_name.chars,
+    if (!remote_connector_name_.copy_into(child_process_, connector_name.chars,
         connector_name.size + 1, false))
       return false;
-    in->connect_name = *remote_connector_name;
+    in->connect_name = *remote_connector_name_;
   }
 
   // If there's input data copy that into the process.
-  RemoteMemory<uint8_t> remote_data_in;
+  blob_t data_in = request()->data_in();
   if (!blob_is_empty(data_in)) {
-    if (!remote_data_in.copy_into(child_process, data_in.start, data_in.size, false))
+    if (!remote_data_in_.copy_into(child_process_, data_in.start, data_in.size, false))
       return false;
-    in->data_in = blob_new(*remote_data_in, data_in.size);
+    in->data_in = blob_new(*remote_data_in_, data_in.size);
   }
 
   // If the caller expects output data also copy that into the process.
-  RemoteMemory<uint8_t> remote_data_out;
+  blob_t data_out = request()->data_out();
   if (!blob_is_empty(data_out)) {
-    if (!remote_data_out.alloc(child_process, data_out.size))
+    if (!remote_data_out_.alloc(child_process_, data_out.size))
       return false;
-    in->data_out_scratch = remote_data_out.remote();
+    in->data_out_scratch = remote_data_out_.remote();
   }
 
   // Copy the injected data into the process.
-  RemoteMemory<inject_data_t> remote_data;
-  if (!remote_data.copy_into(child_process, &proto_data, sizeof(proto_data),
+  if (!remote_data_.copy_into(child_process_, &proto_data, sizeof(proto_data),
       false))
     return false;
 
   // Copy the binary code of the entry point function into the process.
-  RemoteMemory<byte_t> remote_entry_point;
-  if (!remote_entry_point.copy_into(child_process, inject_entry_point,
+  if (!remote_entry_point_.copy_into(child_process_, inject_entry_point,
       kMaxEntryPointSize, true))
     return false;
-  LPTHREAD_START_ROUTINE start = reinterpret_cast<LPTHREAD_START_ROUTINE>(*remote_entry_point);
+  LPTHREAD_START_ROUTINE start = reinterpret_cast<LPTHREAD_START_ROUTINE>(*remote_entry_point_);
 
   // Create a thread in the child process that runs the entry point.
-  handle_t loader_thread = CreateRemoteThread(child_process, NULL, 0, start,
-      *remote_data, NULL, NULL);
-  if (loader_thread == NULL) {
+  loader_thread_ = CreateRemoteThread(child_process_, NULL, 0, start,
+      *remote_data_, NULL, NULL);
+  if (loader_thread_ == NULL) {
     LOG_ERROR("Failed to create remote DLL loader thread: %i", GetLastError());
     return false;
   }
 
   // Start the loader thread running.
-  dword_t retval = ResumeThread(loader_thread);
+  dword_t retval = ResumeThread(loader_thread_);
   if (retval == -1) {
     LOG_ERROR("Failed to start loader thread: %i", GetLastError());
     return false;
   }
 
+  return true;
+}
+
+bool NativeProcess::InjectState::complete_inject_dll(Duration timeout) {
   // Wait the the loader thread to complete.
-  WaitForSingleObject(loader_thread, INFINITE);
+  if (WaitForSingleObject(loader_thread_, timeout.to_winapi_millis()) != WAIT_OBJECT_0)
+    return false;
 
   // If the injector messes up we may kill the process. Check whether we've done
   // that because it's easier to debug when you know this happened rather than
   // chase down why reading fails below.
   dword_t exit_code = 0;
-  if (!GetExitCodeProcess(child_process, &exit_code)) {
+  if (!GetExitCodeProcess(child_process_, &exit_code)) {
     LOG_ERROR("GetExitCodeProcess(_): %i", GetLastError());
     return false;
   }
@@ -345,7 +376,7 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
   // Copy the output data back from the process.
   inject_out_t out;
   struct_zero_fill(out);
-  if (!read_data_from_process(child_process, &remote_data->out, &out, sizeof(out)))
+  if (!read_data_from_child_process(&remote_data_->out, &out, sizeof(out)))
     return false;
 
   if (out.error_step != 0) {
@@ -353,10 +384,11 @@ bool DllInjectHelper::inject_dll(handle_t child_process, utf8_t path,
     return false;
   }
 
+  blob_t data_out = request()->data_out();
   if (!blob_is_empty(data_out)) {
     // If there's a data_out parameter we copy the output data into it.
-    if (!read_data_from_process(child_process, in->data_out_scratch.start,
-        data_out.start, in->data_out_scratch.size))
+    if (!read_data_from_child_process(*remote_data_out_, data_out.start,
+        data_out.size))
       return false;
   }
 

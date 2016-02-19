@@ -324,8 +324,7 @@ bool NativeProcess::mark_terminated(int result) {
   return fulfilled;
 }
 
-bool NativeProcess::inject_library(utf8_t path, utf8_t connector_name,
-    blob_t blob_in, blob_t blob_out) {
+bool NativeProcess::inject_library(InjectRequest *request) {
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   return false;
 }

@@ -152,8 +152,30 @@ public:
   // Returns the flags currently set on this process.
   int32_t flags() { return flags_; }
 
-  // Sets this process' flags.
+  // Sets this process' flags. The flags come from native_process_flags_t.
   void set_flags(int32_t value) { flags_ = value; }
+
+  // Internal state about an injection optionally used by the implementation.
+  class InjectState;
+
+  // State associated with injecting a dll into a process.
+  class InjectRequest {
+  public:
+    InjectRequest(utf8_t path);
+    void set_connector(utf8_t name, blob_t data_in, blob_t data_out);
+    utf8_t path() { return path_; }
+    utf8_t connector_name() { return connector_name_; }
+    blob_t data_in() { return data_in_; }
+    blob_t data_out() { return data_out_; }
+    InjectState *state() { return state_; }
+    void set_state(InjectState *state) { state_ = state; }
+  private:
+    utf8_t path_;
+    utf8_t connector_name_;
+    blob_t data_in_;
+    blob_t data_out_;
+    InjectState *state_;
+  };
 
   // On windows, loads a dll into a suspended process. Returns true if
   // successful and false otherwise, including on linux where this is just not
@@ -165,10 +187,14 @@ public:
   // be passed a copy of the data in blob_in and a piece of scratch memory the
   // same size as blob_out, whose contents will be copied back into blob_out
   // once the call has completed.
-  bool inject_library(utf8_t path, utf8_t connect_name, blob_t blob_in,
-      blob_t blob_out);
+  bool inject_library(InjectRequest *request);
 
-  bool inject_library(utf8_t path);
+  // Starts the process of injecting the requested library but doesn't wait for
+  // it to complete. See inject_library for details.
+  bool start_inject_library(InjectRequest *request);
+
+  // Waits for the injection process to complete.
+  bool complete_inject_library(InjectRequest *request, Duration timeout = Duration::unlimited());
 
   // Specifies that the given redirect should be used for the given stream. Must
   // be called before starting the process.
@@ -191,6 +217,9 @@ public:
   // running.
   ONLY_GCC(bool mark_terminated(int result);)
   ONLY_MSVC(void mark_terminated(bool timer_or_wait_fired);)
+
+  // Can be used to test whether suspend/resume works on this platform.
+  static const bool kCanSuspendResume = kIsMsvc;
 
 private:
   class PlatformData;

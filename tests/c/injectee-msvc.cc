@@ -3,10 +3,24 @@
 
 #include "c/winhdr.h"
 #include "sync/injectee.hh"
+#include "utils/alloc.hh"
+#include "sync/pipe.hh"
+
+BEGIN_C_INCLUDES
+#include "utils/string-inl.h"
+END_C_INCLUDES
+
+using namespace tclib;
 
 static void on_attach() {
-  int a = atoi(getenv("A"));
-  int b = atoi(getenv("B"));
+  const char *a_str = getenv("A");
+  if (a_str == NULL)
+    return;
+  int a = atoi(a_str);
+  const char *b_str = getenv("B");
+  if (b_str == NULL)
+    return;
+  int b = atoi(b_str);
   char buf[256];
   sprintf(buf, "C=%i", a + b);
   _putenv(buf);
@@ -47,5 +61,19 @@ CONNECTOR_IMPL(TestInjecteeConnect, data_in, data_out) {
   uint8_t *bytes_out = static_cast<uint8_t*>(data_out.start);
   for (size_t i = 0; i < out_size; i++)
     bytes_out[i] = static_cast<byte_t>(bytes_in[i] + 13);
+  return 0;
+}
+
+CONNECTOR_IMPL(TestInjecteeConnectBlocking, data_in, data_out) {
+  utf8_t name = new_string(static_cast<char*>(data_in.start), data_in.size);
+  def_ref_t<ClientChannel> channel = ClientChannel::create();
+  if (!channel->open(name))
+    return 0x2001;
+  char buf[16];
+  ReadIop read(channel->in(), buf, 16);
+  if (!read.execute())
+    return 0x2002;
+  if (strcmp(buf, "Brilg & Spowegg") != 0)
+    return 0x2003;
   return 0;
 }

@@ -78,6 +78,8 @@ test_main.add_object(test_library)
 
 injectee = c.get_shared_library("injectee")
 injectee.add_object(compile_test_file(c.get_source_file("injectee.cc")))
+injectee.add_object(get_external('src', 'c', 'io', 'library'))
+injectee.add_object(get_external('src', 'c', 'sync', 'library'))
 
 all = get_group("all")
 all.add_dependency(test_main)
