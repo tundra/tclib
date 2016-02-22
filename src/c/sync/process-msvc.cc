@@ -214,10 +214,6 @@ bool NativeProcess::InjectState::read_data_from_child_process(const void *addr,
   return true;
 }
 
-bool NativeProcess::inject_library(InjectRequest *request) {
-  return start_inject_library(request) && complete_inject_library(request);
-}
-
 bool NativeProcess::start_inject_library(InjectRequest *request) {
   if (kIsDebugCodegen)
     return false;

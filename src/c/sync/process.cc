@@ -98,6 +98,10 @@ bool NativeProcess::wait_sync(Duration timeout) {
   return passed;
 }
 
+bool NativeProcess::inject_library(InjectRequest *request) {
+  return start_inject_library(request) && complete_inject_library(request);
+}
+
 NativeProcess::InjectRequest::InjectRequest(utf8_t path)
   : path_(path)
   , connector_name_(string_empty())

@@ -324,8 +324,15 @@ bool NativeProcess::mark_terminated(int result) {
   return fulfilled;
 }
 
-bool NativeProcess::inject_library(InjectRequest *request) {
+bool NativeProcess::start_inject_library(InjectRequest *request) {
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  return false;
+}
+
+bool NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
+  // Starting injection can't succeed so definitely we don't want anyone to be
+  // calling complete.
+  UNREACHABLE("completing injection");
   return false;
 }
 
