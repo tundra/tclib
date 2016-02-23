@@ -182,7 +182,7 @@ private:
 // Use this macro in a test function to leave the test and indicate to the test
 // framework that the test shouldn't be counted as having been run. This way it
 // becomes conspicuous in the test output whether a test was run or not. The
-// argument must be a test string that explains why the test is skipped or NULL.
+// argument must be a string that explains why the test is skipped or NULL.
 #define SKIP_TEST(WHY) do {                                                    \
   __test_run_handle__->mark_skipped(WHY);                                      \
   return;                                                                      \
