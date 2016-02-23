@@ -215,8 +215,10 @@ bool NativeProcess::InjectState::read_data_from_child_process(const void *addr,
 }
 
 bool NativeProcess::start_inject_library(InjectRequest *request) {
-  if (kIsDebugCodegen)
+  if (kIsDebugCodegen) {
+    WARN("Attempting to inject with debug codegen");
     return false;
+  }
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   CHECK_TRUE("already injecting", request->state() == NULL);
   NativeProcess::InjectState *state = new (kDefaultAlloc) NativeProcess::InjectState(

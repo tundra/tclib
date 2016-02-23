@@ -105,5 +105,7 @@ TEST(condition_cpp, msvc_sizes) {
   // If this fails it should be easy to fix, just bump up the size of the
   // platform condition type.
   ASSERT_REL(sizeof(platform_condition_t), >=, sizeof(CONDITION_VARIABLE));
+#else
+  SKIP_TEST();
 #endif
 }

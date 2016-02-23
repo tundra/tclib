@@ -37,22 +37,37 @@ private:
   char *flavor_;
 };
 
+// A handle for a particular test run that is visible from the test function, so
+// it can be used by the test to communicate back to the test framework.
+class TestRunHandle {
+public:
+  TestRunHandle() : was_skipped_(false) { }
+  void mark_skipped() { was_skipped_ = true; }
+  bool was_skipped() { return was_skipped_; }
+private:
+  bool was_skipped_;
+};
+
+// Information about the running of one or more tests.
 class TestRunInfo {
 public:
-  TestRunInfo() : duration_(0), count_(0) { }
-  void record_run(double duration) { duration_ += duration; count_ += 1; }
+  TestRunInfo() : duration_(0), run_count_(0), skip_count_(0) { }
+  void record_run(double duration, TestRunHandle *handle);
   double duration() { return duration_; }
-  size_t count() { return count_; }
+  size_t run_count() { return run_count_; }
+  size_t skip_count() { return skip_count_; }
+  size_t total_count() { return run_count_ + skip_count_; }
 
 private:
   double duration_;
-  size_t count_;
+  size_t run_count_;
+  size_t skip_count_;
 };
 
 // Information about a single test case.
 class TestCaseInfo {
 public:
-  typedef void (*unit_test_t)();
+  typedef void (*unit_test_t)(TestRunHandle*);
 
   // Initialize a test info and tie it into the chain.
   TestCaseInfo(const char *file, const char *suite, const char *name);
@@ -81,14 +96,14 @@ public:
 
   // Flush to the time column and print the given duration.
   static void print_time(tclib::OutStream *out, size_t current_column,
-      double duration);
+      double duration, TestRunHandle *run_handle);
 
 protected:
   // The head of the chain of registered tests.
   static TestCaseInfo *chain;
 
   // How far to the right to flush the duration when printing progress.
-  static const size_t kTimeColumn = 36;
+  static const size_t kTimeColumn = 42;
 
   // Name of the file that defines the test. Used for validation.
   const char *file;
@@ -135,9 +150,9 @@ private:
 
 // Declares and registers a test case.
 #define TEST(suite, name)                                                      \
-  static void run_##suite##_##name();                                          \
+  static void run_##suite##_##name(TestRunHandle*);                            \
   SingleTestCaseInfo* const test_case_info_##suite##_##name = new SingleTestCaseInfo(__FILE__, #suite, #name, run_##suite##_##name); \
-  static void run_##suite##_##name()
+  static void run_##suite##_##name(TestRunHandle* __test_run_handle__)
 
 #define __PICK_FLAVOR_NAME__(V, I) X V,
 #define __BUILD_FLAVOR_FUNCTION_NAME__(V, I) &I<_ V>,
@@ -157,10 +172,18 @@ private:
 // string name.
 #define MULTITEST(suite, name, type_t, ...)                                    \
   static const char *suite##_##name##_flavors[VA_ARGC(__VA_ARGS__) + 1] = {FOR_EACH_VA_ARG(__PICK_FLAVOR_NAME__, _, __VA_ARGS__) NULL}; \
-  template <type_t Flavor> static void run_##suite##_##name();                 \
+  template <type_t Flavor> static void run_##suite##_##name(TestRunHandle*);   \
   static TestCaseInfo::unit_test_t suite##_##name##_tests[VA_ARGC(__VA_ARGS__) + 1] = {FOR_EACH_VA_ARG(__BUILD_FLAVOR_FUNCTION_NAME__, run_##suite##_##name, __VA_ARGS__) NULL}; \
   MultiTestCaseInfo *const test_case_info_##suite##_##name = new MultiTestCaseInfo(__FILE__, #suite, #name, VA_ARGC(__VA_ARGS__), suite##_##name##_flavors, suite##_##name##_tests); \
-  template <type_t Flavor> static void run_##suite##_##name()
+  template <type_t Flavor> static void run_##suite##_##name(TestRunHandle* __test_run_handle__)
+
+// Use this macro in a test function to leave the test and indicate to the test
+// framework that the test shouldn't be counted as having been run. This way it
+// becomes conspicuous in the test output whether a test was run or not.
+#define SKIP_TEST() do {                                                       \
+  __test_run_handle__->mark_skipped();                                         \
+  return;                                                                      \
+} while (false)
 
 // Sets the global log to a value that ignores all messages. Returns the current
 // log.

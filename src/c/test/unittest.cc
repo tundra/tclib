@@ -15,6 +15,9 @@ END_C_INCLUDES
 extern char *strdup(const char*);
 #endif
 
+#define kTotalMarker "="
+#define kTestMarker "-"
+
 IMPLEMENTATION(silent_log_o, log_o);
 
 static bool ignore_log(log_o *log, log_entry_t *entry) {
@@ -65,23 +68,28 @@ void unit_test_selector_t::dispose() {
 }
 
 void TestCaseInfo::print_time(tclib::OutStream *out, size_t current_column,
-    double duration) {
+    double duration, TestRunHandle *run_handle) {
   for (size_t i = current_column; i < kTimeColumn; i++)
     out->printf(" ");
-  out->printf("(%.3fs)\n", duration);
+  if (run_handle != NULL && run_handle->was_skipped()) {
+    out->printf("(------)\n");
+  } else {
+    out->printf("(%.3fs)\n", duration);
+  }
   out->flush();
 }
 
 void SingleTestCaseInfo::run(unit_test_selector_t *selector, tclib::OutStream *out,
     TestRunInfo *info) {
-  size_t column = out->printf("- %s/%s", suite, name);
+  size_t column = out->printf(kTestMarker " %s/%s", suite, name);
   out->flush();
   double start = get_current_time_seconds();
-  unit_test();
+  TestRunHandle run_handle;
+  unit_test(&run_handle);
   double end = get_current_time_seconds();
   double duration = end - start;
-  print_time(out, column, duration);
-  info->record_run(duration);
+  print_time(out, column, duration, &run_handle);
+  info->record_run(duration, &run_handle);
 }
 
 void MultiTestCaseInfo::run(unit_test_selector_t *selector, tclib::OutStream *out,
@@ -90,14 +98,15 @@ void MultiTestCaseInfo::run(unit_test_selector_t *selector, tclib::OutStream *ou
     const char *flavor = flavorv[fi];
     if (!selector->matches(suite, name, flavor))
       continue;
-    size_t column = out->printf("- %s/%s/%s", suite, name, flavor);
+    size_t column = out->printf(kTestMarker " %s/%s/%s", suite, name, flavor);
     out->flush();
     double start = get_current_time_seconds();
-    testv[fi]();
+    TestRunHandle run_handle;
+    testv[fi](&run_handle);
     double end = get_current_time_seconds();
     double duration = end - start;
-    print_time(out, column, duration);
-    info->record_run(duration);
+    print_time(out, column, duration, &run_handle);
+    info->record_run(duration, &run_handle);
   }
 }
 
@@ -200,6 +209,15 @@ void TestCaseInfo::validate_all() {
   }
 }
 
+void TestRunInfo::record_run(double duration, TestRunHandle *handle) {
+  duration_ += duration;
+  if (handle->was_skipped()) {
+    skip_count_ += 1;
+  } else {
+    run_count_ += 1;
+  }
+}
+
 // Run!
 int main(int argc, char *argv[]) {
   // Impose an allocation limit.
@@ -230,19 +248,18 @@ int main(int argc, char *argv[]) {
   }
   lifetime_end_default(&lifetime);
   int default_exit_code = 0;
-  if (run_info.count() == 0) {
+  if (run_info.total_count() == 0) {
     // If we didn't run any tests print a message and force the run to fail --
     // it's a sign something's off.
-    out->printf("  no tests run\n");
+    out->printf(kTotalMarker " no tests run\n");
     out->flush();
     default_exit_code = 1;
   } else {
-    size_t column;
-    if (run_info.count() == 1)
-      column = out->printf("  test passed");
-    else
-      column = out->printf("  all %i tests passed", run_info.count());
-    TestCaseInfo::print_time(out, column, run_info.duration());
+    size_t column = out->printf(kTotalMarker " %i test%s passed", run_info.run_count(),
+        run_info.run_count() == 1 ? "" : "s");
+    if (run_info.skip_count() > 0)
+      column += out->printf(" (%i skipped)", run_info.skip_count());
+    TestCaseInfo::print_time(out, column, run_info.duration(), NULL);
   }
   // Return a successful error code only if there were no allocator leaks.
   if (fingerprinting_allocator_uninstall(&fingerprinter)
