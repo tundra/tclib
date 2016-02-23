@@ -126,6 +126,6 @@ TEST(mutex_cpp, msvc_sizes) {
   // platform mutex type.
   ASSERT_REL(sizeof(platform_mutex_t), >=, sizeof(CRITICAL_SECTION));
 #else
-  SKIP_TEST();
+  SKIP_TEST("msvc only");
 #endif
 }

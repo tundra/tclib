@@ -158,6 +158,6 @@ TEST(stream, msvc_stuff) {
 #if defined(IS_MSVC)
   ASSERT_PTREQ(AbstractStream::kNullNakedFileHandle, INVALID_HANDLE_VALUE);
 #else
-  SKIP_TEST();
+  SKIP_TEST("msvc only");
 #endif
 }

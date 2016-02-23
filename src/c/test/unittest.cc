@@ -72,7 +72,11 @@ void TestCaseInfo::print_time(tclib::OutStream *out, size_t current_column,
   for (size_t i = current_column; i < kTimeColumn; i++)
     out->printf(" ");
   if (run_handle != NULL && run_handle->was_skipped()) {
-    out->printf("(------)\n");
+    out->printf("(------)");
+    const char *why = run_handle->why_skipped();
+    if (why != NULL)
+      out->printf(" // %s", why);
+    out->printf("\n");
   } else {
     out->printf("(%.3fs)\n", duration);
   }

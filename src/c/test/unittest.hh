@@ -41,11 +41,13 @@ private:
 // it can be used by the test to communicate back to the test framework.
 class TestRunHandle {
 public:
-  TestRunHandle() : was_skipped_(false) { }
-  void mark_skipped() { was_skipped_ = true; }
+  TestRunHandle() : was_skipped_(false), why_skipped_(NULL) { }
+  void mark_skipped(const char *why) { was_skipped_ = true; why_skipped_ = why; }
   bool was_skipped() { return was_skipped_; }
+  const char *why_skipped() { return why_skipped_; }
 private:
   bool was_skipped_;
+  const char *why_skipped_;
 };
 
 // Information about the running of one or more tests.
@@ -179,9 +181,10 @@ private:
 
 // Use this macro in a test function to leave the test and indicate to the test
 // framework that the test shouldn't be counted as having been run. This way it
-// becomes conspicuous in the test output whether a test was run or not.
-#define SKIP_TEST() do {                                                       \
-  __test_run_handle__->mark_skipped();                                         \
+// becomes conspicuous in the test output whether a test was run or not. The
+// argument must be a test string that explains why the test is skipped or NULL.
+#define SKIP_TEST(WHY) do {                                                    \
+  __test_run_handle__->mark_skipped(WHY);                                      \
   return;                                                                      \
 } while (false)
 

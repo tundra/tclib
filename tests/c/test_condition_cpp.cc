@@ -106,6 +106,6 @@ TEST(condition_cpp, msvc_sizes) {
   // platform condition type.
   ASSERT_REL(sizeof(platform_condition_t), >=, sizeof(CONDITION_VARIABLE));
 #else
-  SKIP_TEST();
+  SKIP_TEST("msvc only");
 #endif
 }
