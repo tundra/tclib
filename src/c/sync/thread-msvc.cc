@@ -18,6 +18,7 @@ bool NativeThread::platform_dispose() {
 
 unsigned long __stdcall NativeThread::entry_point(void *arg) {
   NativeThread *thread = static_cast<NativeThread*>(arg);
+  CHECK_EQ("thread interaction out of order", thread->state_, tsStarted);
   thread->thread_.result_ = (thread->callback_)();
   return 0;
 }
@@ -39,8 +40,12 @@ bool NativeThread::platform_start() {
 }
 
 void *NativeThread::join() {
-  if (WaitForSingleObject(thread_.handle_, INFINITE) != WAIT_OBJECT_0)
+  CHECK_EQ("thread interaction out of order", state_, tsStarted);
+  if (WaitForSingleObject(thread_.handle_, INFINITE) != WAIT_OBJECT_0) {
     WARN("Call to WaitForSingleObject failed: %i", GetLastError());
+    return NULL;
+  }
+  state_ = tsJoined;
   return thread_.result_;
 }
 

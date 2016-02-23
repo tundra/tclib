@@ -49,6 +49,13 @@ public:
   static bool sleep(Duration duration);
 
 private:
+  // Internal state used to sanity check how a thread is used.
+  enum State {
+    tsCreated = 0,
+    tsStarted = 1,
+    tsJoined = 2
+  };
+
   // Platform-specific start routine.
   bool platform_start();
 
@@ -60,7 +67,8 @@ private:
   // Callback to run on start.
   run_callback_t callback_;
 
-  bool is_initialized_;
+  State state_;
+
   // Platform-specific data.
   platform_thread_t thread_;
 };

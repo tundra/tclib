@@ -21,29 +21,37 @@ using namespace tclib;
 
 NativeThread::NativeThread(run_callback_t callback)
   : callback_(callback)
-  , is_initialized_(false) {
+  , state_(tsCreated) {
   platform_thread_t init = kPlatformThreadInit;
   thread_ = init;
 }
 
 NativeThread::NativeThread()
-  : is_initialized_(false) {
+  : state_(tsCreated) {
   platform_thread_t init = kPlatformThreadInit;
   thread_ = init;
 }
 
 NativeThread::~NativeThread() {
-  if (!is_initialized_)
+  CHECK_FALSE("destroying running thread", state_ == tsStarted);
+  if (state_ == tsCreated)
     return;
-  is_initialized_ = false;
+  state_ = tsCreated;
   platform_dispose();
 }
 
 bool NativeThread::start() {
+  CHECK_EQ("thread interaction out of order", state_, tsCreated);
   if (callback_.is_empty())
     return false;
-  is_initialized_ = platform_start();
-  return is_initialized_;
+  // Optimistically set the state to started such that the entry point can
+  // rely on it, then roll it back if starting fails.
+  state_ = tsStarted;
+  if (!platform_start()) {
+    state_ = tsCreated;
+    return false;
+  }
+  return true;
 }
 
 void NativeThread::set_callback(run_callback_t callback) {
