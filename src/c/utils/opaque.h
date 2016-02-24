@@ -17,7 +17,7 @@
 /// opaque and then get the same value back, but you can't convert an opaque_t
 /// to all the supported types and expect to be able to get the same opaque
 /// back since some of those types are too narrow to hold a full opaque. You can
-/// encode an opaque as a uint64 though and convert it back again withou loss.
+/// encode an opaque as a uint64 though and convert it back again without loss.
 ///
 /// Very unusually the methods that operate on opaques have really short names
 /// to make them less cumbersome, which they otherwise very easily become.
@@ -58,6 +58,16 @@ static always_inline uint64_t o2u(opaque_t opaque) {
 // uint64 value is 0. Can be used to explicitly indicate no-value.
 static always_inline opaque_t o0() {
   return u2o(0);
+}
+
+// Returns an opaque whose o2b yields the given boolean value.
+static always_inline opaque_t b2o(bool value) {
+  return u2o(value);
+}
+
+// Returns the boolean value of an opaque that was created using b2o.
+static always_inline bool o2b(opaque_t opaque) {
+  return o2u(opaque);
 }
 
 // Is the given opaque the null value?

@@ -55,7 +55,7 @@ public:
 
 private:
   // Entry-point for worker threads.
-  void *run_worker();
+  opaque_t run_worker();
 
   // Adds the given task to the list run by this workpool.
   bool offer_task(Task *task);

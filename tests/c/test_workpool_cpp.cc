@@ -48,7 +48,7 @@ static opaque_t release_semaphore(NativeSemaphore *sema) {
   return o0();
 }
 
-static void *run_producer(Workpool *pool) {
+static opaque_t run_producer(Workpool *pool) {
   NativeSemaphore sema(0);
   ASSERT_TRUE(sema.initialize());
   int count = 0;
@@ -68,7 +68,7 @@ static void *run_producer(Workpool *pool) {
   ASSERT_TRUE(pool->add_task(new_callback(release_semaphore, &sema), tfRequired));
   ASSERT_TRUE(sema.acquire());
   ASSERT_EQ(2048, count);
-  return NULL;
+  return o0();
 }
 
 #define kProducerCount 8
@@ -82,7 +82,10 @@ TEST(workpool_cpp, contended) {
     producers[i].set_callback(new_callback(run_producer, &pool));
     ASSERT_TRUE(producers[i].start());
   }
-  for (size_t i = 0; i < kProducerCount; i++)
-    ASSERT_PTREQ(NULL, producers[i].join());
+  for (size_t i = 0; i < kProducerCount; i++) {
+    opaque_t join_result = o0();
+    ASSERT_TRUE(producers[i].join(&join_result));
+    ASSERT_PTREQ(NULL, o2p(join_result));
+  }
   ASSERT_TRUE(pool.join(false));
 }

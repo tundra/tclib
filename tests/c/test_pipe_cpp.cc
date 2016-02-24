@@ -32,7 +32,7 @@ TEST(pipe_cpp, simple) {
   ASSERT_TRUE(read_iop.at_eof());
 }
 
-static void *do_test_steps(NativeSemaphore *step, OutStream *a, OutStream *b) {
+static opaque_t do_test_steps(NativeSemaphore *step, OutStream *a, OutStream *b) {
   step->acquire(Duration::unlimited());
   WriteIop write_a(a, "1", 1);
   ASSERT_TRUE(write_a.execute());
@@ -56,7 +56,7 @@ static void *do_test_steps(NativeSemaphore *step, OutStream *a, OutStream *b) {
   ASSERT_EQ(1, write_a.bytes_written());
   step->acquire(Duration::unlimited());
   ASSERT_TRUE(a->close());
-  return NULL;
+  return o0();
 }
 
 TEST(pipe_cpp, simple_multiplex) {
@@ -159,7 +159,7 @@ TEST(pipe_cpp, simple_multiplex) {
   ASSERT_TRUE(read_a.at_eof());
   ASSERT_EQ(0, read_a_and_b.pending_count());
 
-  other.join();
+  ASSERT_TRUE(other.join(NULL));
 }
 
 #define kPipeCount 8
@@ -170,7 +170,7 @@ struct Atom {
   int64_t value;
 };
 
-static void *sync_write_streams(NativePipe *pipes) {
+static opaque_t sync_write_streams(NativePipe *pipes) {
   for (int iv = 0; iv < kValueCount; iv++) {
     for (int is = 0; is < kPipeCount; is++) {
       Atom atom = {is, iv};
@@ -181,7 +181,7 @@ static void *sync_write_streams(NativePipe *pipes) {
   }
   for (size_t is = 0; is < kPipeCount; is++)
     ASSERT_TRUE(pipes[is].out()->close());
-  return NULL;
+  return o0();
 }
 
 static void group_read_streams(NativePipe *pipes) {
@@ -226,10 +226,10 @@ TEST(pipe_cpp, sync_write_group_read) {
   tclib::NativeThread thread(new_callback(sync_write_streams, pipes));
   ASSERT_TRUE(thread.start());
   group_read_streams(pipes);
-  ASSERT_PTREQ(NULL, thread.join());
+  ASSERT_TRUE(thread.join(NULL));
 }
 
-static void *async_read_streams(NativePipe *pipes, size_t own_index,
+static opaque_t async_read_streams(NativePipe *pipes, size_t own_index,
     size_t *read_count_out) {
   Atom atoms[kPipeCount];
   ReadIop *iops[kPipeCount];
@@ -262,7 +262,7 @@ static void *async_read_streams(NativePipe *pipes, size_t own_index,
   for (size_t is = 0; is < kPipeCount; is++)
     delete iops[is];
   *read_count_out = read_count;
-  return NULL;
+  return o0();
 }
 
 TEST(pipe_cpp, sync_write_contend_read) {
@@ -280,8 +280,8 @@ TEST(pipe_cpp, sync_write_contend_read) {
   NativeThread thread(new_callback(sync_write_streams, pipes));
   ASSERT_TRUE(thread.start());
   for (size_t i = 0; i < kPipeCount; i++)
-    ASSERT_PTREQ(NULL, readers[i].join());
-  ASSERT_PTREQ(NULL, thread.join());
+    ASSERT_TRUE(readers[i].join(NULL));
+  ASSERT_TRUE(thread.join(NULL));
 
   size_t total_read_count = 0;
   for (size_t i = 0; i < kPipeCount; i++)
@@ -289,7 +289,7 @@ TEST(pipe_cpp, sync_write_contend_read) {
   ASSERT_EQ(kPipeCount * kValueCount, total_read_count);
 }
 
-static void *run_sibling(OutStream *out, InStream *in) {
+static opaque_t run_sibling(OutStream *out, InStream *in) {
   size_t limit = 8192;
   size_t next_value_in = 0;
   size_t value_in = 0;
@@ -328,7 +328,7 @@ static void *run_sibling(OutStream *out, InStream *in) {
   }
   ASSERT_EQ(limit + 1, next_value_in);
   ASSERT_EQ(limit, next_value_out);
-  return NULL;
+  return o0();
 }
 
 TEST(pipe_cpp, sync_twins) {
@@ -338,10 +338,10 @@ TEST(pipe_cpp, sync_twins) {
   NativeThread other(new_callback(run_sibling, red.out(), blue.in()));
   ASSERT_TRUE(other.start());
   run_sibling(blue.out(), red.in());
-  ASSERT_PTREQ(NULL, other.join());
+  ASSERT_TRUE(other.join(NULL));
 }
 
-static void *run_client_thread(utf8_t name) {
+static opaque_t run_client_thread(utf8_t name) {
   // Connect to the channel.
   def_ref_t<ClientChannel> client = ClientChannel::create();
   ASSERT_TRUE(client->open(name));
@@ -359,7 +359,7 @@ static void *run_client_thread(utf8_t name) {
   ASSERT_EQ(8, write.bytes_written());
   ASSERT_TRUE(client->out()->flush());
 
-  return 0;
+  return o0();
 }
 
 TEST(pipe_cpp, same_process_channel) {
@@ -388,5 +388,5 @@ TEST(pipe_cpp, same_process_channel) {
 
   // Close the channel.
   ASSERT_TRUE(server->close());
-  ASSERT_TRUE(client_thread.join() == NULL);
+  ASSERT_TRUE(client_thread.join(NULL));
 }

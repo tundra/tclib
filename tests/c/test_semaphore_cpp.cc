@@ -33,21 +33,21 @@ TEST(semaphore_cpp, explicit_initial) {
 static const size_t kThreadCount = 128;
 
 // Run an individual waiter thread.
-static void *run_waiter(NativeSemaphore *started_count,
+static opaque_t run_waiter(NativeSemaphore *started_count,
     NativeSemaphore *released_count, NativeSemaphore *done_count) {
   ASSERT_TRUE(started_count->release());
   ASSERT_TRUE(released_count->acquire());
   ASSERT_TRUE(done_count->release());
-  return NULL;
+  return o0();
 }
 
 // Wait for all the threads to join, then release the all_joined semaphore,
 // then leave.
-static void *run_join_monitor(NativeSemaphore *all_joined, NativeThread *threads) {
+static opaque_t run_join_monitor(NativeSemaphore *all_joined, NativeThread *threads) {
   for (size_t i = 0; i < kThreadCount; i++)
-    threads[i].join();
+    ASSERT_TRUE(threads[i].join(NULL));
   all_joined->release();
-  return NULL;
+  return o0();
 }
 
 // This test starts up a number of threads that first release the started_count
@@ -96,7 +96,7 @@ TEST(semaphore_cpp, waiters) {
   }
   // Now all the waiters have been released so they should join.
   ASSERT_TRUE(all_joined.acquire());
-  join_monitor.join();
+  ASSERT_TRUE(join_monitor.join(NULL));
 }
 
 TEST(semaphore_cpp, timed_wait) {

@@ -55,7 +55,7 @@ MULTITEST(atomic, simple, typename, ("32", A32), ("64", A64)) {
 #define kThreadCount 16
 
 template <typename A>
-static void *hammer_counter(Drawbridge *start, typename A::atomic_t *count) {
+static opaque_t hammer_counter(Drawbridge *start, typename A::atomic_t *count) {
   ASSERT_TRUE(start->pass());
   for (size_t i = 0; i < 65536; i++) {
     if ((i & 1) == 0) {
@@ -64,7 +64,7 @@ static void *hammer_counter(Drawbridge *start, typename A::atomic_t *count) {
       A::dec(count);
     }
   }
-  return NULL;
+  return o0();
 }
 
 MULTITEST(atomic, contended, typename, ("32", A32), ("64", A64)) {
@@ -83,12 +83,12 @@ MULTITEST(atomic, contended, typename, ("32", A32), ("64", A64)) {
   ASSERT_TRUE(start.lower());
 
   for (size_t i = 0; i < kThreadCount; i++)
-    threads[i].join();
+    ASSERT_TRUE(threads[i].join(NULL));
 
   ASSERT_EQ(0, A::get(&counter));
 }
 
-static void *hammer_compare_and_set(Drawbridge *start, atomic_int32_t *a,
+static opaque_t hammer_compare_and_set(Drawbridge *start, atomic_int32_t *a,
     int32_t id) {
   ASSERT_TRUE(start->pass());
   // Each thread tries to set the atomic to their id from 0. Each time one
@@ -100,7 +100,7 @@ static void *hammer_compare_and_set(Drawbridge *start, atomic_int32_t *a,
     if (atomic_int32_compare_and_set(a, 0, id))
       ASSERT_TRUE(atomic_int32_compare_and_set(a, id, 0));
   }
-  return NULL;
+  return o0();
 }
 
 TEST(atomic, compare_and_set) {
@@ -115,5 +115,5 @@ TEST(atomic, compare_and_set) {
   ASSERT_TRUE(NativeThread::sleep(Duration::millis(10)));
   ASSERT_TRUE(start.lower());
   for (size_t i = 0; i < kThreadCount; i++)
-    threads[i].join();
+    ASSERT_TRUE(threads[i].join(NULL));
 }

@@ -14,13 +14,13 @@ using namespace tclib;
 class CallCounter {
 public:
   CallCounter() : value(0) { }
-  void *run();
+  opaque_t run();
   int value;
 };
 
-void *CallCounter::run() {
+opaque_t CallCounter::run() {
   value++;
-  return static_cast<void*>(this);
+  return p2o(this);
 }
 
 TEST(thread, simple_cpp) {
@@ -28,13 +28,15 @@ TEST(thread, simple_cpp) {
   NativeThread thread(new_callback(&CallCounter::run, &counter));
   ASSERT_EQ(0, counter.value);
   ASSERT_TRUE(thread.start());
-  ASSERT_PTREQ(&counter, thread.join());
+  opaque_t join_result = o0();
+  ASSERT_TRUE(thread.join(&join_result));
+  ASSERT_PTREQ(&counter, o2p(join_result));
   ASSERT_EQ(1, counter.value);
 }
 
 static opaque_t run_call_counter_bridge(opaque_t raw_data) {
   CallCounter *self = static_cast<CallCounter*>(o2p(raw_data));
-  return p2o(self->run());
+  return self->run();
 }
 
 TEST(thread, simple_c) {
@@ -44,17 +46,19 @@ TEST(thread, simple_c) {
   native_thread_t *thread = native_thread_new(callback);
   ASSERT_EQ(0, counter.value);
   ASSERT_TRUE(native_thread_start(thread));
-  ASSERT_PTREQ(&counter, native_thread_join(thread));
+  opaque_t join_result = o0();
+  ASSERT_TRUE(native_thread_join(thread, &join_result));
+  ASSERT_PTREQ(&counter, o2p(join_result));
   ASSERT_EQ(1, counter.value);
   native_thread_destroy(thread);
   callback_destroy(callback);
 }
 
-void *check_thread_not_equal(native_thread_id_t that) {
+opaque_t check_thread_not_equal(native_thread_id_t that) {
   native_thread_id_t own = NativeThread::get_current_id();
   ASSERT_TRUE(NativeThread::ids_equal(own, own));
   ASSERT_FALSE(NativeThread::ids_equal(own, that));
-  return NULL;
+  return o0();
 }
 
 TEST(thread, cpp_equality) {
@@ -63,8 +67,8 @@ TEST(thread, cpp_equality) {
   ASSERT_TRUE(NativeThread::ids_equal(NativeThread::get_current_id(),
       NativeThread::get_current_id()));
   NativeThread thread(new_callback(&check_thread_not_equal, current));
-  thread.start();
-  thread.join();
+  ASSERT_TRUE(thread.start());
+  ASSERT_TRUE(thread.join(NULL));
 }
 
 TEST(thread, sleep) {

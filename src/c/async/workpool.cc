@@ -43,14 +43,14 @@ Workpool::Workpool()
   , worker_(NULL)
   , action_count_(0) { }
 
-void *Workpool::run_worker() {
+opaque_t Workpool::run_worker() {
   while (true) {
     Task *task = NULL;
     if (!poll_task(&task))
-      return (void*) false;
+      return b2o(false);
     if (task == NULL)
       // There are no more tasks left so we can simply return.
-      return (void*) true;
+      return b2o(true);
     if (!(skip_daemons_ && task->is_daemon()))
       task->thunk_();
     default_delete_concrete(task);
@@ -81,10 +81,11 @@ bool Workpool::join(bool skip_daemons) {
     B_TRY(set_skip_daemons(skip_daemons));
   B_TRY(guard_.unlock());
   B_TRY(action_count_.release());
-  bool result = worker_->join() != ((void*) false);
+  opaque_t value = o0();
+  B_TRY(worker_->join(&value));
   delete worker_;
   worker_ = NULL;
-  return result;
+  return o2b(value);
 }
 
 bool Workpool::add_task(task_thunk_t callback, int32_t flags) {

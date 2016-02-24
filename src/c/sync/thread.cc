@@ -21,13 +21,15 @@ using namespace tclib;
 
 NativeThread::NativeThread(run_callback_t callback)
   : callback_(callback)
-  , state_(tsCreated) {
+  , state_(tsCreated)
+  , result_(o0()) {
   platform_thread_t init = kPlatformThreadInit;
   thread_ = init;
 }
 
 NativeThread::NativeThread()
-  : state_(tsCreated) {
+  : state_(tsCreated)
+  , result_(o0()) {
   platform_thread_t init = kPlatformThreadInit;
   thread_ = init;
 }
@@ -58,8 +60,8 @@ void NativeThread::set_callback(run_callback_t callback) {
   callback_ = callback;
 }
 
-void *thread_start_trampoline(nullary_callback_t *callback) {
-  return o2p(nullary_callback_call(callback));
+opaque_t thread_start_trampoline(nullary_callback_t *callback) {
+  return nullary_callback_call(callback);
 }
 
 native_thread_t *native_thread_new(nullary_callback_t *callback) {
@@ -76,8 +78,8 @@ bool native_thread_start(native_thread_t *thread) {
   return reinterpret_cast<NativeThread*>(thread)->start();
 }
 
-void *native_thread_join(native_thread_t *thread) {
-  return reinterpret_cast<NativeThread*>(thread)->join();
+bool native_thread_join(native_thread_t *thread, opaque_t *value_out) {
+  return reinterpret_cast<NativeThread*>(thread)->join(value_out);
 }
 
 native_thread_id_t native_thread_get_current_id() {

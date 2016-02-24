@@ -78,7 +78,7 @@ private:
   typedef platform_hash_map<pid_t, NativeProcess*> ProcessMap;
 
   // Entry-point for the signal dispatcher thread.
-  void *run_signal_dispatcher();
+  opaque_t run_signal_dispatcher();
 
   // Fetch notifications for any terminated children and notify the
   // corresponding process objects.
@@ -382,12 +382,12 @@ opaque_t ProcessRegistry::uninstall() {
   return o0();
 }
 
-void *ProcessRegistry::run_signal_dispatcher() {
+opaque_t ProcessRegistry::run_signal_dispatcher() {
   while (true) {
     // Wait for the next action to run.
     if (!action_count_.acquire()) {
       WARN("Failed to get next action; aborting.");
-      return NULL;
+      return o0();
     }
     // If we're being asked to shut down do that, otherwise there'll be a signal
     // in the queue.
@@ -396,7 +396,7 @@ void *ProcessRegistry::run_signal_dispatcher() {
     // Acquire the guard since we're touching the state.
     dispatch_pending_terminations();
   }
-  return NULL;
+  return o0();
 }
 
 bool ProcessRegistry::dispatch_pending_terminations() {
@@ -458,7 +458,7 @@ ProcessRegistry::~ProcessRegistry() {
   shutdown_ = true;
   guard_.unlock();
   action_count_.release();
-  dispatcher_.join();
+  dispatcher_.join(NULL);
 }
 
 ProcessRegistry *ProcessRegistry::current_ = NULL;

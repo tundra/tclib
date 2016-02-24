@@ -18,12 +18,12 @@ public:
   std::vector<size_t> order;
 };
 
-static void *run_simple_thread(TestData *data, size_t value) {
+static opaque_t run_simple_thread(TestData *data, size_t value) {
   ASSERT_TRUE(data->intex.lock_when() == value);
   data->order.push_back(value);
   ASSERT_TRUE(data->intex.unlock());
   ASSERT_TRUE(data->count.release());
-  return NULL;
+  return o0();
 }
 
 TEST(intex_cpp, simple) {
@@ -53,7 +53,7 @@ TEST(intex_cpp, simple) {
     ASSERT_TRUE(data.count.acquire());
     // Check that it has actually run.
     ASSERT_EQ(i + 1, data.order.size());
-    threads[i].join();
+    ASSERT_TRUE(threads[i].join(NULL));
   }
 
   // Check that the threads were released in the expected order.
@@ -69,10 +69,10 @@ TEST(intex_cpp, drawbridge_simple) {
   ASSERT_TRUE(bridge.pass(Duration::instant()));
 }
 
-static void *run_drawbridge_thread(Drawbridge *bridge, NativeSemaphore *count) {
+static opaque_t run_drawbridge_thread(Drawbridge *bridge, NativeSemaphore *count) {
   ASSERT_TRUE(bridge->pass());
   ASSERT_TRUE(count->release());
-  return NULL;
+  return o0();
 }
 
 TEST(intex_cpp, drawbridge_multi) {
@@ -100,5 +100,5 @@ TEST(intex_cpp, drawbridge_multi) {
     ASSERT_TRUE(count.acquire());
 
   for (size_t i = 0; i < kThreadCount; i++)
-    threads[i].join();
+    ASSERT_TRUE(threads[i].join(NULL));
 }

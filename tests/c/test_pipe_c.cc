@@ -151,7 +151,9 @@ TEST(pipe_c, simple_multiplex) {
   ASSERT_EQ(0, iop_group_pending_count(&read_a_and_b));
 
   iop_group_dispose(&read_a_and_b);
-  ASSERT_PTREQ(NULL, native_thread_join(other));
+  opaque_t result = u2o(1);
+  ASSERT_TRUE(native_thread_join(other, &result));
+  ASSERT_PTREQ(NULL, o2p(result));
   native_thread_destroy(other);
   callback_destroy(do_test_steps_callback);
   native_semaphore_dispose(&step);

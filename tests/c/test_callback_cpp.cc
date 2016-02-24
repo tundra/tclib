@@ -285,12 +285,12 @@ static void pass_deep(callback_t<int(void)> callback, int depth) {
   pass_deep(callback, depth - 1);
 }
 
-static void *pass_callback_around(ThreadSafetyTestState *state) {
+static opaque_t pass_callback_around(ThreadSafetyTestState *state) {
   state->waiters.release();
   state->kick_off.acquire();
   callback_t<int(void)> callback = state->callback;
   pass_deep(callback, 8);
-  return NULL;
+  return o0();
 }
 
 // This test attempts to detect whether callbacks are thread safe. Since thread
@@ -314,6 +314,6 @@ TEST(callback_cpp, thread_safety) {
   for (size_t i = 0; i < kThreadCount; i++)
     state.kick_off.release();
   for (size_t i = 0; i < kThreadCount; i++)
-    threads[i].join();
+    ASSERT_TRUE(threads[i].join(NULL));
   ASSERT_EQ(1, state.callback.binder()->refcount());
 }

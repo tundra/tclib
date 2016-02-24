@@ -29,7 +29,7 @@ class WakeAllWaiter {
 public:
   void start(WakeAllShared *shared, int index);
   void join();
-  void *run();
+  opaque_t run();
 private:
   NativeThread thread_;
   WakeAllShared *shared_;
@@ -44,10 +44,10 @@ void WakeAllWaiter::start(WakeAllShared *shared, int index) {
 }
 
 void WakeAllWaiter::join() {
-  thread_.join();
+  ASSERT_TRUE(thread_.join(NULL));
 }
 
-void *WakeAllWaiter::run() {
+opaque_t WakeAllWaiter::run() {
   // Enter the mutex and then spin on the condition variable until step gets
   // this waiter's value.
   ASSERT_TRUE(shared_->mutex.lock());
@@ -56,7 +56,7 @@ void *WakeAllWaiter::run() {
     ASSERT_TRUE(shared_->cond.wait(&shared_->mutex));
   ASSERT_TRUE(shared_->mutex.unlock());
   ASSERT_TRUE(shared_->released.release());
-  return NULL;
+  return o0();
 }
 
 TEST(condition_cpp, wake_all) {

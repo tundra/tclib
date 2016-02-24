@@ -7,8 +7,8 @@
 using namespace tclib;
 
 bool NativeThread::platform_dispose() {
-  if (thread_.handle_ != INVALID_HANDLE_VALUE) {
-    if (!CloseHandle(thread_.handle_)) {
+  if (thread_ != INVALID_HANDLE_VALUE) {
+    if (!CloseHandle(thread_)) {
       WARN("Call to CloseHandle failed: %i", GetLastError());
       return false;
     }
@@ -19,7 +19,7 @@ bool NativeThread::platform_dispose() {
 unsigned long __stdcall NativeThread::entry_point(void *arg) {
   NativeThread *thread = static_cast<NativeThread*>(arg);
   CHECK_EQ("thread interaction out of order", thread->state_, tsStarted);
-  thread->thread_.result_ = (thread->callback_)();
+  thread->result_ = (thread->callback_)();
   return 0;
 }
 
@@ -35,18 +35,20 @@ bool NativeThread::platform_start() {
     WARN("Call to CreateThread failed: %i", GetLastError());
     return false;
   }
-  thread_.handle_ = result;
+  thread_ = result;
   return true;
 }
 
-void *NativeThread::join() {
+bool NativeThread::join(opaque_t *value_out) {
   CHECK_EQ("thread interaction out of order", state_, tsStarted);
-  if (WaitForSingleObject(thread_.handle_, INFINITE) != WAIT_OBJECT_0) {
+  if (WaitForSingleObject(thread_, INFINITE) != WAIT_OBJECT_0) {
     WARN("Call to WaitForSingleObject failed: %i", GetLastError());
-    return NULL;
+    return false;
   }
   state_ = tsJoined;
-  return thread_.result_;
+  if (value_out != NULL)
+    *value_out = result_;
+  return true;
 }
 
 native_thread_id_t NativeThread::get_current_id() {

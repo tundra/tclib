@@ -10,7 +10,8 @@ using namespace tclib;
 void *NativeThread::entry_point(void *arg) {
   NativeThread *thread = static_cast<NativeThread*>(arg);
   CHECK_EQ("thread interaction out of order", thread->state_, tsStarted);
-  return (thread->callback_)();
+  thread->result_ = (thread->callback_)();
+  return NULL;
 }
 
 bool NativeThread::platform_start() {
@@ -25,16 +26,17 @@ bool NativeThread::platform_dispose() {
   return true;
 }
 
-void *NativeThread::join() {
+bool NativeThread::join(opaque_t *value_out) {
   CHECK_EQ("thread interaction out of order", state_, tsStarted);
-  void *value = NULL;
-  int result = pthread_join(thread_, &value);
+  int result = pthread_join(thread_, NULL);
   if (result != 0) {
     WARN("Call to pthread_join failed: %i (error: %s)", result, strerror(result));
-    return NULL;
+    return false;
   }
   state_ = tsJoined;
-  return value;
+  if (value_out != NULL)
+    *value_out = result_;
+  return true;
 }
 
 native_thread_id_t NativeThread::get_current_id() {

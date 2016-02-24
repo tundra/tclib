@@ -50,7 +50,7 @@ TEST(mutex_c, simple) {
       p2o(&m0), p2o(&m1));
   native_thread_t *failer = native_thread_new(failer_callback);
   ASSERT_TRUE(native_thread_start(failer));
-  native_thread_join(failer);
+  ASSERT_TRUE(native_thread_join(failer, NULL));
   native_thread_destroy(failer);
   callback_destroy(failer_callback);
 
@@ -68,7 +68,7 @@ TEST(mutex_c, simple) {
       p2o(&m0), p2o(&m1));
   native_thread_t *succeeder = native_thread_new(succeeder_callback);
   ASSERT_TRUE(native_thread_start(succeeder));
-  native_thread_join(succeeder);
+  ASSERT_TRUE(native_thread_join(succeeder, NULL));
   native_thread_destroy(succeeder);
   callback_destroy(succeeder_callback);
 

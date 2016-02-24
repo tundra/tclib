@@ -171,18 +171,18 @@ TEST(promise_cpp, then_failure) {
   ASSERT_EQ(100, b.peek_error(0));
 }
 
-static void *run_sync_fulfiller(promise_t<int> p) {
+static opaque_t run_sync_fulfiller(promise_t<int> p) {
   ASSERT_TRUE(p.fulfill(10));
-  return NULL;
+  return o0();
 }
 
-static void *run_sync_waiter(NativeSemaphore *about_to_wait,
+static opaque_t run_sync_waiter(NativeSemaphore *about_to_wait,
     NativeSemaphore *has_waited, sync_promise_t<int> p) {
   about_to_wait->release();
   ASSERT_TRUE(p.wait());
   has_waited->release();
   ASSERT_EQ(10, p.peek_value(0));
-  return NULL;
+  return o0();
 }
 
 TEST(promise_cpp, sync_wait) {
@@ -199,6 +199,6 @@ TEST(promise_cpp, sync_wait) {
   NativeThread fulfiller(new_callback(run_sync_fulfiller, promise_t<int>(p)));
   ASSERT_TRUE(fulfiller.start());
   ASSERT_TRUE(has_waited.acquire());
-  fulfiller.join();
-  waiter.join();
+  ASSERT_TRUE(fulfiller.join(NULL));
+  ASSERT_TRUE(waiter.join(NULL));
 }

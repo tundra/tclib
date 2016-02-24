@@ -4,13 +4,10 @@
 // It's tempting but don't include windows.h. It drags in so much funkiness that
 // it's better to only include it in windows-specific .c/.cc files.
 
-struct platform_thread_t {
-  void *handle_;
-  void *result_;
-};
+typedef void *platform_thread_t;
 
 typedef int32_t native_thread_id_t;
-#define kPlatformThreadInit {INVALID_HANDLE_VALUE, 0}
+#define kPlatformThreadInit INVALID_HANDLE_VALUE
 #define PLATFORM_THREAD_ENTRY_POINT unsigned long __stdcall entry_point(void *data)
 
 typedef byte_t platform_mutex_t[IF_32_BIT(24, 40)];

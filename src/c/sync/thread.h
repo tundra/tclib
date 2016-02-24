@@ -24,7 +24,7 @@ bool native_thread_start(native_thread_t *thread);
 // the thread's callback. Or, technically what gets returned is the pointer
 // value of the returned opaque, you can't reliably return anything wider than
 // a pointer.
-void *native_thread_join(native_thread_t *thread);
+bool native_thread_join(native_thread_t *thread, opaque_t *value_out);
 
 // Returns the id of the calling thread.
 native_thread_id_t native_thread_get_current_id();

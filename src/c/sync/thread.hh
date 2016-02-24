@@ -13,7 +13,7 @@ namespace tclib {
 // An os-native thread.
 class NativeThread {
 public:
-  typedef callback_t<void*(void)> run_callback_t;
+  typedef callback_t<opaque_t(void)> run_callback_t;
 
   // Initialize a thread that calls the given callback when started. The thread
   // must be started explicitly by calling start().
@@ -30,7 +30,7 @@ public:
 
   // Waits for this thread to finish, returning the result of the invocation
   // of the callback.
-  void *join();
+  bool join(opaque_t *value_out);
 
   // If no callback was given at initialization this sets it to the given value.
   void set_callback(run_callback_t callback);
@@ -68,6 +68,8 @@ private:
   run_callback_t callback_;
 
   State state_;
+
+  opaque_t result_;
 
   // Platform-specific data.
   platform_thread_t thread_;
