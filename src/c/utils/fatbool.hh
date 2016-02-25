@@ -22,13 +22,13 @@
 class fat_bool_t {
 public:
   // Initializes the true fat-bool.
-  fat_bool_t() : code_(0) { }
+  explicit fat_bool_t() : code_(0) { }
 
   // Initializes a fat-bool with the given encoded value.
-  fat_bool_t(int32_t code) : code_(code) { }
+  explicit fat_bool_t(int32_t code) : code_(code) { }
 
   // Initializes a false fat-bool with the given file id and line.
-  fat_bool_t(int32_t file_id, int32_t line) : code_(__JOIN_IDS__(file_id, line)) { }
+  explicit fat_bool_t(int32_t file_id, int32_t line) : code_(__JOIN_IDS__(file_id, line)) { }
 
   // Returns the negative value of this fat-bool as a plain bool.
   bool operator!() { return code_ != 0; }

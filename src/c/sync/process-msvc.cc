@@ -377,7 +377,15 @@ bool NativeProcess::InjectState::complete_inject_dll(Duration timeout) {
   if (!read_data_from_child_process(&remote_data_->out, &out, sizeof(out)))
     return false;
 
-  if (out.error_step != 0) {
+  if (out.error_step == 'C') {
+    dword_t code = out.error_code;
+    int32_t file_id = (code >> 20) & 0xFFF;
+    int32_t line = (code >> 10) & 0x3FF;
+    int32_t last_error = code & 0x3FF;
+    LOG_ERROR("Connecting failed at file 0x?%03x line %i, last error: %i",
+        file_id, line, last_error);
+    return false;
+  } else if (out.error_step != 0) {
     LOG_ERROR("Injecting failed at step %c: 0x%8x", out.error_step, out.error_code);
     return false;
   }

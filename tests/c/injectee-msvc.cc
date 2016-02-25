@@ -51,29 +51,29 @@ CONNECTOR_IMPL(TestInjecteeConnect, data_in, data_out) {
   uint8_t b = bytes_in[1];
   for (size_t i = 2; i < data_in.size; i++) {
     if (bytes_in[i] != static_cast<uint8_t>(a + b))
-      return static_cast<dword_t>(i);
+      return CONNECT_FAILED_RESULT(0, 0, i);
     a = b;
     b = bytes_in[i];
   }
   size_t out_size = 85;
   if (data_out.size != out_size)
-    return 0x1073;
+    return CONNECT_FAILED_RESULT(0, 0, 0x73);
   uint8_t *bytes_out = static_cast<uint8_t*>(data_out.start);
   for (size_t i = 0; i < out_size; i++)
     bytes_out[i] = static_cast<byte_t>(bytes_in[i] + 13);
-  return 0;
+  return CONNECT_SUCCEEDED_RESULT();
 }
 
 CONNECTOR_IMPL(TestInjecteeConnectBlocking, data_in, data_out) {
   utf8_t name = new_string(static_cast<char*>(data_in.start), data_in.size);
   def_ref_t<ClientChannel> channel = ClientChannel::create();
   if (!channel->open(name))
-    return 0x2001;
+    return CONNECT_FAILED_RESULT(0, 0, 0x1);
   char buf[16];
   ReadIop read(channel->in(), buf, 16);
   if (!read.execute())
-    return 0x2002;
+    return CONNECT_FAILED_RESULT(0, 0, 0x2);
   if (strcmp(buf, "Brilg & Spowegg") != 0)
-    return 0x2003;
-  return 0;
+    return CONNECT_FAILED_RESULT(0, 0, 0x3);
+  return CONNECT_SUCCEEDED_RESULT();
 }
