@@ -47,7 +47,7 @@ utf8_t WindowsPipeUtils::gen_pipe_name(char *scratch, size_t scratch_size) {
   return new_string(scratch, name_len);
 }
 
-bool WindowsPipeUtils::create_overlapped_pipe(handle_t *server_pipe,
+fat_bool_t WindowsPipeUtils::create_overlapped_pipe(handle_t *server_pipe,
     handle_t *client_pipe, bool inherit, utf8_t *pipe_name_out) {
   char pipe_name_buf[MAX_PATH];
   utf8_t pipe_name = gen_pipe_name(pipe_name_buf, MAX_PATH);
@@ -56,19 +56,17 @@ bool WindowsPipeUtils::create_overlapped_pipe(handle_t *server_pipe,
     *pipe_name_out = string_default_dup(pipe_name);
 
   handle_t server = INVALID_HANDLE_VALUE;
-  if (!create_named_pipe(pipe_name, inherit, &server))
-    return false;
+  F_TRY(create_named_pipe(pipe_name, inherit, &server));
 
   handle_t client = INVALID_HANDLE_VALUE;
-  if (!connect_named_pipe(pipe_name, inherit, &client))
-    return false;
+  F_TRY(connect_named_pipe(pipe_name, inherit, &client));
 
   *server_pipe = server;
   *client_pipe = client;
-  return true;
+  return F_TRUE;
 }
 
-bool WindowsPipeUtils::create_named_pipe(utf8_t name, bool inherit,
+fat_bool_t WindowsPipeUtils::create_named_pipe(utf8_t name, bool inherit,
     handle_t *handle_out) {
   SECURITY_ATTRIBUTES attribs;
   config_security_attribs(&attribs, inherit);
@@ -85,13 +83,13 @@ bool WindowsPipeUtils::create_named_pipe(utf8_t name, bool inherit,
       &attribs);                                  // lpSecurityAttributes
   if (handle == INVALID_HANDLE_VALUE) {
     LOG_ERROR("CreateNamedPipe(%s, ...): %i", name.chars, GetLastError());
-    return false;
+    return F_FALSE;
   }
   *handle_out = handle;
-  return true;
+  return F_TRUE;
 }
 
-bool WindowsPipeUtils::connect_named_pipe(utf8_t name, bool inherit,
+fat_bool_t WindowsPipeUtils::connect_named_pipe(utf8_t name, bool inherit,
     handle_t *handle_out) {
   SECURITY_ATTRIBUTES attribs;
   config_security_attribs(&attribs, inherit);
@@ -107,10 +105,10 @@ bool WindowsPipeUtils::connect_named_pipe(utf8_t name, bool inherit,
 
   if (handle == INVALID_HANDLE_VALUE) {
     LOG_ERROR("CreateFile(%s, ...): %i", name.chars, GetLastError());
-    return false;
+    return F_FALSE;
   }
   *handle_out = handle;
-  return true;
+  return F_TRUE;
 }
 
 void WindowsPipeUtils::config_security_attribs(SECURITY_ATTRIBUTES *attribs,
@@ -122,17 +120,12 @@ void WindowsPipeUtils::config_security_attribs(SECURITY_ATTRIBUTES *attribs,
 }
 
 fat_bool_t NativePipe::open(uint32_t flags) {
-  fat_bool_t result = WindowsPipeUtils::create_overlapped_pipe(
-      &this->pipe_.read_,
-      &this->pipe_.write_,
-      (flags & pfInherit) != 0,
-      NULL);
+  F_TRY(WindowsPipeUtils::create_overlapped_pipe(&this->pipe_.read_,
+      &this->pipe_.write_, (flags & pfInherit) != 0, NULL));
 
-  if (result) {
-    in_ = *InOutStream::from_raw_handle(this->pipe_.read_);
-    out_ = *InOutStream::from_raw_handle(this->pipe_.write_);
-  }
-  return result;
+  in_ = *InOutStream::from_raw_handle(this->pipe_.read_);
+  out_ = *InOutStream::from_raw_handle(this->pipe_.write_);
+  return F_TRUE;
 }
 
 class WindowsServerChannel : public ServerChannel {
@@ -140,9 +133,9 @@ public:
   WindowsServerChannel();
   virtual ~WindowsServerChannel();
   virtual void default_destroy() { default_delete_concrete(this); }
-  virtual bool allocate(uint32_t flags);
-  virtual bool open();
-  virtual bool close();
+  virtual fat_bool_t allocate(uint32_t flags);
+  virtual fat_bool_t open();
+  virtual fat_bool_t close();
   virtual utf8_t name() { return name_; }
   virtual InStream *in() { return *stream_; }
   virtual OutStream *out() { return *stream_; }
@@ -161,40 +154,39 @@ WindowsServerChannel::~WindowsServerChannel() {
   string_default_delete(name_);
 }
 
-bool WindowsServerChannel::allocate(uint32_t flags) {
+fat_bool_t WindowsServerChannel::allocate(uint32_t flags) {
   char scratch[MAX_PATH];
   utf8_t temp_name = WindowsPipeUtils::gen_pipe_name(scratch, MAX_PATH);
   name_ = string_default_dup(temp_name);
-  if (!WindowsPipeUtils::create_named_pipe(name_, false, &handle_))
-    return false;
+  F_TRY(WindowsPipeUtils::create_named_pipe(name_, false, &handle_));
   stream_ = InOutStream::from_raw_handle(handle_);
-  return true;
+  return F_TRUE;
 }
 
-bool WindowsServerChannel::open() {
+fat_bool_t WindowsServerChannel::open() {
   // Because the pipe uses overlapped io to read/write we also need to do that
   // when connecting it, so it's a little elaborate.
   OVERLAPPED overlapped;
   ZeroMemory(&overlapped, sizeof(overlapped));
   if (ConnectNamedPipe(handle_, &overlapped))
     // It's unclear if this will ever happen but if it does, fine.
-    return true;
+    return F_TRUE;
   dword_t cnp_error = GetLastError();
   if (cnp_error == ERROR_PIPE_CONNECTED)
     // Counter-intuitively, if the client gets there first the call to
     // ConnectNamedPipe will fail so we have to check for that and succeed
     // anyway in that case.
-    return true;
+    return F_TRUE;
   if (cnp_error != ERROR_IO_PENDING) {
     LOG_ERROR("ConnectNamedPipe(...): %i", cnp_error);
-    return false;
+    return F_FALSE;
   }
   dword_t dummy = 0;
-  return GetOverlappedResult(handle_, &overlapped, &dummy, true);
+  return F_BOOL(GetOverlappedResult(handle_, &overlapped, &dummy, true));
 }
 
-bool WindowsServerChannel::close() {
-  return (*stream_ == NULL) ? false : out()->close();
+fat_bool_t WindowsServerChannel::close() {
+  return (*stream_ == NULL) ? F_FALSE : F_BOOL(out()->close());
 }
 
 pass_def_ref_t<ServerChannel> ServerChannel::create() {

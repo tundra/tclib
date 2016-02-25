@@ -187,12 +187,17 @@ fat_bool_t NativeProcessStart::build_sub_environment() {
 }
 
 fat_bool_t NativeProcessStart::parent_post_fork() {
-  bool succeeded = true;
+  fat_bool_t all_succeeded = F_TRUE;
   for (size_t i = 0; i < kStdioStreamCount; i++) {
     StreamRedirect redirect = process_->stdio_[i];
-    succeeded = (redirect.is_empty() || redirect.parent_side_close()) && succeeded;
+    if (!redirect.is_empty()) {
+      fat_bool_t closed = redirect.parent_side_close();
+      if (all_succeeded && !closed)
+        // Capture the first failure.
+        all_succeeded = closed;
+    }
   }
-  return F_BOOL(succeeded);
+  return all_succeeded;
 }
 
 void NativeProcessStart::remap_std_stream(stdio_stream_t stream, int old_fd) {
@@ -247,19 +252,19 @@ fat_bool_t NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
   return F_FALSE;
 }
 
-bool PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
-  return true;
+fat_bool_t PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
+  return F_TRUE;
 }
 
-bool PipeRedirector::parent_side_close(StreamRedirect *redirect) const {
+fat_bool_t PipeRedirector::parent_side_close(StreamRedirect *redirect) const {
   // The child now has a clone of the remote handle so we can close this side.
-  return remote_side(redirect)->close();
+  return F_BOOL(remote_side(redirect)->close());
 }
 
-bool PipeRedirector::child_side_close(StreamRedirect *redirect) const {
+fat_bool_t PipeRedirector::child_side_close(StreamRedirect *redirect) const {
   // We have a clone of the local handle which is really only useful to the
   // parent so we close it.
-  return local_side(redirect)->close();
+  return F_BOOL(local_side(redirect)->close());
 }
 
 fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {

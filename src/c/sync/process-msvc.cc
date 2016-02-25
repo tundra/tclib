@@ -75,10 +75,11 @@ public:
   ~RemoteMemory();
 
   // Allocates a block of memory and fills it with the given data.
-  bool copy_into(handle_t process, const void* start, size_t size, bool is_executable);
+  fat_bool_t copy_into(handle_t process, const void* start, size_t size,
+      bool is_executable);
 
   // Allocates an empty block of memory of the given size.
-  bool alloc(handle_t process, size_t size, bool is_executable = false);
+  fat_bool_t alloc(handle_t process, size_t size, bool is_executable = false);
 
   // Returns a pointer to the remote memory.
   T* operator*() { return static_cast<T*>(remote_data_.start); }
@@ -99,9 +100,9 @@ public:
     , child_process_(child_process)
     , loader_thread_(INVALID_HANDLE_VALUE) { }
 
-  bool start_inject_dll();
+  fat_bool_t start_inject_dll();
 
-  bool complete_inject_dll(Duration timeout);
+  fat_bool_t complete_inject_dll(Duration timeout);
 
 private:
   // Types of the functions being passed in.
@@ -162,7 +163,7 @@ private:
   static dword_t __stdcall inject_entry_point(void *raw_data);
 
   template <typename T>
-  bool read_data_from_child_process(const void *addr, T *dest, size_t size);
+  fat_bool_t read_data_from_child_process(const void *addr, T *dest, size_t size);
 };
 
 dword_t __stdcall NativeProcess::InjectState::inject_entry_point(void *raw_data) {
@@ -204,20 +205,20 @@ dword_t __stdcall NativeProcess::InjectState::inject_entry_point(void *raw_data)
 }
 
 template <typename T>
-bool NativeProcess::InjectState::read_data_from_child_process(const void *addr,
+fat_bool_t NativeProcess::InjectState::read_data_from_child_process(const void *addr,
     T *dest, size_t size) {
   win_size_t bytes_read = 0;
   if (!ReadProcessMemory(child_process_, addr, dest, size, &bytes_read)) {
     LOG_ERROR("ReadProcessMemory(-, %p, -, %i, -): %i", addr, size, GetLastError());
-    return false;
+    return F_FALSE;
   }
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcess::start_inject_library(InjectRequest *request) {
+fat_bool_t NativeProcess::start_inject_library(InjectRequest *request) {
   if (kIsDebugCodegen) {
     WARN("Attempting to inject with debug codegen");
-    return false;
+    return F_FALSE;
   }
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   CHECK_TRUE("already injecting", request->state() == NULL);
@@ -227,13 +228,13 @@ bool NativeProcess::start_inject_library(InjectRequest *request) {
   return state->start_inject_dll();
 }
 
-bool NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
+fat_bool_t NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
   CHECK_TRUE("not injecting", request->state() != NULL);
   NativeProcess::InjectState *state = request->state();
   request->set_state(NULL);
-  bool result = state->complete_inject_dll(timeout);
+  fat_bool_t injected = state->complete_inject_dll(timeout);
   default_delete_concrete(state);
-  return result;
+  return injected;
 }
 
 template <typename T>
@@ -251,38 +252,37 @@ RemoteMemory<T>::~RemoteMemory() {
 }
 
 template <typename T>
-bool RemoteMemory<T>::copy_into(handle_t process, const void* start, size_t size,
+fat_bool_t RemoteMemory<T>::copy_into(handle_t process, const void* start, size_t size,
     bool is_executable) {
-  if (!alloc(process, size, is_executable))
-    return false;
+  F_TRY(alloc(process, size, is_executable));
   win_size_t bytes_written = 0;
   if (!WriteProcessMemory(process, remote_data_.start, start, size, &bytes_written)) {
     LOG_ERROR("WriteProcessMemory(_, %p, %p, %i, _): %i", remote_data_.start,
         start, size, GetLastError());
-    return false;
+    return F_FALSE;
   }
   if (bytes_written != size) {
     LOG_ERROR("Write of data into child process was incomplete: %i < %i.",
         bytes_written, size);
-    return false;
+    return F_FALSE;
   }
-  return true;
+  return F_TRUE;
 }
 
 template <typename T>
-bool RemoteMemory<T>::alloc(handle_t process, size_t size, bool is_executable) {
+fat_bool_t RemoteMemory<T>::alloc(handle_t process, size_t size, bool is_executable) {
   process_ = process;
   void *start = VirtualAllocEx(process, NULL, size, MEM_RESERVE | MEM_COMMIT,
       is_executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE);
   if (start == NULL) {
     LOG_ERROR("VirtualAllocEx(_, _, %i, _, _): %i", size, GetLastError());
-    return false;
+    return F_FALSE;
   }
   remote_data_ = blob_new(start, size);
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcess::InjectState::start_inject_dll() {
+fat_bool_t NativeProcess::InjectState::start_inject_dll() {
   // Create a local version of the injected data which we'll later copy into
   // the process.
   inject_data_t proto_data;
@@ -295,44 +295,38 @@ bool NativeProcess::InjectState::start_inject_dll() {
 
   // Copy the dll name and store it in the data.
   utf8_t path = request()->path();
-  if (!remote_path_.copy_into(child_process_, path.chars, path.size + 1, false))
-    return false;
+  F_TRY(remote_path_.copy_into(child_process_, path.chars, path.size + 1, false));
   in->dll_name = *remote_path_;
 
   // If there's a connector copy that too.
   utf8_t connector_name = request()->connector_name();
   if (!string_is_empty(connector_name)) {
-    if (!remote_connector_name_.copy_into(child_process_, connector_name.chars,
-        connector_name.size + 1, false))
-      return false;
+    F_TRY(remote_connector_name_.copy_into(child_process_, connector_name.chars,
+        connector_name.size + 1, false));
     in->connect_name = *remote_connector_name_;
   }
 
   // If there's input data copy that into the process.
   blob_t data_in = request()->data_in();
   if (!blob_is_empty(data_in)) {
-    if (!remote_data_in_.copy_into(child_process_, data_in.start, data_in.size, false))
-      return false;
+    F_TRY(remote_data_in_.copy_into(child_process_, data_in.start, data_in.size, false));
     in->data_in = blob_new(*remote_data_in_, data_in.size);
   }
 
   // If the caller expects output data also copy that into the process.
   blob_t data_out = request()->data_out();
   if (!blob_is_empty(data_out)) {
-    if (!remote_data_out_.alloc(child_process_, data_out.size))
-      return false;
+    F_TRY(remote_data_out_.alloc(child_process_, data_out.size));
     in->data_out_scratch = remote_data_out_.remote();
   }
 
   // Copy the injected data into the process.
-  if (!remote_data_.copy_into(child_process_, &proto_data, sizeof(proto_data),
-      false))
-    return false;
+  F_TRY(remote_data_.copy_into(child_process_, &proto_data, sizeof(proto_data),
+      false));
 
   // Copy the binary code of the entry point function into the process.
-  if (!remote_entry_point_.copy_into(child_process_, inject_entry_point,
-      kMaxEntryPointSize, true))
-    return false;
+  F_TRY(remote_entry_point_.copy_into(child_process_, inject_entry_point,
+      kMaxEntryPointSize, true));
   LPTHREAD_START_ROUTINE start = reinterpret_cast<LPTHREAD_START_ROUTINE>(*remote_entry_point_);
 
   // Create a thread in the child process that runs the entry point.
@@ -340,23 +334,23 @@ bool NativeProcess::InjectState::start_inject_dll() {
       *remote_data_, NULL, NULL);
   if (loader_thread_ == NULL) {
     LOG_ERROR("Failed to create remote DLL loader thread: %i", GetLastError());
-    return false;
+    return F_FALSE;
   }
 
   // Start the loader thread running.
   dword_t retval = ResumeThread(loader_thread_);
   if (retval == -1) {
     LOG_ERROR("Failed to start loader thread: %i", GetLastError());
-    return false;
+    return F_FALSE;
   }
 
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcess::InjectState::complete_inject_dll(Duration timeout) {
+fat_bool_t NativeProcess::InjectState::complete_inject_dll(Duration timeout) {
   // Wait the the loader thread to complete.
   if (WaitForSingleObject(loader_thread_, timeout.to_winapi_millis()) != WAIT_OBJECT_0)
-    return false;
+    return F_FALSE;
 
   // If the injector messes up we may kill the process. Check whether we've done
   // that because it's easier to debug when you know this happened rather than
@@ -364,18 +358,17 @@ bool NativeProcess::InjectState::complete_inject_dll(Duration timeout) {
   dword_t exit_code = 0;
   if (!GetExitCodeProcess(child_process_, &exit_code)) {
     LOG_ERROR("GetExitCodeProcess(_): %i", GetLastError());
-    return false;
+    return F_FALSE;
   }
   if (exit_code != STILL_ACTIVE) {
     LOG_ERROR("Process died during DLL injection: %p", exit_code);
-    return false;
+    return F_FALSE;
   }
 
   // Copy the output data back from the process.
   inject_out_t out;
   struct_zero_fill(out);
-  if (!read_data_from_child_process(&remote_data_->out, &out, sizeof(out)))
-    return false;
+  F_TRY(read_data_from_child_process(&remote_data_->out, &out, sizeof(out)));
 
   if (out.error_step == 'C') {
     dword_t code = out.error_code;
@@ -384,31 +377,30 @@ bool NativeProcess::InjectState::complete_inject_dll(Duration timeout) {
     int32_t last_error = code & 0x3FF;
     LOG_ERROR("Connecting failed at file 0x?%03x line %i, last error: %i",
         file_id, line, last_error);
-    return false;
+    return F_FALSE;
   } else if (out.error_step != 0) {
     LOG_ERROR("Injecting failed at step %c: 0x%8x", out.error_step, out.error_code);
-    return false;
+    return F_FALSE;
   }
 
   blob_t data_out = request()->data_out();
   if (!blob_is_empty(data_out)) {
     // If there's a data_out parameter we copy the output data into it.
-    if (!read_data_from_child_process(*remote_data_out_, data_out.start,
-        data_out.size))
-      return false;
+    F_TRY(read_data_from_child_process(*remote_data_out_, data_out.start,
+        data_out.size));
   }
 
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcess::resume() {
+fat_bool_t NativeProcess::resume() {
   CHECK_TRUE("resuming non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   dword_t retval = ResumeThread(platform_data()->child_main_thread());
   if (retval == -1) {
     LOG_ERROR("Failed to resume suspended process: %i", GetLastError());
-    return false;
+    return F_FALSE;
   }
-  return true;
+  return F_TRUE;
 }
 
 namespace tclib {
@@ -419,18 +411,18 @@ public:
   utf8_t build_cmdline(utf8_t executable, size_t argc, utf8_t *argv);
 
   // Set up any standard stream redirection in the startup_info.
-  bool configure_standard_streams();
+  fat_bool_t configure_standard_streams();
 
   // If necessary set up redirection using the given stream, storing the result
   // in the three out parameters. This is a little messy but we need to do this
   // a couple of times so it seems worth it.
-  bool maybe_redirect_standard_stream(const char *name, stdio_stream_t stream,
+  fat_bool_t maybe_redirect_standard_stream(const char *name, stdio_stream_t stream,
       handle_t *handle_out, bool *has_redirected);
 
   NativeProcess *process() { return process_; }
-  bool configure_sub_environment();
-  bool launch(utf8_t executable);
-  bool post_launch();
+  fat_bool_t configure_sub_environment();
+  fat_bool_t launch(utf8_t executable);
+  fat_bool_t post_launch();
 private:
   NativeProcess *process_;
   string_buffer_t cmdline_buf_;
@@ -506,49 +498,46 @@ utf8_t NativeProcessStart::build_cmdline(utf8_t executable, size_t argc,
   return cmdline_ = string_buffer_flush(&cmdline_buf_);
 }
 
-bool NativeProcessStart::maybe_redirect_standard_stream(const char *name,
+fat_bool_t NativeProcessStart::maybe_redirect_standard_stream(const char *name,
     stdio_stream_t stream, handle_t *handle_out, bool *has_redirected) {
   StreamRedirect redirect = process()->stdio_[stream];
   if (redirect.is_empty())
-    return true;
+    return F_TRUE;
   if (!redirect.prepare_launch())
-    return false;
+    return F_FALSE;
   handle_t handle = redirect.remote_handle();
   if (handle == AbstractStream::kNullNakedFileHandle) {
     WARN("Invalid %s", name);
-    return false;
+    return F_FALSE;
   }
   *handle_out = handle;
   *has_redirected = true;
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcessStart::configure_standard_streams() {
+fat_bool_t NativeProcessStart::configure_standard_streams() {
   bool has_redirected = false;
 
-  if (!maybe_redirect_standard_stream("stdin", siStdin,
-      &startup_info_.hStdInput, &has_redirected))
-    return false;
+  F_TRY(maybe_redirect_standard_stream("stdin", siStdin,
+      &startup_info_.hStdInput, &has_redirected));
 
-  if (!maybe_redirect_standard_stream("stdout", siStdout,
-      &startup_info_.hStdOutput, &has_redirected))
-    return false;
+  F_TRY(maybe_redirect_standard_stream("stdout", siStdout,
+      &startup_info_.hStdOutput, &has_redirected));
 
-  if (!maybe_redirect_standard_stream("stderr", siStderr,
-      &startup_info_.hStdError, &has_redirected))
-    return false;
+  F_TRY(maybe_redirect_standard_stream("stderr", siStderr,
+      &startup_info_.hStdError, &has_redirected));
 
   if (has_redirected)
     startup_info_.dwFlags |= STARTF_USESTDHANDLES;
 
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcessStart::configure_sub_environment() {
+fat_bool_t NativeProcessStart::configure_sub_environment() {
   if (process()->env_.empty())
     // If we don't want the environment to change we just leave new_env_ empty
     // and launch will do the right thing.
-    return true;
+    return F_TRUE;
 
   // Copy the new variables also.
   for (size_t i = process()->env_.size(); i > 0; i--) {
@@ -566,14 +555,14 @@ bool NativeProcessStart::configure_sub_environment() {
   // Flushing adds the last of the two null terminators that ends the whole
   // thing.
   new_env_ = string_buffer_flush(&new_env_buf_);
-  return true;
+  return F_TRUE;
 }
 
 static void CALLBACK mark_terminated_bridge(void *context, BOOLEAN timer_or_wait_fired) {
   static_cast<NativeProcess*>(context)->mark_terminated(timer_or_wait_fired);
 }
 
-bool NativeProcessStart::launch(utf8_t executable) {
+fat_bool_t NativeProcessStart::launch(utf8_t executable) {
   char *cmdline_chars = const_cast<char*>(cmdline_.chars);
   void *env = NULL;
   if (!string_is_empty(new_env_))
@@ -606,7 +595,7 @@ bool NativeProcessStart::launch(utf8_t executable) {
     // for it so even in that case start will succeed. So we simulate that on
     // windows by succeeding here and recording the error so it can be reported
     // later.
-    return true;
+    return F_TRUE;
   }
 
   process()->state = NativeProcess::nsRunning;
@@ -619,28 +608,33 @@ bool NativeProcessStart::launch(utf8_t executable) {
       WT_EXECUTEONLYONCE))     // dwFlags
     WARN("Call to RegisterWaitForSingleObject failed: %i", GetLastError());
 
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcessStart::post_launch() {
+fat_bool_t NativeProcessStart::post_launch() {
   // Close the parent's clone of the stdout handle since it belongs to the
   // child now.
-  bool succeeded = true;
+  fat_bool_t all_succeeded = F_TRUE;
   for (size_t i = 0; i < kStdioStreamCount; i++) {
     StreamRedirect redirect = process()->stdio_[i];
-    succeeded = (redirect.is_empty() || redirect.parent_side_close()) || succeeded;
+    if (!redirect.is_empty()) {
+      fat_bool_t closed = redirect.parent_side_close();
+      if (all_succeeded && !closed)
+        // Capture the first failure.
+        all_succeeded = closed;
+    }
   }
-  return succeeded;
+  return all_succeeded;
 }
 
-bool PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
+fat_bool_t PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
   // Do inherit the remote side of this pipe.
   if (!SetHandleInformation(
           remote_side(redirect)->to_raw_handle(), // hObject
           HANDLE_FLAG_INHERIT,                    // dwMask
           1)) {                                   // dwFlags
     WARN("Failed to set remote pipe flags while redirecting");
-    return false;
+    return F_FALSE;
   }
 
   // Don't inherit the local side of this pipe.
@@ -649,27 +643,28 @@ bool PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
           HANDLE_FLAG_INHERIT,                   // dwMask
           0)) {                                  // dwFlags
     WARN("Failed to set local pipe flags while redirecting");
-    return false;
+    return F_FALSE;
   }
-  return true;
+  return F_TRUE;
 }
 
-bool PipeRedirector::parent_side_close(StreamRedirect *redirect) const {
-  return remote_side(redirect)->close();
+fat_bool_t PipeRedirector::parent_side_close(StreamRedirect *redirect) const {
+  return F_BOOL(remote_side(redirect)->close());
 }
 
-bool PipeRedirector::child_side_close(StreamRedirect *redirect) const {
+fat_bool_t PipeRedirector::child_side_close(StreamRedirect *redirect) const {
   // There is no child side, or -- there is but we don't have access to it.
-  return true;
+  return F_FALSE;
 }
 
-bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
+fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   CHECK_EQ("starting process already running", nsInitial, state);
   platform_data_ = new NativeProcess::PlatformData();
   NativeProcessStart start(this);
   start.build_cmdline(executable, argc, argv);
-  return start.configure_standard_streams()
-      && start.configure_sub_environment()
-      && start.launch(executable)
-      && start.post_launch();
+  F_TRY(start.configure_standard_streams());
+  F_TRY(start.configure_sub_environment());
+  F_TRY(start.launch(executable));
+  F_TRY(start.post_launch());
+  return F_TRUE;
 }

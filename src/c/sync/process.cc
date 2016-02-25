@@ -36,15 +36,15 @@ naked_file_handle_t StreamRedirect::remote_handle() {
   return redirector()->remote_handle(this);
 }
 
-bool StreamRedirect::prepare_launch() {
+fat_bool_t StreamRedirect::prepare_launch() {
   return redirector()->prepare_launch(this);
 }
 
-bool StreamRedirect::parent_side_close() {
+fat_bool_t StreamRedirect::parent_side_close() {
   return redirector()->parent_side_close(this);
 }
 
-bool StreamRedirect::child_side_close() {
+fat_bool_t StreamRedirect::child_side_close() {
   return redirector()->child_side_close(this);
 }
 

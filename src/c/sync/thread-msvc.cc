@@ -6,14 +6,14 @@
 #include "sync/thread.hh"
 using namespace tclib;
 
-bool NativeThread::platform_dispose() {
+fat_bool_t NativeThread::platform_dispose() {
   if (thread_ != INVALID_HANDLE_VALUE) {
     if (!CloseHandle(thread_)) {
       WARN("Call to CloseHandle failed: %i", GetLastError());
-      return false;
+      return F_FALSE;
     }
   }
-  return true;
+  return F_TRUE;
 }
 
 unsigned long __stdcall NativeThread::entry_point(void *arg) {
@@ -23,7 +23,7 @@ unsigned long __stdcall NativeThread::entry_point(void *arg) {
   return 0;
 }
 
-bool NativeThread::platform_start() {
+fat_bool_t NativeThread::platform_start() {
   handle_t result = CreateThread(
       NULL,         // lpThreadAttributes
       0,            // dwStackSize
@@ -33,22 +33,22 @@ bool NativeThread::platform_start() {
       NULL);        // lpThreadId
   if (result == NULL) {
     WARN("Call to CreateThread failed: %i", GetLastError());
-    return false;
+    return F_FALSE;
   }
   thread_ = result;
-  return true;
+  return F_TRUE;
 }
 
-bool NativeThread::join(opaque_t *value_out) {
+fat_bool_t NativeThread::join(opaque_t *value_out) {
   CHECK_EQ("thread interaction out of order", state_, tsStarted);
   if (WaitForSingleObject(thread_, INFINITE) != WAIT_OBJECT_0) {
     WARN("Call to WaitForSingleObject failed: %i", GetLastError());
-    return false;
+    return F_FALSE;
   }
   state_ = tsJoined;
   if (value_out != NULL)
     *value_out = result_;
-  return true;
+  return F_TRUE;
 }
 
 native_thread_id_t NativeThread::get_current_id() {

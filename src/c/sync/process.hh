@@ -53,9 +53,9 @@ public:
 
   // See the corresponding methods on StreamRedirector.
   naked_file_handle_t remote_handle();
-  bool prepare_launch();
-  bool parent_side_close();
-  bool child_side_close();
+  fat_bool_t prepare_launch();
+  fat_bool_t parent_side_close();
+  fat_bool_t child_side_close();
 
 private:
   // Yields the redirector viewed as a C++ object.
@@ -75,15 +75,15 @@ public:
   virtual naked_file_handle_t remote_handle(StreamRedirect *redirect) const = 0;
 
   // Perform any work that needs to be done before creating the child.
-  virtual bool prepare_launch(StreamRedirect *redirect) const = 0;
+  virtual fat_bool_t prepare_launch(StreamRedirect *redirect) const = 0;
 
   // Called after the child has been successfully spawned to clean up the parent
   // side of the redirect.
-  virtual bool parent_side_close(StreamRedirect *redirect) const = 0;
+  virtual fat_bool_t parent_side_close(StreamRedirect *redirect) const = 0;
 
   // Called after the child has been successfully spawned to clean up the child
   // side of the redirect.
-  virtual bool child_side_close(StreamRedirect *redirect) const = 0;
+  virtual fat_bool_t child_side_close(StreamRedirect *redirect) const = 0;
 };
 
 // A pipe-based redirector. This takes ownership of the pipe and will close the
@@ -93,9 +93,9 @@ class PipeRedirector : public StreamRedirector {
 public:
   PipeRedirector(pipe_direction_t direction);
   virtual naked_file_handle_t remote_handle(StreamRedirect *redirect) const;
-  virtual bool prepare_launch(StreamRedirect *redirect) const;
-  virtual bool parent_side_close(StreamRedirect *redirect) const;
-  virtual bool child_side_close(StreamRedirect *redirect) const;
+  virtual fat_bool_t prepare_launch(StreamRedirect *redirect) const;
+  virtual fat_bool_t parent_side_close(StreamRedirect *redirect) const;
+  virtual fat_bool_t child_side_close(StreamRedirect *redirect) const;
 
 private:
   pipe_direction_t direction_;
