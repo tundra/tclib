@@ -14,29 +14,29 @@ void *NativeThread::entry_point(void *arg) {
   return NULL;
 }
 
-bool NativeThread::platform_start() {
+fat_bool_t NativeThread::platform_start() {
   int result = pthread_create(&thread_, NULL, entry_point, this);
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to pthread_create failed: %i (error: %s)", result, strerror(result));
-  return false;
+  return F_FALSE;
 }
 
-bool NativeThread::platform_dispose() {
-  return true;
+fat_bool_t NativeThread::platform_dispose() {
+  return F_TRUE;
 }
 
-bool NativeThread::join(opaque_t *value_out) {
+fat_bool_t NativeThread::join(opaque_t *value_out) {
   CHECK_EQ("thread interaction out of order", state_, tsStarted);
   int result = pthread_join(thread_, NULL);
   if (result != 0) {
     WARN("Call to pthread_join failed: %i (error: %s)", result, strerror(result));
-    return false;
+    return F_FALSE;
   }
   state_ = tsJoined;
   if (value_out != NULL)
     *value_out = result_;
-  return true;
+  return F_TRUE;
 }
 
 native_thread_id_t NativeThread::get_current_id() {

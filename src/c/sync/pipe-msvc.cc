@@ -18,16 +18,16 @@ public:
   // the given out parameters. If inherit is true the handles will be inherited
   // by child processes. If pipe_name_out is non-null the pipe name will be
   // stored there.
-  static bool create_overlapped_pipe(handle_t *server_pipe, handle_t *client_pipe,
-      bool inherit, utf8_t *pipe_name_out);
+  static fat_bool_t create_overlapped_pipe(handle_t *server_pipe,
+      handle_t *client_pipe, bool inherit, utf8_t *pipe_name_out);
 
   // Creates a named pipe with the given name and stores the server end in the
   // give out handle..
-  static bool create_named_pipe(utf8_t name, bool inherit, handle_t *handle_out);
+  static fat_bool_t create_named_pipe(utf8_t name, bool inherit, handle_t *handle_out);
 
   // Connects to an existing named pipe and stores the client end in the given
   // out handle.
-  static bool connect_named_pipe(utf8_t name, bool inherit, handle_t *handle_out);
+  static fat_bool_t connect_named_pipe(utf8_t name, bool inherit, handle_t *handle_out);
 
   // Initializes the given attribs.
   static void config_security_attribs(SECURITY_ATTRIBUTES *attribs,
@@ -121,8 +121,8 @@ void WindowsPipeUtils::config_security_attribs(SECURITY_ATTRIBUTES *attribs,
   attribs->lpSecurityDescriptor = NULL;
 }
 
-bool NativePipe::open(uint32_t flags) {
-  bool result = WindowsPipeUtils::create_overlapped_pipe(
+fat_bool_t NativePipe::open(uint32_t flags) {
+  fat_bool_t result = WindowsPipeUtils::create_overlapped_pipe(
       &this->pipe_.read_,
       &this->pipe_.write_,
       (flags & pfInherit) != 0,

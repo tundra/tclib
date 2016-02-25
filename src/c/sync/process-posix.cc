@@ -29,10 +29,10 @@ namespace tclib {
 class NativeProcessStart {
 public:
   NativeProcessStart(NativeProcess *process);
-  bool configure_file_descriptors();
-  bool build_sub_environment();
-  bool parent_post_fork();
-  bool child_post_fork(utf8_t executable, size_t argc, utf8_t *argv);
+  fat_bool_t configure_file_descriptors();
+  fat_bool_t build_sub_environment();
+  fat_bool_t parent_post_fork();
+  fat_bool_t child_post_fork(utf8_t executable, size_t argc, utf8_t *argv);
   void remap_std_stream(stdio_stream_t stream, int old_fd);
 private:
   NativeProcess *process_;
@@ -149,26 +149,26 @@ NativeProcess::PlatformData::PlatformData()
 NativeProcessStart::NativeProcessStart(NativeProcess *process)
   : process_(process) { }
 
-bool NativeProcessStart::configure_file_descriptors() {
+fat_bool_t NativeProcessStart::configure_file_descriptors() {
   for (size_t i = 0; i < kStdioStreamCount; i++) {
     StreamRedirect redir = process_->stdio_[i];
     if (!redir.is_empty()) {
       if (!redir.prepare_launch())
-        return false;
+        return F_FALSE;
       if (redir.remote_handle() == AbstractStream::kNullNakedFileHandle) {
         WARN("Invalid stdio stream %i", i);
-        return false;
+        return F_FALSE;
       }
     }
   }
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcessStart::build_sub_environment() {
+fat_bool_t NativeProcessStart::build_sub_environment() {
   if (process_->env_.empty())
     // Fast case if the sub-environment is identical to the caller's. In that
     // case we just leave it NULL and the child won't use it.
-    return true;
+    return F_TRUE;
 
   // Push the bindings in reverse order to given them priority.
   for (size_t i = process_->env_.size(); i > 0; i--) {
@@ -183,16 +183,16 @@ bool NativeProcessStart::build_sub_environment() {
   // Remember to null terminate.
   new_environ_.push_back(NULL);
 
-  return true;
+  return F_TRUE;
 }
 
-bool NativeProcessStart::parent_post_fork() {
+fat_bool_t NativeProcessStart::parent_post_fork() {
   bool succeeded = true;
   for (size_t i = 0; i < kStdioStreamCount; i++) {
     StreamRedirect redirect = process_->stdio_[i];
     succeeded = (redirect.is_empty() || redirect.parent_side_close()) && succeeded;
   }
-  return succeeded;
+  return F_BOOL(succeeded);
 }
 
 void NativeProcessStart::remap_std_stream(stdio_stream_t stream, int old_fd) {
@@ -207,7 +207,7 @@ void NativeProcessStart::remap_std_stream(stdio_stream_t stream, int old_fd) {
   close(new_fd);
 }
 
-bool NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
+fat_bool_t NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
     utf8_t *argv) {
   // From here on we're in the child process. First redirect std streams if
   // necessary.
@@ -218,7 +218,7 @@ bool NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
   for (size_t i = 0; i < kStdioStreamCount; i++) {
     StreamRedirect redirect = process_->stdio_[i];
     if (!(redirect.is_empty() || redirect.child_side_close()))
-      return false;
+      return F_FALSE;
   }
 
   // Execv implicitly takes its environment from environ. The underlying data
@@ -244,7 +244,7 @@ bool NativeProcessStart::child_post_fork(utf8_t executable, size_t argc,
   exit(EX_OSERR);
   // This should never be reached.
   ERROR("Fell through exec, pid %i", getpid());
-  return false;
+  return F_FALSE;
 }
 
 bool PipeRedirector::prepare_launch(StreamRedirect *redirect) const {
@@ -262,7 +262,7 @@ bool PipeRedirector::child_side_close(StreamRedirect *redirect) const {
   return local_side(redirect)->close();
 }
 
-bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
+fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   CHECK_EQ("starting process already running", nsInitial, state);
 
   NativeProcessStart start(this);
@@ -270,7 +270,7 @@ bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   // Do the pre-flight work before doing the actual forking so we can report any
   // errors back in the parent process.
   if (!start.configure_file_descriptors() || !start.build_sub_environment())
-    return false;
+    return F_FALSE;
 
   platform_data_ = new NativeProcess::PlatformData();
 
@@ -287,12 +287,12 @@ bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
 
   // Fork the child.
   pid_t fork_pid = fork();
-  bool result = true;
+  fat_bool_t result = F_TRUE;
   if (fork_pid == -1) {
     // Forking failed for some reason.
     WARN("Call to fork failed: %i", fork_pid);
     exit_code_.fulfill(-1);
-    result = false;
+    result = F_FALSE;
   } else if (fork_pid > 0) {
     ProcessRegistry::get()->add(fork_pid, this);
     // We're in the parent so just record the child's pid and we're done.
@@ -311,10 +311,10 @@ bool NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   return result;
 }
 
-bool NativeProcess::resume() {
+fat_bool_t NativeProcess::resume() {
   CHECK_TRUE("resuming non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   // Not supported.
-  return false;
+  return F_FALSE;
 }
 
 bool NativeProcess::mark_terminated(int result) {
@@ -324,16 +324,16 @@ bool NativeProcess::mark_terminated(int result) {
   return fulfilled;
 }
 
-bool NativeProcess::start_inject_library(InjectRequest *request) {
+fat_bool_t NativeProcess::start_inject_library(InjectRequest *request) {
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
-  return false;
+  return F_FALSE;
 }
 
-bool NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
+fat_bool_t NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
   // Starting injection can't succeed so definitely we don't want anyone to be
   // calling complete.
   UNREACHABLE("completing injection");
-  return false;
+  return F_FALSE;
 }
 
 bool ProcessRegistry::handle_signal(int signum, siginfo_t *info, void *context) {

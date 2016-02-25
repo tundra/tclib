@@ -26,6 +26,16 @@ void fail(const char *file, int line, const char *fmt, ...);
         __a__, __b__);                                                         \
 } while (false)
 
+// Works the same way as ASSERT_TRUE but gives more information for fat-bools.
+#define ASSERT_F_TRUE(COND) do {                                               \
+  fat_bool_t __a__ = (COND);                                                   \
+  if (!__a__)                                                                  \
+    fail(__FILE__, __LINE__,                                                   \
+        "Assertion failed: " #COND ".\n"                                       \
+        "  Location: 0x%04x:%i\n",                                             \
+        __a__.file_id(), __a__.line());                                        \
+} while (false)
+
 // Fails unless the given relation holds between the two values.
 #define ASSERT_REL_WITH_HINT(HINT, A, REL, B) do {                             \
   int64_t __a__ = static_cast<int64_t>(A);                                     \

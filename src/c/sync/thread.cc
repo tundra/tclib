@@ -42,18 +42,19 @@ NativeThread::~NativeThread() {
   platform_dispose();
 }
 
-bool NativeThread::start() {
+fat_bool_t NativeThread::start() {
   CHECK_EQ("thread interaction out of order", state_, tsCreated);
   if (callback_.is_empty())
-    return false;
+    return F_FALSE;
   // Optimistically set the state to started such that the entry point can
   // rely on it, then roll it back if starting fails.
   state_ = tsStarted;
-  if (!platform_start()) {
+  fat_bool_t started = platform_start();
+  if (!started) {
     state_ = tsCreated;
-    return false;
+    return started;
   }
-  return true;
+  return F_TRUE;
 }
 
 void NativeThread::set_callback(run_callback_t callback) {

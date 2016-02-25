@@ -13,16 +13,16 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-bool NativePipe::open(uint32_t flags) {
+fat_bool_t NativePipe::open(uint32_t flags) {
   errno = 0;
   int result = ::pipe(this->pipe_);
   if (result == 0) {
     in_ = *InOutStream::from_raw_handle(this->pipe_[0]);
     out_ = *InOutStream::from_raw_handle(this->pipe_[1]);
-    return true;
+    return F_TRUE;
   }
   WARN("Call to pipe failed: %i (error: %s)", errno, strerror(errno));
-  return false;
+  return F_FALSE;
 }
 
 class PosixServerChannel : public ServerChannel {
@@ -30,15 +30,15 @@ public:
   PosixServerChannel();
   virtual ~PosixServerChannel();
   virtual void default_destroy() { default_delete_concrete(this); }
-  virtual bool allocate(uint32_t flags);
-  virtual bool open();
-  virtual bool close();
+  virtual fat_bool_t allocate(uint32_t flags);
+  virtual fat_bool_t open();
+  virtual fat_bool_t close();
   virtual utf8_t name() { return basename_; }
   virtual InStream *in() { return in_; }
   virtual OutStream *out() { return out_; }
   static ServerChannel *create();
 
-  static bool connect_fifo(utf8_t basename, const char *suffix, int32_t mode,
+  static fat_bool_t connect_fifo(utf8_t basename, const char *suffix, int32_t mode,
       FileStreams *io_out);
 
 private:
@@ -46,7 +46,7 @@ private:
       char *scratch, size_t bufsize);
 
   // Creates a fifo but does not connect to it.
-  bool make_fifo(const char *suffix);
+  fat_bool_t make_fifo(const char *suffix);
 
   #define kUpSuffix ".up"
   #define kDownSuffix ".down"
@@ -75,56 +75,61 @@ utf8_t PosixServerChannel::get_fifo_name(utf8_t basename, const char *suffix,
   return new_string(scratch, len);
 }
 
-bool PosixServerChannel::make_fifo(const char *suffix) {
+fat_bool_t PosixServerChannel::make_fifo(const char *suffix) {
   char scratch[1024];
   utf8_t name = get_fifo_name(basename_, suffix, scratch, 1024);
   errno = 0;
   int result = ::mkfifo(name.chars, 0600);
   if (result != 0) {
     WARN("mkfifo(%s, -) failed: %i (error: %s)", name.chars, errno, strerror(errno));
-    return false;
+    return F_FALSE;
   }
-  return true;
+  return F_TRUE;
 }
 
-bool PosixServerChannel::allocate(uint32_t flags) {
+fat_bool_t PosixServerChannel::allocate(uint32_t flags) {
   char scratch[1024];
   utf8_t temp_name = FileSystem::get_temporary_file_name(new_c_string("srvchn"),
       scratch, 1024);
   basename_ = string_default_dup(temp_name);
   // First create the two fifos; we can't connect before both have been created
   // because connecting may block.
-  return make_fifo(kUpSuffix) && make_fifo(kDownSuffix);
+  F_TRY(make_fifo(kUpSuffix));
+  F_TRY(make_fifo(kDownSuffix));
+  return F_TRUE;
 }
 
-bool PosixServerChannel::connect_fifo(utf8_t basename, const char *suffix, int32_t mode,
+fat_bool_t PosixServerChannel::connect_fifo(utf8_t basename, const char *suffix, int32_t mode,
     FileStreams *io_out) {
   char scratch[1024];
   utf8_t name = get_fifo_name(basename, suffix, scratch, 1024);
   *io_out = FileSystem::native()->open(name, mode);
-  return true;
+  return F_TRUE;
 }
 
-bool PosixServerChannel::open() {
+fat_bool_t PosixServerChannel::open() {
   FileStreams up;
   FileStreams down;
-  if (!connect_fifo(basename_, kUpSuffix, OPEN_FILE_MODE_READ, &up)
-      || !connect_fifo(basename_, kDownSuffix, OPEN_FILE_MODE_WRITE, &down))
-    return false;
+  F_TRY(connect_fifo(basename_, kUpSuffix, OPEN_FILE_MODE_READ, &up));
+  F_TRY(connect_fifo(basename_, kDownSuffix, OPEN_FILE_MODE_WRITE, &down));
   in_ = up.in();
   out_ = down.out();
-  return true;
+  return F_TRUE;
 }
 
-bool PosixServerChannel::close() {
+fat_bool_t PosixServerChannel::close() {
   if (!(in_ == NULL || in_->close()) || !(out_ == NULL || out_->close()))
-    return false;
+    return F_FALSE;
   char scratch[1024];
   utf8_t up_name = get_fifo_name(basename_, kUpSuffix, scratch, 1024);
   int unlink_up = unlink(up_name.chars);
   utf8_t down_name = get_fifo_name(basename_, kDownSuffix, scratch, 1024);
   int unlink_down = unlink(down_name.chars);
-  return (unlink_up == 0) && (unlink_down == 0);
+  if (unlink_up != 0)
+    return F_FALSE;
+  if (unlink_down != 0)
+    return F_FALSE;
+  return F_TRUE;
 }
 
 pass_def_ref_t<ServerChannel> ServerChannel::create() {

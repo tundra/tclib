@@ -11,6 +11,7 @@
 #include "async/promise.hh"
 #include "c/stdvector.hh"
 #include "io/stream.hh"
+#include "utils/fatbool.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
@@ -133,10 +134,10 @@ public:
   // Start this process running. This will return immediately after spawning
   // the child process, there is no guarantee that the executable is started or
   // indeed completes successfully.
-  bool start(utf8_t executable, size_t argc, utf8_t *argv);
+  fat_bool_t start(utf8_t executable, size_t argc, utf8_t *argv);
 
   // If this thread was started in suspended mode resumes execution.
-  bool resume();
+  fat_bool_t resume();
 
   // Adds an environment mapping to the set visible to the process. The process
   // copies the key and value so they can be released immediately after this
@@ -187,14 +188,14 @@ public:
   // be passed a copy of the data in blob_in and a piece of scratch memory the
   // same size as blob_out, whose contents will be copied back into blob_out
   // once the call has completed.
-  bool inject_library(InjectRequest *request);
+  fat_bool_t inject_library(InjectRequest *request);
 
   // Starts the process of injecting the requested library but doesn't wait for
   // it to complete. See inject_library for details.
-  bool start_inject_library(InjectRequest *request);
+  fat_bool_t start_inject_library(InjectRequest *request);
 
   // Waits for the injection process to complete.
-  bool complete_inject_library(InjectRequest *request, Duration timeout = Duration::unlimited());
+  fat_bool_t complete_inject_library(InjectRequest *request, Duration timeout = Duration::unlimited());
 
   // Specifies that the given redirect should be used for the given stream. Must
   // be called before starting the process.

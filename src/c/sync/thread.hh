@@ -5,8 +5,10 @@
 #define _TCLIB_THREAD_HH
 
 #include "c/stdc.h"
+
 #include "sync/sync.h"
 #include "utils/callback.hh"
+#include "utils/fatbool.hh"
 
 namespace tclib {
 
@@ -26,11 +28,11 @@ public:
   ~NativeThread();
 
   // Starts this thread. Returns true on success.
-  bool start();
+  fat_bool_t start();
 
   // Waits for this thread to finish, returning the result of the invocation
   // of the callback.
-  bool join(opaque_t *value_out);
+  fat_bool_t join(opaque_t *value_out);
 
   // If no callback was given at initialization this sets it to the given value.
   void set_callback(run_callback_t callback);
@@ -57,10 +59,10 @@ private:
   };
 
   // Platform-specific start routine.
-  bool platform_start();
+  fat_bool_t platform_start();
 
   // Platform-specific start routine.
-  bool platform_dispose();
+  fat_bool_t platform_dispose();
 
   static PLATFORM_THREAD_ENTRY_POINT;
 

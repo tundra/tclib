@@ -8,6 +8,7 @@
 
 #include "io/stream.hh"
 #include "sync/process.hh"
+#include "utils/fatbool.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/pipe.h"
@@ -36,7 +37,7 @@ public:
   // Create a new pipe with a read-end and a write-end. Returns true iff
   // creation was successful. You close the pipe by closing the two streams;
   // this also happens automatically when the pipe is destroyed.
-  bool open(uint32_t flags);
+  fat_bool_t open(uint32_t flags);
 
   // Returns the read-end of this pipe.
   InStream *in() { return static_cast<InStream*>(in_); }
@@ -63,14 +64,14 @@ public:
   // Allocate the resources required to support this channel. A new name will be
   // generated for clients to connect through. This call will not block. After
   // this has been called you can call name() to get the channel's name.
-  virtual bool allocate(uint32_t flags = NativePipe::pfDefault) = 0;
+  virtual fat_bool_t allocate(uint32_t flags = NativePipe::pfDefault) = 0;
 
   // Ensure that we can write to and read from the channel. This call may block
   // until the client side has connected.
-  virtual bool open() = 0;
+  virtual fat_bool_t open() = 0;
 
   // Close this channel and release any resources associated with it.
-  virtual bool close() = 0;
+  virtual fat_bool_t close() = 0;
 
   // Returns this channel's string name.
   virtual utf8_t name() = 0;
