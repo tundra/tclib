@@ -101,7 +101,7 @@
 #define UNLESS_64_BIT(E) IF_64_BIT(, E)
 #define kIs64Bit IF_64_BIT(true, false)
 
-#if defined(IS_GCC) && defined(__cplusplus)
+#if defined(IS_MSVC) || (defined(IS_GCC) && defined(__cplusplus))
 #  define IF_CPP(T, F) T
 #else
 #  define IF_CPP(T, F) F
@@ -112,14 +112,9 @@
 
 // Includes of C headers from C++ files should be surrounded by these macros to
 // ensure that they're linked appropriately.
-#ifdef IS_GCC
-#  if defined(__cplusplus)
-#    define BEGIN_C_INCLUDES extern "C" {
-#    define END_C_INCLUDES }
-#  else
-#    define BEGIN_C_INCLUDES
-#    define END_C_INCLUDES
-#  endif
+#if defined(IS_GCC) && defined(__cplusplus)
+#  define BEGIN_C_INCLUDES extern "C" {
+#  define END_C_INCLUDES }
 #else
    // On windows everything gets compiled as C++ so there's no need to handle
    // C includes differently.

@@ -60,7 +60,7 @@ c.get_settings().add_pervasive("warnings",
 
 c.get_settings().add_pervasive("cflags", "-std=c99", toolchain="gcc", language="c")
 
-c.get_settings().set_pervasive("gen_fileid", True, language="c++")
+c.get_settings().set_pervasive("gen_fileid", True)
 
 include('src', 'c', 'src_c.mkmk')
 include('tests', 'c', 'tests_c.mkmk')
