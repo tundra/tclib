@@ -24,21 +24,21 @@ TEST(fatbool, simple) {
   ASSERT_TRUE(!c);
   if (c)
     ASSERT_TRUE(false);
-  ASSERT_EQ(23, c.line());
-  ASSERT_EQ(kOwnFileId, c.file_id());
+  ASSERT_EQ(23, fat_bool_line(c));
+  ASSERT_EQ(kOwnFileId, fat_bool_file(c));
   fat_bool_t d = F_FALSE;
-  ASSERT_EQ(29, d.line());
-  ASSERT_EQ(c.file_id(), d.file_id());
+  ASSERT_EQ(29, fat_bool_line(d));
+  ASSERT_EQ(fat_bool_file(c), fat_bool_file(d));
 }
 
 TEST(fatbool, accessors) {
-  fat_bool_t fb1(523, 432);
-  ASSERT_EQ(523, fb1.file_id());
-  ASSERT_EQ(432, fb1.line());
-  int32_t code = fb1.code();
-  fat_bool_t fb2(code);
-  ASSERT_EQ(523, fb2.file_id());
-  ASSERT_EQ(432, fb2.line());
+  fat_bool_t fb1 = fat_bool_false(523, 432);
+  ASSERT_EQ(523, fat_bool_file(fb1));
+  ASSERT_EQ(432, fat_bool_line(fb1));
+  int32_t code = fat_bool_code(fb1);
+  fat_bool_t fb2 = fat_bool_new(code);
+  ASSERT_EQ(523, fat_bool_file(fb2));
+  ASSERT_EQ(432, fat_bool_line(fb2));
 }
 
 static fat_bool_t fail2() {
@@ -57,6 +57,6 @@ static fat_bool_t fail0() {
 
 TEST(fatbool, try_false) {
   fat_bool_t fb = fail0();
-  ASSERT_EQ(kOwnFileId, fb.file_id());
-  ASSERT_EQ(45, fb.line());
+  ASSERT_EQ(kOwnFileId, fat_bool_file(fb));
+  ASSERT_EQ(45, fat_bool_line(fb));
 }

@@ -101,6 +101,15 @@
 #define UNLESS_64_BIT(E) IF_64_BIT(, E)
 #define kIs64Bit IF_64_BIT(true, false)
 
+#if defined(IS_GCC) && defined(__cplusplus)
+#  define IF_CPP(T, F) T
+#else
+#  define IF_CPP(T, F) F
+#endif
+
+#define ONLY_CPP(E) IF_CPP(E, )
+#define UNLESS_CPP(E) IF_CPP(, E)
+
 // Includes of C headers from C++ files should be surrounded by these macros to
 // ensure that they're linked appropriately.
 #ifdef IS_GCC

@@ -33,7 +33,7 @@ void fail(const char *file, int line, const char *fmt, ...);
     fail(__FILE__, __LINE__,                                                   \
         "Assertion failed: " #COND ".\n"                                       \
         "  Location: 0x%04x:%i\n",                                             \
-        __a__.file_id(), __a__.line());                                        \
+        fat_bool_file(__a__), fat_bool_line(__a__));                           \
 } while (false)
 
 // Fails unless the given relation holds between the two values.
