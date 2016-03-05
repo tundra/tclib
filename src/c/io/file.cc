@@ -49,7 +49,11 @@ OutStream *FileStreams::out() {
 // File opened through stdio.
 class StdioOpenFile : public FileHandle {
 public:
-  explicit StdioOpenFile(FILE *file) : file_(file) { }
+  explicit StdioOpenFile(FILE *file)
+    : file_(file)
+    , is_closed_(false) {
+    CHECK_FALSE("file must be non-null", file == NULL);
+  }
   virtual ~StdioOpenFile();
   virtual void default_destroy() { default_delete_concrete(this); }
   virtual bool read_sync(read_iop_state_t *op);
@@ -60,6 +64,7 @@ public:
 
 private:
   FILE *file_;
+  bool is_closed_;
 };
 
 StdioOpenFile::~StdioOpenFile() {
@@ -67,13 +72,16 @@ StdioOpenFile::~StdioOpenFile() {
 }
 
 bool StdioOpenFile::close() {
-  if (file_ != NULL)
-    ::fclose(file_);
+  if (is_closed_)
+    return true;
+  ::fclose(file_);
   file_ = NULL;
+  is_closed_ = true;
   return true;
 }
 
 bool StdioOpenFile::read_sync(read_iop_state_t *op) {
+  CHECK_FALSE("file is closed", is_closed_);
   size_t bytes_read = fread(op->dest_, 1, op->dest_size_, file_);
   bool at_eof = (bytes_read == 0) && feof(file_);
   read_iop_state_deliver(op, bytes_read, at_eof);
@@ -81,12 +89,14 @@ bool StdioOpenFile::read_sync(read_iop_state_t *op) {
 }
 
 bool StdioOpenFile::write_sync(write_iop_state_t *op) {
+  CHECK_FALSE("file is closed", is_closed_);
   size_t bytes_written = fwrite(op->src, 1, op->src_size, file_);
   write_iop_state_deliver(op, bytes_written);
   return true;
 }
 
 bool StdioOpenFile::flush() {
+  CHECK_FALSE("file is closed", is_closed_);
   return fflush(file_) == 0;
 }
 
