@@ -403,6 +403,14 @@ fat_bool_t NativeProcess::resume() {
   return F_TRUE;
 }
 
+fat_bool_t NativeProcess::kill() {
+  if (!TerminateProcess(platform_data()->child_process(), 1)) {
+    LOG_ERROR("TerminateProcess(-, 1): %i", GetLastError());
+    return F_FALSE;
+  }
+  return F_TRUE;
+}
+
 namespace tclib {
 class NativeProcessStart {
 public:

@@ -134,12 +134,16 @@ struct log_o {
 // necessary.
 log_o *set_global_log(log_o *log);
 
+// Works the same as LOG_WARN but allows the file and line to be specified
+// explicitly.
+#define LOG_WARN_FILE_LINE(FILE, LINE, ...) do {                                           \
+  if (LOG_LEVEL_AT_LEAST(llWarning))                                           \
+    log_message(llWarning, FILE, LINE, __VA_ARGS__);                           \
+} while (false)
+
 // Emits a warning if the static log level is at least warning, otherwise does
 // nothing (including doesn't evaluate arguments).
-#define LOG_WARN(...) do {                                                     \
-  if (LOG_LEVEL_AT_LEAST(llWarning))                                           \
-    log_message(llWarning, __FILE__, __LINE__, __VA_ARGS__);                   \
-} while (false)
+#define LOG_WARN(...) LOG_WARN_FILE_LINE(__FILE__, __LINE__, __VA_ARGS__)
 
 #ifndef WARN
 #  define WARN LOG_WARN

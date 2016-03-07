@@ -322,6 +322,11 @@ fat_bool_t NativeProcess::resume() {
   return F_FALSE;
 }
 
+fat_bool_t NativeProcess::kill() {
+  // Add support for this if we ever need it.
+  return F_FALSE;
+}
+
 bool NativeProcess::mark_terminated(int result) {
   bool fulfilled = this->exit_code_.fulfill(WEXITSTATUS(result));
   if (!fulfilled)

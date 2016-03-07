@@ -32,7 +32,7 @@ void fail(const char *file, int line, const char *fmt, ...);
   if (!__a__)                                                                  \
     fail(__FILE__, __LINE__,                                                   \
         "Assertion failed: " #COND ".\n"                                       \
-        "  Location: 0x%04x:%i\n",                                             \
+        "  Location: " kFatBoolFileLine "\n",                                  \
         fat_bool_file(__a__), fat_bool_line(__a__));                           \
 } while (false)
 

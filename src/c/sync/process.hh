@@ -139,6 +139,9 @@ public:
   // If this thread was started in suspended mode resumes execution.
   fat_bool_t resume();
 
+  // Attempt to forcefully destroy this process.
+  fat_bool_t kill();
+
   // Adds an environment mapping to the set visible to the process. The process
   // copies the key and value so they can be released immediately after this
   // call. Note that if the key includes an equals sign it will cause not just

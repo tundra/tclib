@@ -4,6 +4,7 @@
 #include "c/stdc.h"
 
 #include "utils/log.hh"
+#include "utils/fatbool.hh"
 
 BEGIN_C_INCLUDES
 #include "io/file.h"
@@ -221,4 +222,9 @@ void Log::ensure_uninstalled() {
 
 bool Log::propagate(log_entry_t *entry) {
   return METHOD(outer_, log)(outer_, entry);
+}
+
+void fat_bool_log_failure(const char *file, int line, fat_bool_t error) {
+  LOG_WARN_FILE_LINE(file, line, "Propagating fatbool " kFatBoolFileLine,
+      fat_bool_file(error), fat_bool_line(error));
 }
