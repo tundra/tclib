@@ -222,6 +222,11 @@ public:
   ONLY_GCC(bool mark_terminated(int result);)
   ONLY_MSVC(void mark_terminated(bool timer_or_wait_fired);)
 
+  // Given a function pointer, if it points to a jump thunk because of
+  // incremental linking under MSVC returns a pointer to the actual destination.
+  // If the function is not a jump thunk just returns the function itself.
+  static void *resolve_jump_thunk(void *fun);
+
   // Can be used to test whether suspend/resume works on this platform.
   static const bool kCanSuspendResume = kIsMsvc;
 

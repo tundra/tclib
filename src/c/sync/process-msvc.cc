@@ -216,10 +216,6 @@ fat_bool_t NativeProcess::InjectState::read_data_from_child_process(const void *
 }
 
 fat_bool_t NativeProcess::start_inject_library(InjectRequest *request) {
-  if (kIsDebugCodegen) {
-    WARN("Attempting to inject with debug codegen");
-    return F_FALSE;
-  }
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   CHECK_TRUE("already injecting", request->state() == NULL);
   NativeProcess::InjectState *state = new (kDefaultAlloc) NativeProcess::InjectState(
@@ -325,7 +321,7 @@ fat_bool_t NativeProcess::InjectState::start_inject_dll() {
       false));
 
   // Copy the binary code of the entry point function into the process.
-  F_TRY(remote_entry_point_.copy_into(child_process_, inject_entry_point,
+  F_TRY(remote_entry_point_.copy_into(child_process_, resolve_jump_thunk(inject_entry_point),
       kMaxEntryPointSize, true));
   LPTHREAD_START_ROUTINE start = reinterpret_cast<LPTHREAD_START_ROUTINE>(*remote_entry_point_);
 

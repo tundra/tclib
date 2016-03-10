@@ -118,6 +118,16 @@ void NativeProcess::InjectRequest::set_connector(utf8_t name, blob_t data_in,
   data_out_ = data_out;
 }
 
+void *NativeProcess::resolve_jump_thunk(void *fun) {
+  address_t addr = reinterpret_cast<address_t>(fun);
+  if (addr[0] != 0xE9)
+    // First instruction is not a jump so we're done.
+    return fun;
+  // Grab the destination of the jump and that'll be the actual destination.
+  int32_t offset = reinterpret_cast<int32_t*>(addr + 1)[0];
+  return addr + 5 + offset;
+}
+
 PipeRedirector::PipeRedirector(pipe_direction_t direction)
   : direction_(direction) { }
 

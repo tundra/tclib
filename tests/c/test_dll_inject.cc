@@ -20,8 +20,8 @@ using namespace tclib;
 
 MULTITEST(dll_inject, exec_durian, size_t, ("clean", 0), ("inject", 1), ("inject2", 2)) {
   // Dll injections only works under msvc and not in debug mode.
-  if (kIsGcc || kIsDebugCodegen)
-    SKIP_TEST(kIsGcc ? "msvc only" : "debug codegen");
+  if (kIsGcc)
+    SKIP_TEST("msvc only");
   size_t fib_size = 85;
   byte_t fib[85];
   fib[0] = 1;
@@ -66,8 +66,8 @@ MULTITEST(dll_inject, exec_durian, size_t, ("clean", 0), ("inject", 1), ("inject
 
 TEST(dll_inject, blocking_connector) {
   // Dll injections only works under msvc and not in debug mode.
-  if (kIsGcc || kIsDebugCodegen)
-    SKIP_TEST(kIsGcc ? "msvc only" : "debug codegen");
+  if (kIsGcc)
+    SKIP_TEST("msvc only");
   NativeProcess process;
 
   // Start the process suspended.
