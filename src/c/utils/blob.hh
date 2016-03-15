@@ -17,8 +17,10 @@ public:
   // Creates a new empty blob.
   Blob() { *static_cast<blob_t*>(this) = blob_empty(); }
 
+  Blob(blob_t that) { *static_cast<blob_t*>(this) = that; }
+
   // Creates a new blob with the given contents.
-  Blob(void *start, size_t size) { *static_cast<blob_t*>(this) = blob_new(start, size); }
+  Blob(const void *start, size_t size) { *static_cast<blob_t*>(this) = blob_new(const_cast<void*>(start), size); }
 
   // Returns the address of the beginning of this block.
   void *start() { return blob_t::start; }

@@ -79,8 +79,8 @@ static int64_t ptr_to_int_bit_cast(void *value) {
   utf8_t __a__ = (A);                                                          \
   utf8_t __b__ = (B);                                                          \
   if (!(string_equals(__a__, __b__)))                                          \
-    fail(__FILE__, __LINE__, "Assertion failed: %s == %s.\n  Expected: [%s]\n  Found: [%s]", \
-        #A, #B, __a__.chars, __b__.chars);                                     \
+    fail(__FILE__, __LINE__, "Assertion failed: %s == %s.\n  Expected: [%s]:%i\n  Found: [%s]:%i", \
+        #A, #B, __a__.chars, __a__.size, __b__.chars, __b__.size);             \
 } while (false)
 
 // Fails unless the two given c-strings are equal.
