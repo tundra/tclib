@@ -172,12 +172,12 @@ private:
 // template parameter etc. To run each individual test use the names
 // my_suite/my_test/one and my_suite/my_test/two. That's the only use of the
 // string name.
-#define MULTITEST(suite, name, type_t, ...)                                    \
+#define MULTITEST(suite, name, type_t, Var, ...)                               \
   static const char *suite##_##name##_flavors[VA_ARGC(__VA_ARGS__) + 1] = {FOR_EACH_VA_ARG(__PICK_FLAVOR_NAME__, _, __VA_ARGS__) NULL}; \
-  template <type_t Flavor> static void run_##suite##_##name(TestRunHandle*);   \
+  template <type_t Var> static void run_##suite##_##name(TestRunHandle*);      \
   static TestCaseInfo::unit_test_t suite##_##name##_tests[VA_ARGC(__VA_ARGS__) + 1] = {FOR_EACH_VA_ARG(__BUILD_FLAVOR_FUNCTION_NAME__, run_##suite##_##name, __VA_ARGS__) NULL}; \
   MultiTestCaseInfo *const test_case_info_##suite##_##name = new MultiTestCaseInfo(__FILE__, #suite, #name, VA_ARGC(__VA_ARGS__), suite##_##name##_flavors, suite##_##name##_tests); \
-  template <type_t Flavor> static void run_##suite##_##name(TestRunHandle* __test_run_handle__)
+  template <type_t Var> static void run_##suite##_##name(TestRunHandle* __test_run_handle__)
 
 // Use this macro in a test function to leave the test and indicate to the test
 // framework that the test shouldn't be counted as having been run. This way it

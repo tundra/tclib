@@ -36,8 +36,7 @@ public:
   static int64_t sub(atomic_t *v, int64_t d) { return atomic_int64_subtract(v, d); }
 };
 
-MULTITEST(atomic, simple, typename, ("32", A32), ("64", A64)) {
-  typedef Flavor A;
+MULTITEST(atomic, simple, typename, A, ("32", A32), ("64", A64)) {
   typename A::atomic_t atomic = A::init(0);
   ASSERT_EQ(0, A::get(&atomic));
   ASSERT_EQ(1, A::inc(&atomic));
@@ -67,8 +66,7 @@ static opaque_t hammer_counter(Drawbridge *start, typename A::atomic_t *count) {
   return o0();
 }
 
-MULTITEST(atomic, contended, typename, ("32", A32), ("64", A64)) {
-  typedef Flavor A;
+MULTITEST(atomic, contended, typename, A, ("32", A32), ("64", A64)) {
   typename A::atomic_t counter = A::init(0);
   Drawbridge start;
   ASSERT_TRUE(start.initialize());

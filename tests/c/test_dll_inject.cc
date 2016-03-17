@@ -18,7 +18,7 @@ END_C_INCLUDES
 
 using namespace tclib;
 
-MULTITEST(dll_inject, exec_durian, size_t, ("clean", 0), ("inject", 1), ("inject2", 2)) {
+MULTITEST(dll_inject, exec_durian, size_t, Flavor, ("clean", 0), ("inject", 1), ("inject2", 2)) {
   // Dll injections only works under msvc and not in debug mode.
   if (kIsGcc)
     SKIP_TEST("msvc only");
