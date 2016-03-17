@@ -26,6 +26,7 @@ bool NativeSemaphore::platform_dispose() {
 }
 
 bool NativeSemaphore::acquire(Duration timeout) {
+  CHECK_TRUE("not initialized", is_initialized);
   int result;
   errno = 0;
   if (timeout.is_unlimited()) {
@@ -47,6 +48,7 @@ bool NativeSemaphore::acquire(Duration timeout) {
 }
 
 bool NativeSemaphore::release() {
+  CHECK_TRUE("not initialized", is_initialized);
   int result = sem_post(&sema);
   if (result == 0)
     return true;
