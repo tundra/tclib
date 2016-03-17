@@ -28,6 +28,9 @@ public:
   // Returns the address immediately past the end of this block.
   void *end() { return static_cast<byte_t*>(start()) + size(); }
 
+  // Fills all this blob with the given value.
+  void fill(byte_t value) { blob_fill(*this, value); }
+
   // The size in bytes of this block.
   size_t size() { return blob_t::size; }
 
