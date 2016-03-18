@@ -262,3 +262,10 @@ TEST(string, dup_free) {
   ASSERT_TRUE(string_is_empty(e2));
   string_default_delete(e2);
 }
+
+TEST(string, dup_unterminated) {
+  char chars[4] = {'f', 'o', 'o', 'x'};
+  utf8_t str = string_default_dup(new_string(chars, 3));
+  ASSERT_EQ(0, str.chars[3]);
+  string_default_delete(str);
+}

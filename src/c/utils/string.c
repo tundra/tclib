@@ -36,8 +36,10 @@ utf8_t string_default_dup(utf8_t str) {
     return str;
   size_t size = sizeof(char) * (str.size + 1);
   blob_t buf = allocator_default_malloc(size);
-  blob_copy_to(blob_new((void*) str.chars, size), buf);
-  return new_string((char*) buf.start, str.size);
+  char *chars = (char*) buf.start;
+  blob_copy_to(blob_new((void*) str.chars, str.size), buf);
+  chars[str.size] = '\0';
+  return new_string(chars, str.size);
 }
 
 void string_default_delete(utf8_t str) {
