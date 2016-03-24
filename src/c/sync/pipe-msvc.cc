@@ -123,8 +123,8 @@ fat_bool_t NativePipe::open(uint32_t flags) {
   F_TRY(WindowsPipeUtils::create_overlapped_pipe(&this->pipe_.read_,
       &this->pipe_.write_, (flags & pfInherit) != 0, NULL));
 
-  in_ = *InOutStream::from_raw_handle(this->pipe_.read_);
-  out_ = *InOutStream::from_raw_handle(this->pipe_.write_);
+  in_ = InOutStream::from_raw_handle(this->pipe_.read_).arrive();
+  out_ = InOutStream::from_raw_handle(this->pipe_.write_).arrive();
   return F_TRUE;
 }
 
