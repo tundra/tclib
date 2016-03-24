@@ -49,19 +49,46 @@ inline void default_delete(DefaultDestructable *that) {
 
 // A reference to a value allocated with the default allocator. These are
 // intended to be passed around and eventually stored in a def_ref_t which will
-// deal with the lifetime of the object.
+// deal with the lifetime of the object. If a pass-ref is just passed around but
+// the value not read out it will cause an error.
 template <typename T>
 class pass_def_ref_t {
 public:
-  pass_def_ref_t() : ptr_(NULL) { }
-  explicit pass_def_ref_t(T *ptr) : ptr_(ptr) { }
-  T *operator*() const { return ptr_; }
+  pass_def_ref_t() : ptr_(NULL), has_arrived_(true) { }
+  pass_def_ref_t(T *ptr) : ptr_(ptr), has_arrived_(false) { }
+  pass_def_ref_t(const pass_def_ref_t<T> &that);
+  ~pass_def_ref_t() { CHECK_TRUE("pass-ref never arrived", has_arrived_); }
+  void operator=(const pass_def_ref_t<T> &that);
   bool is_null() { return ptr_ == NULL; }
   static pass_def_ref_t<T> null() { return pass_def_ref_t<T>(); }
 
+  // Return the value held by this pass-ref and mark the reference as having
+  // had its value handled properly.
+  T *arrive() const;
+
 private:
   T *ptr_;
+  mutable bool has_arrived_;
 };
+
+template <typename T>
+pass_def_ref_t<T>::pass_def_ref_t(const pass_def_ref_t<T> &that)
+  : ptr_(that.arrive())
+  , has_arrived_(false) { }
+
+template <typename T>
+T *pass_def_ref_t<T>::arrive() const {
+  CHECK_FALSE("pass-ref already arrived", has_arrived_);
+  has_arrived_ = true;
+  return ptr_;
+}
+
+template <typename T>
+void pass_def_ref_t<T>::operator=(const pass_def_ref_t<T> &that) {
+  CHECK_TRUE("overwriting unarrived pass-ref", has_arrived_);
+  ptr_ = that.arrive();
+  has_arrived_ = false;
+}
 
 // A reference to a default-allocated value that will be automatically disposed
 // appropriately when this ref is destroyed. The first type parameter is the
@@ -72,12 +99,12 @@ class def_ref_t {
 public:
   def_ref_t() : ptr_(NULL) { }
   template <typename S>
-  def_ref_t(const pass_def_ref_t<S> &pass) : ptr_(*pass) { }
+  def_ref_t(const pass_def_ref_t<S> &value) : ptr_(value.arrive()) { }
   template <typename S>
   def_ref_t(const S* ptr) : ptr_(ptr) { }
   ~def_ref_t() { default_delete(static_cast<D*>(ptr_)); }
   template <typename S>
-  void operator=(const pass_def_ref_t<S> &pass) { ptr_ = *pass; }
+  void operator=(const pass_def_ref_t<S> &value) { ptr_ = value.arrive(); }
   template <typename S>
   void operator=(S *ptr) { ptr_ = ptr; }
   T *operator->() { return ptr_; }

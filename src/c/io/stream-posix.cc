@@ -72,7 +72,7 @@ naked_file_handle_t FdStream::to_raw_handle() {
 }
 
 pass_def_ref_t<InOutStream> InOutStream::from_raw_handle(naked_file_handle_t handle) {
-  return pass_def_ref_t<InOutStream>(new (kDefaultAlloc) FdStream(handle));
+  return new (kDefaultAlloc) FdStream(handle);
 }
 
 utf8_t FileSystem::get_temporary_file_name(utf8_t unique, char *dest, size_t dest_size) {

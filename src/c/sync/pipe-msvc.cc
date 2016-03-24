@@ -190,7 +190,7 @@ fat_bool_t WindowsServerChannel::close() {
 }
 
 pass_def_ref_t<ServerChannel> ServerChannel::create() {
-  return pass_def_ref_t<ServerChannel>(new (kDefaultAlloc) WindowsServerChannel());
+  return new (kDefaultAlloc) WindowsServerChannel();
 }
 
 class WindowsClientChannel : public ClientChannel {
@@ -212,5 +212,5 @@ bool WindowsClientChannel::open(utf8_t name) {
 }
 
 pass_def_ref_t<ClientChannel> ClientChannel::create() {
-  return pass_def_ref_t<ClientChannel>(new (kDefaultAlloc) WindowsClientChannel());
+  return new (kDefaultAlloc) WindowsClientChannel();
 }
