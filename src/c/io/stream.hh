@@ -127,6 +127,7 @@ public:
   ByteOutStream();
   virtual void default_destroy() { default_delete_concrete(this); }
   virtual bool flush();
+  void putchar(byte_t c);
 
   // Returns the number of bytes written to this stream.
   size_t size() { return data_.size(); }

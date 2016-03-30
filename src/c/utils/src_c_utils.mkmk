@@ -3,6 +3,7 @@
 
 library_files = [
   "alloc.c",
+  "blob.cc",
   "boundbuf.c",
   "callback.cc",
   "clock.cc",

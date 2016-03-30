@@ -12,6 +12,8 @@ END_C_INCLUDES
 
 namespace tclib {
 
+class OutStream;
+
 class Blob : public blob_t {
 public:
   // Creates a new empty blob.
@@ -36,6 +38,27 @@ public:
 
   // Is this the empty blob?
   bool is_empty() { return blob_is_empty(*this); }
+
+  // Configuration of how to dump a blob textually.
+  class DumpStyle {
+  public:
+    DumpStyle()
+      : word_size(4)
+      , bytes_per_line(16)
+      , show_hex(true)
+      , show_base_10(false)
+      , show_ascii(false)
+      , line_prefix("") { }
+    size_t word_size;
+    size_t bytes_per_line;
+    bool show_hex;
+    bool show_base_10;
+    bool show_ascii;
+    const char *line_prefix;
+  };
+
+  // Write this blob to the given output stream using the given style.
+  void dump(tclib::OutStream *out, DumpStyle style = DumpStyle());
 
 };
 
