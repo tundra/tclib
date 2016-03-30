@@ -76,8 +76,8 @@ IF_CHECKS_ENABLED(CHECK_EQ(M, get_boolean_value(E), true))
   if (!(__a__ OP __b__))                                                       \
     check_fail(__FILE__, __LINE__,                                             \
         "Check failed (" M "): %s %s %s.\n"                                    \
-        "  Left: %lli\n"                                                       \
-        "  Right: %lli",                                                       \
+        "  Left: %" PRIi64 "\n"                                                \
+        "  Right: %" PRIi64,                                                   \
         #A, #OP, #B, __a__, __b__);                                            \
 } while (false)
 

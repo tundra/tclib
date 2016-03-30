@@ -63,11 +63,11 @@
 #define kIsDebugCodegen IF_DEBUG_CODEGEN(true, false)
 
 #ifndef PRIi64
-#  define PRIi64 "li"
+#  define PRIi64 "lli"
 #endif
 
 #ifndef PRIx64
-#  define PRIx64 "lx"
+#  define PRIx64 "llx"
 #endif
 
 #ifdef IS_MACH
