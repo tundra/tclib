@@ -21,9 +21,9 @@ void fail(const char *file, int line, const char *fmt, ...);
   if (!(__a__ REL __b__))                                                      \
     fail(__FILE__, __LINE__,                                                   \
         "Assertion failed: " #A " " #REL " " #B ".\n"                          \
-        "  Left: %" PRIi64 "\n"                                                \
-        "  Right: %" PRIi64 "\n",                                              \
-        __a__, __b__);                                                         \
+        "  Left: %" PRIi64 " (0x%" PRIx64 ")\n"                                \
+        "  Right: %" PRIi64 " (0x%" PRIx64 ")\n",                              \
+        __a__, __a__, __b__, __b__);                                           \
 } while (false)
 
 // Works the same way as ASSERT_TRUE but gives more information for fat-bools.
