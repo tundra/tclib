@@ -142,6 +142,15 @@ private:
   std::vector<byte_t> data_;
 };
 
+// A byte out stream with extra conveniences for treating the data as an ascii
+// string.
+class StringOutStream : public ByteOutStream {
+public:
+  // Write the null terminator and return the contents of the stream as a
+  // string.
+  utf8_t flush_string();
+};
+
 } // tclib
 
 #endif // _TCLIB_STREAM_HH

@@ -77,3 +77,15 @@ void Blob::dump(OutStream *out, DumpStyle style) {
       return;
   }
 }
+
+bool blob_equals(blob_t a, blob_t b) {
+  if (a.size != b.size)
+    return false;
+  // If we ever need to do this for something performance sensitive probably
+  // change it to use strncmp or equivalent.
+  for (size_t i = 0; i < a.size; i++) {
+    if (static_cast<uint8_t*>(a.start)[i] != static_cast<uint8_t*>(b.start)[i])
+      return false;
+  }
+  return true;
+}

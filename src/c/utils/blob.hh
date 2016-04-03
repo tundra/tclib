@@ -39,6 +39,9 @@ public:
   // Is this the empty blob?
   bool is_empty() { return blob_is_empty(*this); }
 
+  // Returns true if both blobs have the same contents.
+  bool operator==(const Blob &that) const  { return blob_equals(*this, that); }
+
   // Configuration of how to dump a blob textually.
   class DumpStyle {
   public:

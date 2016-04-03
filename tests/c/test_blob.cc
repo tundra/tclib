@@ -20,10 +20,9 @@ TEST(blob, constr) {
 }
 
 static void check_dump(const char *expected, Blob blob, Blob::DumpStyle style) {
-  ByteOutStream stream;
+  StringOutStream stream;
   blob.dump(&stream, style);
-  stream.putchar(0);
-  ASSERT_C_STREQ(expected, reinterpret_cast<char*>(stream.data().data()));
+  ASSERT_C_STREQ(expected, stream.flush_string().chars);
 }
 
 TEST(blob, dump) {

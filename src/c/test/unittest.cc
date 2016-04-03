@@ -3,6 +3,7 @@
 
 #include "unittest.hh"
 #include "io/file.hh"
+#include "utils/blob.hh"
 
 BEGIN_C_INCLUDES
 #include "test/realtime.h"
@@ -221,6 +222,25 @@ void TestRunInfo::record_run(double duration, TestRunHandle *handle) {
     run_count_ += 1;
   }
 }
+
+void AssertUtils::assert_blobeq_impl(const char *file, int line,
+    const char *a_src, const char *b_src, void *a_start, size_t a_size,
+    void *b_start, size_t b_size) {
+  tclib::Blob a(a_start, a_size);
+  tclib::Blob b(b_start, b_size);
+  if (a == b)
+    return;
+  // The blobs weren't equal. Now we have to print them, elaborately.
+  tclib::Blob::DumpStyle style;
+  style.word_size = 2;
+  tclib::StringOutStream a_out;
+  a.dump(&a_out, style);
+  tclib::StringOutStream b_out;
+  b.dump(&b_out, style);
+  fail(file, line, "Assertion failed: %s == %s.\n  Expected: %s\n  Found: %s",
+      a_src, b_src, a_out.flush_string().chars, b_out.flush_string().chars);
+}
+
 
 // Run!
 int main(int argc, char *argv[]) {

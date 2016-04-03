@@ -83,6 +83,19 @@ static int64_t ptr_to_int_bit_cast(void *value) {
         #A, #B, __a__.chars, __a__.size, __b__.chars, __b__.size);             \
 } while (false)
 
+class AssertUtils {
+public:
+  static void assert_blobeq_impl(const char *file, int line, const char *a_src,
+      const char *b_src, void *a_start, size_t a_size, void *b_start, size_t b_size);
+};
+
+#define ASSERT_BLOBEQ(A, B) do {                                               \
+  blob_t __a__ = (A);                                                          \
+  blob_t __b__ = (B);                                                          \
+  AssertUtils::assert_blobeq_impl(__FILE__, __LINE__, #A, #B, __a__.start,     \
+      __a__.size, __b__.start, __b__.size);                                    \
+} while (false)
+
 // Fails unless the two given c-strings are equal.
 #define ASSERT_C_STREQ(A, B) do {                                              \
   utf8_t __sa__ = new_c_string(A);                                             \

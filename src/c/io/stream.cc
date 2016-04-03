@@ -7,6 +7,7 @@
 BEGIN_C_INCLUDES
 #include "utils/log.h"
 #include "utils/strbuf.h"
+#include "utils/string-inl.h"
 END_C_INCLUDES
 
 using namespace tclib;
@@ -111,6 +112,11 @@ bool ByteOutStream::write_sync(write_iop_state_t *op) {
 
 bool ByteOutStream::flush() {
   return true;
+}
+
+utf8_t StringOutStream::flush_string() {
+  putchar(0);
+  return new_string(reinterpret_cast<char*>(data().data()), data().size() - 1);
 }
 
 #ifdef IS_GCC

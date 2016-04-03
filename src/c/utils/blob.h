@@ -49,6 +49,9 @@ static inline void blob_copy_to(blob_t src, blob_t dest) {
   memcpy(dest.start, src.start, src.size);
 }
 
+// Returns true if both blobs have the same contents.
+bool blob_equals(blob_t a, blob_t b);
+
 // Given a struct by value, fills the memory occupied by the struct with zeroes.
 #define struct_zero_fill(V) blob_fill(blob_new(&(V), sizeof(V)), 0)
 
