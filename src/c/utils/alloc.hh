@@ -66,6 +66,10 @@ public:
   // had its value handled properly.
   T *arrive() const;
 
+  // Returns the value held by this ref without marking the value as having
+  // arrived.
+  T *peek() const;
+
 private:
   T *ptr_;
   mutable bool has_arrived_;
@@ -80,6 +84,11 @@ template <typename T>
 T *pass_def_ref_t<T>::arrive() const {
   CHECK_FALSE("pass-ref already arrived", has_arrived_);
   has_arrived_ = true;
+  return peek();
+}
+
+template <typename T>
+T *pass_def_ref_t<T>::peek() const {
   return ptr_;
 }
 
