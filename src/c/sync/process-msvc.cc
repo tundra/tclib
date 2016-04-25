@@ -575,8 +575,11 @@ fat_bool_t NativeProcessStart::launch(utf8_t executable) {
   NativeProcess::PlatformData *data = process()->platform_data_;
   // Create the child process.
   dword_t creation_flags = 0;
-  if ((process()->flags() & pfStartSuspendedOnWindows) != 0)
+  int32_t process_flags = process()->flags();
+  if ((process_flags & pfStartSuspendedOnWindows) != 0)
     creation_flags |= CREATE_SUSPENDED;
+  if ((process_flags & pfNewHiddenConsoleOnWindows) != 0)
+    creation_flags |= CREATE_NO_WINDOW;
   bool created = CreateProcess(
     executable.chars,// lpApplicationName
     cmdline_chars,   // lpCommandLine
