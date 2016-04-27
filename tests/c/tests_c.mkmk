@@ -43,6 +43,7 @@ test_file_names = [
   "test_thread.cc",
   "test_tinymt.cc",
   "test_vector.cc",
+  "test_winhdr.cc",
   "test_worklist.cc",
   "test_workpool_cpp.cc",
 ]

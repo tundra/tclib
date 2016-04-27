@@ -6,6 +6,8 @@
 #ifndef _STDC_INL
 #define _STDC_INL
 
+#include "c/stdc.h"
+
 #include <stdarg.h>
 
 // The default definitions of infinity that should be used instead of the
