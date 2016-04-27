@@ -185,11 +185,19 @@ MultiTestCaseInfo::MultiTestCaseInfo(const char *file, const char *suite, const 
 }
 
 void TestCaseInfo::validate() {
-  // Look for the test case marker in the filename.
-  const char *marker = "test_";
-  const char *basename_start = strstr(this->file, marker);
-  if (basename_start == NULL)
-    FATAL("Test file %s doesn't start with '%s'", this->file, marker);
+  static const char *kMarkers[2] = {"test_", "manual_"};
+  bool found_marker = false;
+  const char *marker = NULL;
+  const char *basename_start = NULL;
+  for (size_t i = 0; !found_marker && i < 2; i++) {
+    // Look for the test case marker in the filename.
+    marker = kMarkers[i];
+    basename_start = strstr(this->file, marker);
+    if (basename_start != NULL)
+      found_marker = true;
+  }
+  if (!found_marker)
+    FATAL("Test file %s doesn't start with a test file marker", this->file);
   // Check that what comes after the marker matches the test suite.
   const char *basename_suffix = basename_start + strlen(marker);
   if (strstr(basename_suffix, this->suite) != basename_suffix)
