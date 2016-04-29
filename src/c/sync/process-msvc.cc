@@ -580,6 +580,8 @@ fat_bool_t NativeProcessStart::launch(utf8_t executable) {
     creation_flags |= CREATE_SUSPENDED;
   if ((process_flags & pfNewHiddenConsoleOnWindows) != 0)
     creation_flags |= CREATE_NO_WINDOW;
+  if ((process_flags & pfNewVisibleConsoleOnWindows) != 0)
+    creation_flags |= CREATE_NEW_CONSOLE;
   bool created = CreateProcess(
     executable.chars,// lpApplicationName
     cmdline_chars,   // lpCommandLine

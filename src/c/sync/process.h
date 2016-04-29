@@ -38,7 +38,9 @@ typedef enum {
   pfStartSuspendedOnWindows = 0x01,
   // If this flag is set the process will get a new console with the console
   // window hidden.
-  pfNewHiddenConsoleOnWindows = 0x02
+  pfNewHiddenConsoleOnWindows = 0x02,
+  // Similar to pfNewHiddenConsoleOnWindows but displays the console window.
+  pfNewVisibleConsoleOnWindows = 0x04
 } native_process_flags_t;
 
 // How many standard streams are there?
