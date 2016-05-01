@@ -214,7 +214,8 @@ public:
   fat_bool_t inject_library(NativeProcessHandle::InjectRequest *request);
 
   // Starts the process of injecting the requested library but doesn't wait for
-  // it to complete. See inject_library for details.
+  // it to complete. See inject_library for details. Similar to the method of
+  // the same name on NativeProcessHandle but does more checking.
   fat_bool_t start_inject_library(NativeProcessHandle::InjectRequest *request);
 
   // Specifies that the given redirect should be used for the given stream. Must

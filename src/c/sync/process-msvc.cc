@@ -60,7 +60,7 @@ NativeProcess::PlatformData::~PlatformData() {
 void NativeProcess::mark_terminated(bool timer_or_wait_fired) {
   dword_t exit_code = 0;
   if (!GetExitCodeProcess(
-      platform_data()->info()->hProcess, // hProcess
+      platform_data()->child_process(), // hProcess
       &exit_code)) { // lpExitCode
     WARN("Call to GetExitCodeProcess failed: %i", GetLastError());
   }
@@ -619,7 +619,7 @@ fat_bool_t NativeProcessStart::launch(utf8_t executable) {
   process()->state = NativeProcess::nsRunning;
   if (!RegisterWaitForSingleObject(
       &data->wait_handle(),    // phNewWaitObject
-      data->info()->hProcess,  // hObject
+      data->child_process(),   // hObject
       &mark_terminated_bridge, // Callback
       process(),               // Context
       INFINITE,                // dwMilliseconds
