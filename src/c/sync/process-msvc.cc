@@ -11,33 +11,38 @@ END_C_INCLUDES
 
 using namespace tclib;
 
+NativeProcessHandle::NativeProcessHandle()
+  : id_(INVALID_HANDLE_VALUE) { }
+
 class NativeProcess::PlatformData {
 public:
   PlatformData();
   ~PlatformData();
-  handle_t child_process() { return info.hProcess; }
-  handle_t child_main_thread() { return info.hThread; }
+  handle_t child_process() { return info()->hProcess; }
+  handle_t child_main_thread() { return info()->hThread; }
+  PROCESS_INFORMATION *info() { return &info_; }
+  handle_t &wait_handle() { return wait_handle_; }
 
-public:
-  PROCESS_INFORMATION info;
-  handle_t wait_handle;
+private:
+  PROCESS_INFORMATION info_;
+  handle_t wait_handle_;
 };
 
 NativeProcess::PlatformData::PlatformData()
-  : wait_handle(INVALID_HANDLE_VALUE) {
-  ZeroMemory(&info, sizeof(info));
-  info.hProcess = INVALID_HANDLE_VALUE;
-  info.hThread = INVALID_HANDLE_VALUE;
+  : wait_handle_(INVALID_HANDLE_VALUE) {
+  struct_zero_fill(info_);
+  info()->hProcess = INVALID_HANDLE_VALUE;
+  info()->hThread = INVALID_HANDLE_VALUE;
 }
 
 NativeProcess::PlatformData::~PlatformData() {
-  if (info.hProcess != INVALID_HANDLE_VALUE)
-    CloseHandle(info.hProcess);
-  if (info.hThread != INVALID_HANDLE_VALUE)
-    CloseHandle(info.hThread);
-  ZeroMemory(&info, sizeof(info));
-  if (wait_handle != INVALID_HANDLE_VALUE) {
-    if (!UnregisterWaitEx(wait_handle, NULL)) {
+  if (info()->hProcess != INVALID_HANDLE_VALUE)
+    CloseHandle(info()->hProcess);
+  if (info()->hThread != INVALID_HANDLE_VALUE)
+    CloseHandle(info()->hThread);
+  struct_zero_fill(info_);
+  if (wait_handle() != INVALID_HANDLE_VALUE) {
+    if (!UnregisterWaitEx(wait_handle(), NULL)) {
       // There is a race condition here because the wait callback it invoked
       // from a different thread and we have no guarantee of when that might
       // finish. So it's a possibility that we'll dispose the platform data
@@ -48,14 +53,14 @@ NativeProcess::PlatformData::~PlatformData() {
       if (err != ERROR_IO_PENDING)
         WARN("Call to UnregisterWaitEx failed: %i", err);
     }
-    wait_handle = INVALID_HANDLE_VALUE;
+    wait_handle_ = INVALID_HANDLE_VALUE;
   }
 }
 
 void NativeProcess::mark_terminated(bool timer_or_wait_fired) {
   dword_t exit_code = 0;
   if (!GetExitCodeProcess(
-      platform_data_->info.hProcess, // hProcess
+      platform_data()->info()->hProcess, // hProcess
       &exit_code)) { // lpExitCode
     WARN("Call to GetExitCodeProcess failed: %i", GetLastError());
   }
@@ -93,7 +98,7 @@ private:
   blob_t remote_data_;
 };
 
-class NativeProcess::InjectState {
+class NativeProcessHandle::InjectState {
 public:
   InjectState(InjectRequest *request, handle_t child_process)
     : request_(request)
@@ -166,7 +171,7 @@ private:
   fat_bool_t read_data_from_child_process(const void *addr, T *dest, size_t size);
 };
 
-dword_t __stdcall NativeProcess::InjectState::inject_entry_point(void *raw_data) {
+dword_t __stdcall NativeProcessHandle::InjectState::inject_entry_point(void *raw_data) {
   // This code is *very* special indeed because it will be copied into the
   // child process. It must be smaller than kMaxEntryPointSize bytes long,
   // can't use literal strings (because they won't be copied along with it) and
@@ -205,7 +210,7 @@ dword_t __stdcall NativeProcess::InjectState::inject_entry_point(void *raw_data)
 }
 
 template <typename T>
-fat_bool_t NativeProcess::InjectState::read_data_from_child_process(const void *addr,
+fat_bool_t NativeProcessHandle::InjectState::read_data_from_child_process(const void *addr,
     T *dest, size_t size) {
   win_size_t bytes_read = 0;
   if (!ReadProcessMemory(child_process_, addr, dest, size, &bytes_read)) {
@@ -215,18 +220,21 @@ fat_bool_t NativeProcess::InjectState::read_data_from_child_process(const void *
   return F_TRUE;
 }
 
-fat_bool_t NativeProcess::start_inject_library(InjectRequest *request) {
+fat_bool_t NativeProcess::start_inject_library(NativeProcessHandle::InjectRequest *request) {
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   CHECK_TRUE("already injecting", request->state() == NULL);
-  NativeProcess::InjectState *state = new (kDefaultAlloc) NativeProcess::InjectState(
-      request, platform_data()->child_process());
+  return handle()->start_inject_library(request);
+}
+
+fat_bool_t NativeProcessHandle::start_inject_library(InjectRequest *request) {
+  InjectState *state = new (kDefaultAlloc) InjectState(request, id());
   request->set_state(state);
   return state->start_inject_dll();
 }
 
-fat_bool_t NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
+fat_bool_t NativeProcessHandle::complete_inject_library(InjectRequest *request, Duration timeout) {
   CHECK_TRUE("not injecting", request->state() != NULL);
-  NativeProcess::InjectState *state = request->state();
+  InjectState *state = request->state();
   request->set_state(NULL);
   fat_bool_t injected = state->complete_inject_dll(timeout);
   default_delete_concrete(state);
@@ -278,7 +286,7 @@ fat_bool_t RemoteMemory<T>::alloc(handle_t process, size_t size, bool is_executa
   return F_TRUE;
 }
 
-fat_bool_t NativeProcess::InjectState::start_inject_dll() {
+fat_bool_t NativeProcessHandle::InjectState::start_inject_dll() {
   // Create a local version of the injected data which we'll later copy into
   // the process.
   inject_data_t proto_data;
@@ -321,7 +329,7 @@ fat_bool_t NativeProcess::InjectState::start_inject_dll() {
       false));
 
   // Copy the binary code of the entry point function into the process.
-  F_TRY(remote_entry_point_.copy_into(child_process_, resolve_jump_thunk(inject_entry_point),
+  F_TRY(remote_entry_point_.copy_into(child_process_, NativeProcess::resolve_jump_thunk(inject_entry_point),
       kMaxEntryPointSize, true));
   LPTHREAD_START_ROUTINE start = reinterpret_cast<LPTHREAD_START_ROUTINE>(*remote_entry_point_);
 
@@ -343,7 +351,7 @@ fat_bool_t NativeProcess::InjectState::start_inject_dll() {
   return F_TRUE;
 }
 
-fat_bool_t NativeProcess::InjectState::complete_inject_dll(Duration timeout) {
+fat_bool_t NativeProcessHandle::InjectState::complete_inject_dll(Duration timeout) {
   // Wait the the loader thread to complete.
   if (WaitForSingleObject(loader_thread_, timeout.to_winapi_millis()) != WAIT_OBJECT_0)
     return F_FALSE;
@@ -592,7 +600,7 @@ fat_bool_t NativeProcessStart::launch(utf8_t executable) {
     env,             // lpEnvironment
     NULL,            // lpCurrentDirectory
     &startup_info_,  // lpStartupInfo
-    &data->info);    // lpProcessInformation
+    data->info());   // lpProcessInformation
 
   if (!created) {
     process()->state = NativeProcess::nsCouldntCreate;
@@ -607,10 +615,11 @@ fat_bool_t NativeProcessStart::launch(utf8_t executable) {
     return F_TRUE;
   }
 
+  process()->handle()->set_id(data->child_process());
   process()->state = NativeProcess::nsRunning;
   if (!RegisterWaitForSingleObject(
-      &data->wait_handle,      // phNewWaitObject
-      data->info.hProcess,     // hObject
+      &data->wait_handle(),    // phNewWaitObject
+      data->info()->hProcess,  // hObject
       &mark_terminated_bridge, // Callback
       process(),               // Context
       INFINITE,                // dwMilliseconds

@@ -114,6 +114,48 @@ private:
   AbstractStream *local_side(StreamRedirect *redirect) const;
 };
 
+// A handle to an existing process, either created by this one or by someone
+// else.
+class NativeProcessHandle {
+public:
+  NativeProcessHandle();
+
+  // Internal state about an injection optionally used by the implementation.
+  class InjectState;
+
+  // State associated with injecting a dll into a process.
+  class InjectRequest {
+  public:
+    InjectRequest(utf8_t path);
+    void set_connector(utf8_t name, blob_t data_in, blob_t data_out);
+    utf8_t path() { return path_; }
+    utf8_t connector_name() { return connector_name_; }
+    blob_t data_in() { return data_in_; }
+    blob_t data_out() { return data_out_; }
+    InjectState *state() { return state_; }
+    void set_state(InjectState *state) { state_ = state; }
+  private:
+    utf8_t path_;
+    utf8_t connector_name_;
+    blob_t data_in_;
+    blob_t data_out_;
+    InjectState *state_;
+  };
+
+  void set_id(platform_process_t value) { id_ = value; }
+
+  // Starts the process of injecting the requested library but doesn't wait for
+  // it to complete. See inject_library for details.
+  fat_bool_t start_inject_library(InjectRequest *request);
+
+  // Waits for the injection process to complete.
+  fat_bool_t complete_inject_library(InjectRequest *request, Duration timeout = Duration::unlimited());
+
+private:
+  platform_process_t id() { return id_; }
+  platform_process_t id_;
+};
+
 // An os-native process.
 class NativeProcess: public native_process_t {
 public:
@@ -159,28 +201,6 @@ public:
   // Sets this process' flags. The flags come from native_process_flags_t.
   void set_flags(int32_t value) { flags_ = value; }
 
-  // Internal state about an injection optionally used by the implementation.
-  class InjectState;
-
-  // State associated with injecting a dll into a process.
-  class InjectRequest {
-  public:
-    InjectRequest(utf8_t path);
-    void set_connector(utf8_t name, blob_t data_in, blob_t data_out);
-    utf8_t path() { return path_; }
-    utf8_t connector_name() { return connector_name_; }
-    blob_t data_in() { return data_in_; }
-    blob_t data_out() { return data_out_; }
-    InjectState *state() { return state_; }
-    void set_state(InjectState *state) { state_ = state; }
-  private:
-    utf8_t path_;
-    utf8_t connector_name_;
-    blob_t data_in_;
-    blob_t data_out_;
-    InjectState *state_;
-  };
-
   // On windows, loads a dll into a suspended process. Returns true if
   // successful and false otherwise, including on linux where this is just not
   // supported.
@@ -191,14 +211,11 @@ public:
   // be passed a copy of the data in blob_in and a piece of scratch memory the
   // same size as blob_out, whose contents will be copied back into blob_out
   // once the call has completed.
-  fat_bool_t inject_library(InjectRequest *request);
+  fat_bool_t inject_library(NativeProcessHandle::InjectRequest *request);
 
   // Starts the process of injecting the requested library but doesn't wait for
   // it to complete. See inject_library for details.
-  fat_bool_t start_inject_library(InjectRequest *request);
-
-  // Waits for the injection process to complete.
-  fat_bool_t complete_inject_library(InjectRequest *request, Duration timeout = Duration::unlimited());
+  fat_bool_t start_inject_library(NativeProcessHandle::InjectRequest *request);
 
   // Specifies that the given redirect should be used for the given stream. Must
   // be called before starting the process.
@@ -216,6 +233,10 @@ public:
   // Returns the same promise as the exit_code method but viewed as the C
   // promise type. The result is valid until the process object is destroyed.
   opaque_promise_t *opaque_exit_code();
+
+  // Returns a handle for this process; only valid after the process has been
+  // started.
+  NativeProcessHandle *handle() { return &handle_; }
 
   // Called asynchronously when the system notices that the process is done
   // running.
@@ -243,6 +264,7 @@ private:
   StreamRedirect stdio_[kStdioStreamCount];
   std::vector<std::string> env_;
   int32_t flags_;
+  NativeProcessHandle handle_;
 };
 
 } // namespace tclib

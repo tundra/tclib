@@ -98,20 +98,20 @@ bool NativeProcess::wait_sync(Duration timeout) {
   return passed;
 }
 
-fat_bool_t NativeProcess::inject_library(InjectRequest *request) {
+fat_bool_t NativeProcess::inject_library(NativeProcessHandle::InjectRequest *request) {
   F_TRY(start_inject_library(request));
-  F_TRY(complete_inject_library(request));
+  F_TRY(handle()->complete_inject_library(request));
   return F_TRUE;
 }
 
-NativeProcess::InjectRequest::InjectRequest(utf8_t path)
+NativeProcessHandle::InjectRequest::InjectRequest(utf8_t path)
   : path_(path)
   , connector_name_(string_empty())
   , data_in_(blob_empty())
   , data_out_(blob_empty())
   , state_(NULL) { }
 
-void NativeProcess::InjectRequest::set_connector(utf8_t name, blob_t data_in,
+void NativeProcessHandle::InjectRequest::set_connector(utf8_t name, blob_t data_in,
     blob_t data_out) {
   connector_name_ = name;
   data_in_ = data_in;

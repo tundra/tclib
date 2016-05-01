@@ -21,3 +21,6 @@ typedef pthread_cond_t platform_condition_t;
 typedef int platform_pipe_t[2];
 
 #define platform_time_t struct timespec
+
+typedef pid_t platform_process_t;
+#define kPlatformProcessInit 0

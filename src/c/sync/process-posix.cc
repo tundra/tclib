@@ -137,6 +137,9 @@ private:
   NativeSemaphore action_count_;
 };
 
+NativeProcessHandle::NativeProcessHandle()
+  : id_(0) { }
+
 class NativeProcess::PlatformData {
 public:
   PlatformData();
@@ -334,12 +337,13 @@ bool NativeProcess::mark_terminated(int result) {
   return fulfilled;
 }
 
-fat_bool_t NativeProcess::start_inject_library(InjectRequest *request) {
+fat_bool_t NativeProcess::start_inject_library(NativeProcessHandle::InjectRequest *request) {
   CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   return F_FALSE;
 }
 
-fat_bool_t NativeProcess::complete_inject_library(InjectRequest *request, Duration timeout) {
+fat_bool_t NativeProcessHandle::complete_inject_library(InjectRequest *request,
+    Duration timeout) {
   // Starting injection can't succeed so definitely we don't want anyone to be
   // calling complete.
   UNREACHABLE("completing injection");

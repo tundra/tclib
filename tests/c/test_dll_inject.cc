@@ -50,7 +50,7 @@ MULTITEST(dll_inject, exec_durian, size_t, Flavor, ("clean", 0), ("inject", 1), 
   ASSERT_TRUE(process.start(get_durian_main(), 3, args));
   if (do_inject) {
     blob_t data_out = allocator_default_malloc(fib_size);
-    NativeProcess::InjectRequest request(get_injectee_dll());
+    NativeProcessHandle::InjectRequest request(get_injectee_dll());
     request.set_connector(new_c_string("TestInjecteeConnect"), data_in, data_out);
     ASSERT_TRUE(process.inject_library(&request));
     uint8_t *bytes_out = static_cast<uint8_t*>(data_out.start);
@@ -80,7 +80,7 @@ TEST(dll_inject, blocking_connector) {
   def_ref_t<ServerChannel> server = ServerChannel::create();
   ASSERT_TRUE(server->allocate());
   utf8_t name = server->name();
-  NativeProcess::InjectRequest request(get_injectee_dll());
+  NativeProcessHandle::InjectRequest request(get_injectee_dll());
   request.set_connector(new_c_string("TestInjecteeConnectBlocking"),
       blob_new(const_cast<char*>(name.chars), name.size), blob_empty());
 
@@ -94,7 +94,7 @@ TEST(dll_inject, blocking_connector) {
   ASSERT_TRUE(write.execute());
 
   // Wait for the injection to complete.
-  ASSERT_TRUE(process.complete_inject_library(&request));
+  ASSERT_TRUE(process.handle()->complete_inject_library(&request));
 
   // We can now close the server.
   ASSERT_TRUE(server->close());

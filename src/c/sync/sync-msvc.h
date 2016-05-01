@@ -26,3 +26,6 @@ typedef struct {
 } platform_pipe_t;
 
 typedef uint32_t platform_time_t;
+
+typedef void *platform_process_t;
+#define kPlatformProcessInit INVALID_HANDLE_VALUE
