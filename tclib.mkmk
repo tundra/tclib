@@ -44,7 +44,6 @@ c.get_settings().add_pervasive("linkflags", "-rdynamic", "-lstdc++", toolchain="
 c.get_settings().add_pervasive("warnings",
   "all",
   "extra",                # More errors please.
-  "unused-result",
   "no-unused-parameter",  # Sometime you don't need all the params.
   "no-unused-function",   # Not all header functions are used in all.
                           #   the files that include them.
