@@ -31,8 +31,10 @@ NativeCondition::~NativeCondition() {
   struct_zero_fill(*this);
 }
 
-bool NativeCondition::initialize() {
-  if (!is_initialized)
-    is_initialized = platform_initialize();
-  return is_initialized;
+fat_bool_t NativeCondition::initialize() {
+  if (!is_initialized) {
+    F_TRY(platform_initialize());
+    is_initialized = true;
+  }
+  return F_TRUE;
 }

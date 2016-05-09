@@ -32,7 +32,7 @@ public:
 
   // Initializes the state of this intex, returning true if initialization
   // succeeded.
-  bool initialize();
+  fat_bool_t initialize();
 
   // Sets the value of this intex and, if at least one thread is currently
   // blocked waiting for this intex that can be released with the new value,
@@ -41,14 +41,18 @@ public:
   // change the value further in the meantime.
   //
   // The intex must currently be locked by the calling thread.
-  bool set(uint64_t value);
+  fat_bool_t set(uint64_t value);
+
+  // Adds the given, possibly negative, delta to the value of this intex. Uses
+  // ::set so all the same conditions apply.
+  fat_bool_t add(int64_t delta);
 
   // Wait for this intex to become available, then acquires it regardless of
   // its value.
-  bool lock(Duration timeout = Duration::unlimited());
+  fat_bool_t lock(Duration timeout = Duration::unlimited());
 
   // Releases this intex which must already be held.
-  bool unlock();
+  fat_bool_t unlock();
 
 private:
   // Classes that implement the different operators so they can be passed as
@@ -63,7 +67,7 @@ private:
   // Lock this intex conditionally on the type of condition given as a template
   // argument.
   template <typename C>
-  bool lock_cond(Duration timeout, uint64_t target);
+  fat_bool_t lock_cond(Duration timeout, uint64_t target);
 
   NativeMutex *guard() { return static_cast<NativeMutex*>(&guard_); }
 
@@ -72,22 +76,22 @@ private:
   class Dispatcher {
   public:
     // Wait for the value to become equal to another value.
-    bool operator==(uint64_t value) { return intex_->lock_cond<Eq>(timeout_, value); }
+    fat_bool_t operator==(uint64_t value) { return intex_->lock_cond<Eq>(timeout_, value); }
 
     // Wait for the value to become different from another value.
-    bool operator!=(uint64_t value) { return intex_->lock_cond<Neq>(timeout_, value); }
+    fat_bool_t operator!=(uint64_t value) { return intex_->lock_cond<Neq>(timeout_, value); }
 
     // Wait for the value to become less than another value.
-    bool operator<(uint64_t value) { return intex_->lock_cond<Lt>(timeout_, value); }
+    fat_bool_t operator<(uint64_t value) { return intex_->lock_cond<Lt>(timeout_, value); }
 
     // Wait for the value to become less than or equal to another value.
-    bool operator<=(uint64_t value) { return intex_->lock_cond<Leq>(timeout_, value); }
+    fat_bool_t operator<=(uint64_t value) { return intex_->lock_cond<Leq>(timeout_, value); }
 
     // Wait for the value to become greater than another value.
-    bool operator>(uint64_t value) { return intex_->lock_cond<Gt>(timeout_, value); }
+    fat_bool_t operator>(uint64_t value) { return intex_->lock_cond<Gt>(timeout_, value); }
 
     // Wait for the value to become greater than or equal to another value.
-    bool operator>=(uint64_t value) { return intex_->lock_cond<Geq>(timeout_, value); }
+    fat_bool_t operator>=(uint64_t value) { return intex_->lock_cond<Geq>(timeout_, value); }
 
     explicit Dispatcher(Intex *intex, Duration timeout)
       : intex_(intex)
@@ -113,18 +117,18 @@ public:
 };
 
 template <typename C>
-bool Intex::lock_cond(Duration timeout, uint64_t target) {
-  if (!guard()->lock(timeout))
-    return false;
+fat_bool_t Intex::lock_cond(Duration timeout, uint64_t target) {
+  F_TRY(guard()->lock(timeout));
   // We now have to lock, now spin around waiting for the value to become what
   // we're waiting for.
   while (!C::eval(value_, target)) {
-    if (!cond()->wait(guard(), timeout)) {
+    fat_bool_t waited = cond()->wait(guard(), timeout);
+    if (!waited) {
       guard()->unlock();
-      return false;
+      return waited;
     }
   }
-  return true;
+  return F_TRUE;
 }
 
 // A drawbridge is a simple wrapper around an intex. It allows threads to be
@@ -142,18 +146,18 @@ public:
   Drawbridge(state_t init_state = dsRaised);
 
   // Initialize the internal state of this drawbridge.
-  bool initialize();
+  fat_bool_t initialize();
 
   // Block this drawbridge so no more threads can pass it. Raising an already
   // raised drawbridge has no effect.
-  bool raise(Duration timeout = Duration::unlimited());
+  fat_bool_t raise(Duration timeout = Duration::unlimited());
 
   // Unblock this drawbridge so threads are free to pass it. Lowering an already
   // lowered drawbridge has no effect.
-  bool lower(Duration timeout = Duration::unlimited());
+  fat_bool_t lower(Duration timeout = Duration::unlimited());
 
   // Wait for this drawbridge to be lowered, then pass it.
-  bool pass(Duration timeout = Duration::unlimited());
+  fat_bool_t pass(Duration timeout = Duration::unlimited());
 
 private:
   Intex intex_;

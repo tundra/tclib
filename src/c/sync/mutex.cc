@@ -37,13 +37,15 @@ NativeMutex::~NativeMutex() {
   struct_zero_fill(*this);
 }
 
-bool NativeMutex::initialize() {
-  if (!is_initialized)
-    is_initialized = platform_initialize();
-  return is_initialized;
+fat_bool_t NativeMutex::initialize() {
+  if (!is_initialized) {
+    F_TRY(platform_initialize());
+    is_initialized = true;
+  }
+  return F_TRUE;
 }
 
-bool NativeMutex::try_lock() {
+fat_bool_t NativeMutex::try_lock() {
   return lock(Duration::instant());
 }
 

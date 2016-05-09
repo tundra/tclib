@@ -34,36 +34,36 @@ public:
 
   // Prepares this workpool for running. The worker thread(s) won't be started
   // but after this you can add tasks.
-  bool initialize();
+  fat_bool_t initialize();
 
   // Starts the worker thread(s) running.
-  bool start();
+  fat_bool_t start();
 
   // Adds a task to the set this workpool should run. By default the task will
   // keep the workpool running until the task has been executed but the flags
   // can use to control that. Thread safe.
-  bool add_task(task_thunk_t task, int32_t flags);
+  fat_bool_t add_task(task_thunk_t task, int32_t flags);
 
   // Runs this workpool until it has no more tasks. If the flag is true then
   // we execute daemon tasks, otherwise those are skipped.
-  bool join(bool skip_daemons = true);
+  fat_bool_t join(bool skip_daemons = true);
 
   // Instructs the workpool whether to skip daemons or not. Usually you'd let
   // this happen automatically from join but it's exposed separately for
   // testing.
-  bool set_skip_daemons(bool value);
+  void set_skip_daemons(bool value);
 
 private:
   // Entry-point for worker threads.
   opaque_t run_worker();
 
   // Adds the given task to the list run by this workpool.
-  bool offer_task(Task *task);
+  fat_bool_t offer_task(Task *task);
 
   // Waits for the next task to become available, then takes it and stores it in
   // the given out parameter. When shutting down this may return NULL, otherwise
   // it is guaranteed not to.
-  bool poll_task(Task **task_out);
+  fat_bool_t poll_task(Task **task_out);
 
   // The next task to perform. Guarded by guard_;
   Task *next_task_;

@@ -3,30 +3,30 @@
 
 #include "c/winhdr.h"
 
-bool NativeMutex::platform_initialize() {
+fat_bool_t NativeMutex::platform_initialize() {
   InitializeCriticalSection(get_platform_mutex(this));
-  return true;
+  return F_TRUE;
 }
 
-bool NativeMutex::platform_dispose() {
+fat_bool_t NativeMutex::platform_dispose() {
   DeleteCriticalSection(get_platform_mutex(this));
-  return true;
+  return F_TRUE;
 }
 
-bool NativeMutex::lock(Duration timeout) {
+fat_bool_t NativeMutex::lock(Duration timeout) {
   CRITICAL_SECTION *mutex = get_platform_mutex(this);
   if (timeout.is_unlimited()) {
     EnterCriticalSection(mutex);
-    return true;
+    return F_TRUE;
   } else if (timeout.is_instant()) {
-    return TryEnterCriticalSection(mutex);
+    return F_BOOL(TryEnterCriticalSection(mutex));
   } else {
     CHECK_TRUE("nontrivial mutex timeout", false);
-    return false;
+    return F_FALSE;
   }
 }
 
-bool NativeMutex::unlock() {
+fat_bool_t NativeMutex::unlock() {
   LeaveCriticalSection(get_platform_mutex(this));
-  return true;
+  return F_TRUE;
 }

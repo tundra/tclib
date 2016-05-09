@@ -55,15 +55,15 @@ native_thread_id_t NativeThread::get_current_id() {
   return GetCurrentThreadId();
 }
 
-bool NativeThread::yield() {
-  return SwitchToThread();
+fat_bool_t NativeThread::yield() {
+  return F_BOOL(SwitchToThread());
 }
 
 bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {
   return a == b;
 }
 
-bool NativeThread::sleep(Duration duration) {
+fat_bool_t NativeThread::sleep(Duration duration) {
   Sleep(duration.to_winapi_millis());
-  return true;
+  return F_TRUE;
 }

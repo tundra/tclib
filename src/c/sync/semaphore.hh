@@ -7,6 +7,7 @@
 #include "c/stdc.h"
 
 #include "utils/duration.hh"
+#include "utils/fatbool.hh"
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
@@ -32,25 +33,25 @@ public:
   void set_initial_count(uint32_t value) { initial_count = value; }
 
   // Initialize this semaphore, returning true on success.
-  bool initialize();
+  fat_bool_t initialize();
 
   // Attempt to acquire a permit from this semaphore, blocking up to the given
   // duration if necessary.
-  bool acquire(Duration timeout = Duration::unlimited());
+  fat_bool_t acquire(Duration timeout = Duration::unlimited());
 
   // Attempt to acquire a permit from this semaphore but will not wait if no
   // permits are available. Shorthand for acquire(duration_instant()).
-  bool try_acquire();
+  fat_bool_t try_acquire();
 
   // Release a permit to this semaphore.
-  bool release();
+  fat_bool_t release();
 
 private:
   // Platform-specific initialization.
-  bool platform_initialize();
+  fat_bool_t platform_initialize();
 
   // Platform-specific destruction.
-  bool platform_dispose();
+  fat_bool_t platform_dispose();
 };
 
 } // namespace tclib

@@ -10,22 +10,22 @@
 // they return error codes through errno instead of their result values which
 // will always be -1 on errors. It's okay though, errno should be thread safe.
 
-bool NativeSemaphore::platform_initialize() {
+fat_bool_t NativeSemaphore::platform_initialize() {
   int result = sem_init(&sema, false, initial_count);
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to sem_init failed: %i (error: %s)", result, strerror(errno));
-  return false;
+  return F_FALSE;
 }
 
-bool NativeSemaphore::platform_dispose() {
+fat_bool_t NativeSemaphore::platform_dispose() {
   int result = sem_destroy(&sema);
   if (result != 0)
     WARN("Call to sem_destroy failed: %i (error: %s)", result, strerror(errno));
-  return result == 0;
+  return F_BOOL(result == 0);
 }
 
-bool NativeSemaphore::acquire(Duration timeout) {
+fat_bool_t NativeSemaphore::acquire(Duration timeout) {
   CHECK_TRUE("not initialized", is_initialized);
   int result;
   errno = 0;
@@ -39,19 +39,19 @@ bool NativeSemaphore::acquire(Duration timeout) {
     result = sem_timedwait(&sema, &deadline.to_platform());
   }
   if (result == 0)
-    return true;
+    return F_TRUE;
   if (errno != ETIMEDOUT && errno != EAGAIN)
     // Timing out or unavailability is fine so only warn if it's a different
     // error.
     WARN("Waiting for semaphore failed: %i (error: %s)", result, strerror(errno));
-  return false;
+  return F_FALSE;
 }
 
-bool NativeSemaphore::release() {
+fat_bool_t NativeSemaphore::release() {
   CHECK_TRUE("not initialized", is_initialized);
   int result = sem_post(&sema);
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to sem_post failed: %i (error: %s)", result, strerror(errno));
-  return false;
+  return F_FALSE;
 }

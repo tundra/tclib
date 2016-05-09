@@ -45,10 +45,10 @@ public:
   static bool ids_equal(native_thread_id_t a, native_thread_id_t b);
 
   // Yield execution to another thread.
-  static bool yield();
+  static fat_bool_t yield();
 
   // Sleep the current thread for the given duration.
-  static bool sleep(Duration duration);
+  static fat_bool_t sleep(Duration duration);
 
 private:
   // Internal state used to sanity check how a thread is used.

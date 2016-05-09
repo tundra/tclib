@@ -3,7 +3,7 @@
 
 #include "c/winhdr.h"
 
-bool NativeSemaphore::platform_initialize() {
+fat_bool_t NativeSemaphore::platform_initialize() {
   handle_t result = CreateSemaphore(
       NULL, // lpSemaphoreAttributes
       initial_count, // lInitialCount
@@ -11,38 +11,38 @@ bool NativeSemaphore::platform_initialize() {
       NULL); // lpName
   if (result == NULL) {
     WARN("Call to CreateSemaphore failed: %i", GetLastError());
-    return false;
+    return F_FALSE;
   }
   sema = result;
-  return true;
+  return F_TRUE;
 }
 
-bool NativeSemaphore::platform_dispose() {
+fat_bool_t NativeSemaphore::platform_dispose() {
   if (sema != INVALID_HANDLE_VALUE) {
     if (!CloseHandle(sema)) {
       WARN("Call to CloseHandle failed: %i", GetLastError());
-      return false;
+      return F_FALSE;
     }
   }
-  return true;
+  return F_TRUE;
 }
 
-bool NativeSemaphore::acquire(Duration timeout) {
+fat_bool_t NativeSemaphore::acquire(Duration timeout) {
   dword_t result = WaitForSingleObject(sema, timeout.to_winapi_millis());
   if (result == WAIT_OBJECT_0)
-    return true;
+    return F_TRUE;
   if (result == WAIT_FAILED)
     WARN("Call to WaitForSingleObject failed: %i", GetLastError());
-  return false;
+  return F_FALSE;
 }
 
-bool NativeSemaphore::release() {
+fat_bool_t NativeSemaphore::release() {
   bool result = ReleaseSemaphore(
       sema,  // hSemaphore
       1,     // lReleaseCount
       NULL); // lpPreviousCount
   if (result)
-    return true;
+    return F_TRUE;
   WARN("Call to ReleaseSemaphore failed: %i", GetLastError());
-  return false;
+  return F_FALSE;
 }

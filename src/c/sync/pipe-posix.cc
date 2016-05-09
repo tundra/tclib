@@ -140,7 +140,7 @@ class PosixClientChannel : public ClientChannel {
 public:
   PosixClientChannel();
   virtual ~PosixClientChannel();
-  virtual bool open(utf8_t basename);
+  virtual fat_bool_t open(utf8_t basename);
   virtual InStream *in() { return in_; }
   virtual OutStream *out() { return out_; }
   virtual void default_destroy() { default_delete_concrete(this); }
@@ -159,15 +159,14 @@ PosixClientChannel::~PosixClientChannel() {
   delete out_;
 }
 
-bool PosixClientChannel::open(utf8_t basename) {
+fat_bool_t PosixClientChannel::open(utf8_t basename) {
   FileStreams up;
   FileStreams down;
-  if (!PosixServerChannel::connect_fifo(basename, kUpSuffix, OPEN_FILE_MODE_WRITE, &up)
-      || !PosixServerChannel::connect_fifo(basename, kDownSuffix, OPEN_FILE_MODE_READ, &down))
-    return false;
+  F_TRY(PosixServerChannel::connect_fifo(basename, kUpSuffix, OPEN_FILE_MODE_WRITE, &up));
+  F_TRY(PosixServerChannel::connect_fifo(basename, kDownSuffix, OPEN_FILE_MODE_READ, &down));
   in_ = down.in();
   out_ = up.out();
-  return true;
+  return F_TRUE;
 }
 
 pass_def_ref_t<ClientChannel> ClientChannel::create() {

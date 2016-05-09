@@ -18,7 +18,7 @@ namespace tclib {
 // An os-native condition variable.
 class NativeCondition : public native_condition_t {
 public:
-  // Create a new uninitialized cpndition variable.
+  // Create a new uninitialized condition variable.
   NativeCondition();
 
   // Dispose this condition variable.
@@ -26,26 +26,26 @@ public:
 
   // Initialize this condition variable. Returns true iff initialization
   // succeeds.
-  bool initialize();
+  fat_bool_t initialize();
 
   // Block this condition on the given mutex and release the mutex (which must
   // be held exactly once by the calling thread) atomically. While blocked the
   // thread may wake up spuriously without being explicitly woken.
-  bool wait(NativeMutex *mutex, Duration timeout = Duration::unlimited());
+  fat_bool_t wait(NativeMutex *mutex, Duration timeout = Duration::unlimited());
 
   // Wake at least one thread that is waiting on this condition, if any are
   // waiting, but not necessarily all of them.
-  bool wake_one();
+  fat_bool_t wake_one();
 
   // Wake all threads waiting on this condition.
-  bool wake_all();
+  fat_bool_t wake_all();
 
 private:
   // Platform-specific initialization.
-  bool platform_initialize();
+  fat_bool_t platform_initialize();
 
   // Platform-specific destruction.
-  bool platform_dispose();
+  fat_bool_t platform_dispose();
 };
 
 } // namespace tclib

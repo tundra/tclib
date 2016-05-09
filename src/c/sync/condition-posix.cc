@@ -6,23 +6,23 @@
 
 #include "utils/clock.hh"
 
-bool NativeCondition::platform_initialize() {
+fat_bool_t NativeCondition::platform_initialize() {
   int result = pthread_cond_init(&cond, NULL);
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to pthread_cond_init failed: %i (error: %s)", result, strerror(result));
-  return false;
+  return F_FALSE;
 }
 
-bool NativeCondition::platform_dispose() {
+fat_bool_t NativeCondition::platform_dispose() {
   int result = pthread_cond_destroy(&cond);
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to pthread_cond_destroy failed: %i (error: %s)", result, strerror(result));
-  return false;
+  return F_FALSE;
 }
 
-bool NativeCondition::wait(NativeMutex *mutex, Duration timeout) {
+fat_bool_t NativeCondition::wait(NativeMutex *mutex, Duration timeout) {
   int result;
   if (timeout.is_unlimited()) {
     result = pthread_cond_wait(&cond, &mutex->mutex);
@@ -31,26 +31,26 @@ bool NativeCondition::wait(NativeMutex *mutex, Duration timeout) {
     struct timespec posix_time = time.to_posix();
     result = pthread_cond_timedwait(&cond, &mutex->mutex, &posix_time);
     if (result == ETIMEDOUT)
-      return false;
+      return F_FALSE;
   }
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to pthread_cond_wait failed: %i (error: %s)", result, strerror(result));
-  return false;
+  return F_FALSE;
 }
 
-bool NativeCondition::wake_one() {
+fat_bool_t NativeCondition::wake_one() {
   int result = pthread_cond_signal(&cond);
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to pthread_cond_signal failed: %i (error: %s)", result, strerror(result));
-  return false;
+  return F_FALSE;
 }
 
-bool NativeCondition::wake_all() {
+fat_bool_t NativeCondition::wake_all() {
   int result = pthread_cond_broadcast(&cond);
   if (result == 0)
-    return true;
+    return F_TRUE;
   WARN("Call to pthread_cond_broadcast failed: %i (error: %s)", result, strerror(result));
-  return false;
+  return F_FALSE;
 }

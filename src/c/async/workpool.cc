@@ -46,77 +46,77 @@ Workpool::Workpool()
 opaque_t Workpool::run_worker() {
   while (true) {
     Task *task = NULL;
-    if (!poll_task(&task))
-      return b2o(false);
+    fat_bool_t polled = poll_task(&task);
+    if (!polled)
+      return f2o(polled);
     if (task == NULL)
       // There are no more tasks left so we can simply return.
-      return b2o(true);
+      return f2o(F_TRUE);
     if (!(skip_daemons_ && task->is_daemon()))
       task->thunk_();
     default_delete_concrete(task);
   }
 }
 
-bool Workpool::initialize() {
-  B_TRY(action_count_.initialize());
-  B_TRY(guard_.initialize());
-  return true;
+fat_bool_t Workpool::initialize() {
+  F_TRY(action_count_.initialize());
+  F_TRY(guard_.initialize());
+  return F_TRUE;
 }
 
-bool Workpool::start() {
+fat_bool_t Workpool::start() {
   worker_ = new NativeThread(new_callback(&Workpool::run_worker, this));
   return worker_->start();
 }
 
-bool Workpool::set_skip_daemons(bool skip_daemons) {
+void Workpool::set_skip_daemons(bool skip_daemons) {
   skip_daemons_ = skip_daemons;
-  return true;
 }
 
-bool Workpool::join(bool skip_daemons) {
+fat_bool_t Workpool::join(bool skip_daemons) {
   if (worker_ == NULL)
-    return true;
-  B_TRY(guard_.lock());
+    return F_TRUE;
+  F_TRY(guard_.lock());
     is_shutting_down_ = true;
-    B_TRY(set_skip_daemons(skip_daemons));
-  B_TRY(guard_.unlock());
-  B_TRY(action_count_.release());
+    set_skip_daemons(skip_daemons);
+  F_TRY(guard_.unlock());
+  F_TRY(action_count_.release());
   opaque_t value = o0();
-  B_TRY(worker_->join(&value));
+  F_TRY(worker_->join(&value));
   delete worker_;
   worker_ = NULL;
-  return o2b(value);
+  return o2f(value);
 }
 
-bool Workpool::add_task(task_thunk_t callback, int32_t flags) {
+fat_bool_t Workpool::add_task(task_thunk_t callback, int32_t flags) {
   Task *task = new (kDefaultAlloc) Task(callback, flags);
   if (task == NULL) {
     WARN("Failed to allocate task");
-    return false;
+    return F_FALSE;
   }
   return offer_task(task);
 }
 
-bool Workpool::offer_task(Task *task) {
-  B_TRY(guard_.lock());
+fat_bool_t Workpool::offer_task(Task *task) {
+  F_TRY(guard_.lock());
     if (next_task_ == NULL) {
       next_task_ = last_task_ = task;
     } else {
       Task *old_last_task = last_task_;
       last_task_ = old_last_task->successor_ = task;
     }
-  B_TRY(guard_.unlock());
-  B_TRY(action_count_.release());
-  return true;
+  F_TRY(guard_.unlock());
+  F_TRY(action_count_.release());
+  return F_TRUE;
 }
 
-bool Workpool::poll_task(Task **task_out) {
-  B_TRY(action_count_.acquire());
-  B_TRY(guard_.lock());
+fat_bool_t Workpool::poll_task(Task **task_out) {
+  F_TRY(action_count_.acquire());
+  F_TRY(guard_.lock());
     if (is_shutting_down_)
       // If we're shutting down we have to leave the action count nonzero such
       // that other workers also get the message.
-      B_TRY(action_count_.release());
+      F_TRY(action_count_.release());
     Task *task = next_task_;
     if (task != NULL) {
       Task *new_next = task->successor_;
@@ -124,7 +124,7 @@ bool Workpool::poll_task(Task **task_out) {
       if (new_next == NULL)
         last_task_ = NULL;
     }
-  B_TRY(guard_.unlock());
+  F_TRY(guard_.unlock());
   *task_out = task;
-  return true;
+  return F_TRUE;
 }

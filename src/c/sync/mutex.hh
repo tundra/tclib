@@ -7,6 +7,8 @@
 #include "c/stdc.h"
 
 #include "utils/duration.hh"
+#include "utils/fatbool.hh"
+
 
 BEGIN_C_INCLUDES
 #include "sync/sync.h"
@@ -25,17 +27,17 @@ public:
   ~NativeMutex();
 
   // Initialize this mutex. Returns true iff initialization succeeds.
-  bool initialize();
+  fat_bool_t initialize();
 
   // Lock this mutex. If it's already held by a different thread we'll wait for
   // it to be released. If it's already held by this thread that's fine, we'll
   // lock it again. Note that unly the unlimited and instant timeouts are valid
   // since there's no support for other timeouts on windows or mach.
-  bool lock(Duration timeout = Duration::unlimited());
+  fat_bool_t lock(Duration timeout = Duration::unlimited());
 
   // Lock this mutex. If it's already held don't wait but return false
   // immediately. Shorthand for lock(Duration::instant()).
-  bool try_lock();
+  fat_bool_t try_lock();
 
   // Unlock this mutex. Only the thread that holds this mutex will be allowed
   // to unlock it. If another thread tries to unlock it there are two possible
@@ -44,7 +46,7 @@ public:
   // state. On others the behavior and return value will be undefined and the
   // mutex may be left broken. If checks_consistency() returns true the first
   // will be the case, otherwise it will be the second.
-  bool unlock();
+  fat_bool_t unlock();
 
   // Returns true if unlocking while the mutex isn't held causes unlock to
   // return false. If this returns false the discipline is implicit and
@@ -55,10 +57,10 @@ public:
 
 private:
   // Platform-specific initialization.
-  bool platform_initialize();
+  fat_bool_t platform_initialize();
 
   // Platform-specific destruction.
-  bool platform_dispose();
+  fat_bool_t platform_dispose();
 };
 
 } // namespace tclib

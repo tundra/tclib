@@ -49,13 +49,15 @@ NativeSemaphore::~NativeSemaphore() {
   platform_dispose();
 }
 
-bool NativeSemaphore::initialize() {
-  if (!is_initialized)
-    is_initialized = platform_initialize();
-  return is_initialized;
+fat_bool_t NativeSemaphore::initialize() {
+  if (!is_initialized) {
+    F_TRY(platform_initialize());
+    is_initialized = true;
+  }
+  return F_TRUE;
 }
 
-bool NativeSemaphore::try_acquire() {
+fat_bool_t NativeSemaphore::try_acquire() {
   return acquire(Duration::instant());
 }
 

@@ -98,7 +98,7 @@ public:
 
   // Open a connection to the server, possibly blocking until the connection has
   // been made.
-  virtual bool open(utf8_t name) = 0;
+  virtual fat_bool_t open(utf8_t name) = 0;
 
   // Returns the input stream that allows the client to read data that was
   // written by the server. Don't close this directly, instead it is closed

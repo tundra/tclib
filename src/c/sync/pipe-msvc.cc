@@ -196,19 +196,18 @@ pass_def_ref_t<ServerChannel> ServerChannel::create() {
 class WindowsClientChannel : public ClientChannel {
 public:
   virtual void default_destroy() { default_delete_concrete(this); }
-  virtual bool open(utf8_t name);
+  virtual fat_bool_t open(utf8_t name);
   virtual InStream *in() { return *stream_; }
   virtual OutStream *out() { return *stream_; }
 private:
   def_ref_t<InOutStream, InStream> stream_;
 };
 
-bool WindowsClientChannel::open(utf8_t name) {
+fat_bool_t WindowsClientChannel::open(utf8_t name) {
   handle_t handle = INVALID_HANDLE_VALUE;
-  if (!WindowsPipeUtils::connect_named_pipe(name, false, &handle))
-    return false;
+  F_TRY(WindowsPipeUtils::connect_named_pipe(name, false, &handle));
   stream_ = InOutStream::from_raw_handle(handle);
-  return true;
+  return F_TRUE;
 }
 
 pass_def_ref_t<ClientChannel> ClientChannel::create() {

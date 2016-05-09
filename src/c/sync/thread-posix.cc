@@ -44,15 +44,15 @@ native_thread_id_t NativeThread::get_current_id() {
   return pthread_self();
 }
 
-bool NativeThread::yield() {
-  return IF_MACH(sched_yield(), pthread_yield()) == 0;
+fat_bool_t NativeThread::yield() {
+  return F_BOOL(IF_MACH(sched_yield(), pthread_yield()) == 0);
 }
 
 bool NativeThread::ids_equal(native_thread_id_t a, native_thread_id_t b) {
   return pthread_equal(a, b) != 0;
 }
 
-bool NativeThread::sleep(Duration duration) {
+fat_bool_t NativeThread::sleep(Duration duration) {
   NativeTime native_duration = NativeTime::zero() + duration;
-  return nanosleep(&native_duration.to_platform(), NULL) == 0;
+  return F_BOOL(nanosleep(&native_duration.to_platform(), NULL) == 0);
 }

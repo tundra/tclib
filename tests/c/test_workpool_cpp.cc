@@ -29,7 +29,7 @@ TEST(workpool_cpp, simple) {
 TEST(workpool_cpp, daemons) {
   Workpool pool;
   ASSERT_TRUE(pool.initialize());
-  ASSERT_TRUE(pool.set_skip_daemons(true));
+  pool.set_skip_daemons(true);
   int count = 0;
   int daemon_count = 0;
   for (int i = 0; i < 100; i++) {
