@@ -24,8 +24,8 @@ public:
   typedef callback_t<void(E)> ErrorCallback;
   promise_state_t();
   virtual ~promise_state_t();
-  virtual bool fulfill(const T &value);
-  virtual bool reject(const E &value);
+  virtual fat_bool_t fulfill(const T &value);
+  virtual fat_bool_t reject(const E &value);
   bool is_settled();
   bool is_fulfilled();
   bool is_rejected();
@@ -179,9 +179,9 @@ class sync_promise_state_t : public promise_state_t<T, E> {
 public:
   sync_promise_state_t();
   ~sync_promise_state_t() { }
-  bool wait(Duration timeout);
-  virtual bool fulfill(const T &value);
-  virtual bool reject(const E &value);
+  fat_bool_t wait(Duration timeout);
+  virtual fat_bool_t fulfill(const T &value);
+  virtual fat_bool_t reject(const E &value);
 protected:
   virtual size_t instance_size() { return sizeof(*this); }
 
@@ -204,7 +204,7 @@ public:
 
   // Blocks this thread until this promise has been fulfilled. Once this returns
   // you can use the peek_ methods to get the value/error.
-  bool wait(Duration timeout = Duration::unlimited()) { return state()->wait(timeout); }
+  fat_bool_t wait(Duration timeout = Duration::unlimited()) { return state()->wait(timeout); }
 
 private:
   sync_promise_state_t<T, E> *state() { return static_cast<sync_promise_state_t<T, E>*>(promise_t<T, E>::state()); }

@@ -686,3 +686,7 @@ fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   F_TRY(start.post_launch());
   return F_TRUE;
 }
+
+uint32_t NativeProcess::guid() {
+  return GetProcessId(platform_data()->child_process());
+}

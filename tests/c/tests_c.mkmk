@@ -59,6 +59,8 @@ durian_main = c.get_executable("durian")
 durian_main.add_object(compile_test_file(c.get_source_file("durian.cc")))
 get_group("durian_main").add_dependency(durian_main)
 
+helpers_library = get_group("helpers")
+
 # Create a group containing the test files along with the runtime library.
 test_library = get_group("library")
 test_library.add_dependency(get_external('src', 'c', 'io', 'library'))
@@ -66,12 +68,16 @@ test_library.add_dependency(get_external('src', 'c', 'sync', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'async', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'library'))
 test_library.add_dependency(get_external('src', 'c', 'test', 'log-fail'))
+test_library.add_dependency(helpers_library)
 
 # Compile the test source files.
 for test_file_name in test_file_names:
   test_file = c.get_source_file(test_file_name)
   object_file = compile_test_file(test_file)
-  test_library.add_member(object_file)
+  if test_file_name.startswith("test_"):
+    test_library.add_member(object_file)
+  else:
+    helpers_library.add_member(object_file)
 
 # Compile the test main executable.
 test_main = c.get_executable("main")

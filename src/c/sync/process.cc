@@ -80,7 +80,7 @@ opaque_promise_t *NativeProcess::opaque_exit_code() {
   return opaque_exit_code_;
 }
 
-bool NativeProcess::wait_sync(Duration timeout) {
+fat_bool_t NativeProcess::wait_sync(Duration timeout) {
   CHECK_TRUE("waiting for process not running", (state == nsRunning)
       || (state == nsCouldntCreate));
 
@@ -88,11 +88,11 @@ bool NativeProcess::wait_sync(Duration timeout) {
     // If we didn't even manage to create the child process waiting for it to
     // terminate trivially succeeds.
     state = nsComplete;
-    return true;
+    return F_TRUE;
   }
 
   // Once the process terminates the drawbridge will be lowered.
-  bool passed = exit_code_.wait(timeout);
+  fat_bool_t passed = exit_code_.wait(timeout);
   if (passed)
     this->state = nsComplete;
   return passed;

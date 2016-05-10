@@ -78,15 +78,23 @@ static always_inline uint32_t fat_bool_code(fat_bool_t value) {
 // location if the value is false.
 #define F_BOOL(v) fat_bool_new((v) ? 0 : __JOIN_IDS__(FILE_ID, __LINE__))
 
+// Report a false fat-bool through the logging infrastructure.
+void fat_bool_log(const char *file, int line, fat_bool_t error);
+
+#define F_LOG_FALSE(EXPR) do {                                                 \
+  fat_bool_t __value__ = (EXPR);                                               \
+  if (__value__.code != 0)                                                     \
+    fat_bool_log(__FILE__, __LINE__, __value__);                               \
+} while (false)
+
 #if F_TRACE_FAILURES
 #  ifndef ALLOW_DEVUTILS
 #    error "Tracing fatbool failures not allowed"
 #  endif
-void fat_bool_log_failure(const char *file, int line, fat_bool_t error);
 #  define F_TRY(EXPR) do {                                                     \
   fat_bool_t __value__ = (EXPR);                                               \
   if (__value__.code != 0) {                                                   \
-    fat_bool_log_failure(__FILE__, __LINE__, __value__);                       \
+    fat_bool_log(__FILE__, __LINE__, __value__);                               \
     return __value__;                                                          \
   }                                                                            \
 } while (false)

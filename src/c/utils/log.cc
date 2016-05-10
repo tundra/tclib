@@ -224,7 +224,7 @@ bool Log::propagate(log_entry_t *entry) {
   return METHOD(outer_, log)(outer_, entry);
 }
 
-void fat_bool_log_failure(const char *file, int line, fat_bool_t error) {
-  LOG_WARN_FILE_LINE(file, line, "Propagating fatbool " kFatBoolFileLine,
+void fat_bool_log(const char *file, int line, fat_bool_t error) {
+  LOG_WARN_FILE_LINE(file, line, "Fatbool false " kFatBoolFileLine,
       fat_bool_file(error), fat_bool_line(error));
 }

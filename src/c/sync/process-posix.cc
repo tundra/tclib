@@ -350,6 +350,10 @@ fat_bool_t NativeProcessHandle::complete_inject_library(InjectRequest *request,
   return F_FALSE;
 }
 
+uint32_t NativeProcess::guid() {
+  return platform_data()->pid;
+}
+
 bool ProcessRegistry::handle_signal(int signum, siginfo_t *info, void *context) {
   // Handling a signal is very easy: we just tell the dispatcher thread that
   // there is work to do and it will process any pending terminations. We don't

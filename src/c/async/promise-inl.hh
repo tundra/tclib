@@ -6,6 +6,7 @@
 
 #include "async/promise.hh"
 #include "sync/semaphore.hh"
+#include "utils/fatbool.hh"
 
 namespace tclib {
 
@@ -81,12 +82,12 @@ promise_state_t<T, E>::~promise_state_t() {
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::fulfill(const T &value) {
+fat_bool_t promise_state_t<T, E>::fulfill(const T &value) {
   // Try to put this promise in the resolving state. This can only be done once
   // by one thread so after this has happened we can safely update the state.
   // This also catches the case where the promise has already been resolved.
   if (!atomic_int32_compare_and_set(&state_, psPending, psSettling))
-    return false;
+    return F_FALSE;
   // Set the value before the state such that it is safe to assume the value
   // is set when the state is non-empty. This is used by peek_value.
   unsafe_set_value(value);
@@ -99,18 +100,20 @@ bool promise_state_t<T, E>::fulfill(const T &value) {
     (on_fulfills_[i])(value);
   on_failures_.clear();
   on_fulfills_.clear();
-  return true;
+  return F_TRUE;
 }
 
 template <typename T, typename E>
-bool sync_promise_state_t<T, E>::fulfill(const T &value) {
-  return promise_state_t<T, E>::fulfill(value) && drawbridge_.lower();
+fat_bool_t sync_promise_state_t<T, E>::fulfill(const T &value) {
+  F_TRY((promise_state_t<T, E>::fulfill(value)));
+  F_TRY(drawbridge_.lower());
+  return F_TRUE;
 }
 
 template <typename T, typename E>
-bool promise_state_t<T, E>::reject(const E &error) {
+fat_bool_t promise_state_t<T, E>::reject(const E &error) {
   if (!atomic_int32_compare_and_set(&state_, psPending, psSettling))
-    return false;
+    return F_FALSE;
   // See fulfill for why we set the error first.
   unsafe_set_error(error);
   atomic_int32_set(&state_, psRejected);
@@ -122,12 +125,14 @@ bool promise_state_t<T, E>::reject(const E &error) {
     (on_failures_[i])(error);
   on_fulfills_.clear();
   on_failures_.clear();
-  return true;
+  return F_TRUE;
 }
 
 template <typename T, typename E>
-bool sync_promise_state_t<T, E>::reject(const E &error) {
-  return promise_state_t<T, E>::reject(error) && drawbridge_.lower();
+fat_bool_t sync_promise_state_t<T, E>::reject(const E &error) {
+  F_TRY((promise_state_t<T, E>::reject(error)));
+  F_TRY(drawbridge_.lower());
+  return F_TRUE;
 }
 
 template <typename T, typename E>
@@ -214,8 +219,9 @@ sync_promise_t<T, E> sync_promise_t<T, E>::pending() {
 }
 
 template <typename T, typename E>
-bool sync_promise_state_t<T, E>::wait(Duration timeout) {
-  return drawbridge_.pass(timeout);
+fat_bool_t sync_promise_state_t<T, E>::wait(Duration timeout) {
+  F_TRY(drawbridge_.pass(timeout));
+  return F_TRUE;
 }
 
 template <typename T, typename E>

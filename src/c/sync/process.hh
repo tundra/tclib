@@ -157,7 +157,7 @@ private:
 };
 
 // An os-native process.
-class NativeProcess: public native_process_t {
+class NativeProcess: public native_process_t, public tclib::DefaultDestructable {
 public:
   // Current running state of a native process. Used to control internal behavior.
   typedef enum {
@@ -171,7 +171,9 @@ public:
   NativeProcess();
 
   // Dispose this process.
-  ~NativeProcess();
+  virtual ~NativeProcess();
+
+  virtual void default_destroy() { tclib::default_delete_concrete(this); }
 
   // Start this process running. This will return immediately after spawning
   // the child process, there is no guarantee that the executable is started or
@@ -225,7 +227,7 @@ public:
   }
 
   // Wait synchronously for this process to terminate.
-  bool wait_sync(Duration timeout = Duration::unlimited());
+  fat_bool_t wait_sync(Duration timeout = Duration::unlimited());
 
   // Returns a promise for the process' exit code. This will be resolved at some
   // point after the process terminates.
@@ -238,6 +240,9 @@ public:
   // Returns a handle for this process; only valid after the process has been
   // started.
   NativeProcessHandle *handle() { return &handle_; }
+
+  // Returns a system-wide unique id for this process.
+  uint32_t guid();
 
   // Called asynchronously when the system notices that the process is done
   // running.
