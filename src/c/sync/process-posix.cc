@@ -140,10 +140,6 @@ private:
 NativeProcessHandle::NativeProcessHandle()
   : id_(0) { }
 
-class NativeProcess::PlatformData {
-public:
-};
-
 NativeProcessStart::NativeProcessStart(NativeProcess *process)
   : process_(process) { }
 
@@ -274,8 +270,6 @@ fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   // errors back in the parent process.
   if (!start.configure_file_descriptors() || !start.build_sub_environment())
     return F_FALSE;
-
-  platform_data_ = new NativeProcess::PlatformData();
 
   // Block SIGCHLD while we're forking. There's a potential race condition if
   // a child signal lands between fork() and adding to the process registry

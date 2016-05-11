@@ -188,7 +188,4 @@ NativeProcess::~NativeProcess() {
     opaque_promise_destroy(opaque_exit_code_);
     opaque_exit_code_ = NULL;
   }
-
-  delete platform_data_;
-  platform_data_ = NULL;
 }
