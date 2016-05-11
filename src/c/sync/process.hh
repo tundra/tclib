@@ -142,7 +142,18 @@ public:
     InjectState *state_;
   };
 
-  void set_id(platform_process_t value) { id_ = value; }
+  // Sets this handle's raw id value.
+  void set_process(platform_process_t value) { id_ = value; }
+
+  // Opens the process with the given id and connects this handle to it. Note
+  // that the handle must be closed explicitly, it will not close on destruct.
+  fat_bool_t open(native_process_id_t id);
+
+  // If this handle has been opened from a guid, closes it again.
+  fat_bool_t close();
+
+  // Returns a system-wide unique id for this process.
+  native_process_id_t guid();
 
   // Starts the process of injecting the requested library but doesn't wait for
   // it to complete. See inject_library for details.
@@ -240,9 +251,6 @@ public:
   // Returns a handle for this process; only valid after the process has been
   // started.
   NativeProcessHandle *handle() { return &handle_; }
-
-  // Returns a system-wide unique id for this process.
-  uint32_t guid();
 
   // Called asynchronously when the system notices that the process is done
   // running.

@@ -142,12 +142,7 @@ NativeProcessHandle::NativeProcessHandle()
 
 class NativeProcess::PlatformData {
 public:
-  PlatformData();
-  pid_t pid;
 };
-
-NativeProcess::PlatformData::PlatformData()
-  : pid(0) { }
 
 NativeProcessStart::NativeProcessStart(NativeProcess *process)
   : process_(process) { }
@@ -304,7 +299,7 @@ fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   } else if (fork_pid > 0) {
     ProcessRegistry::get()->add(fork_pid, this);
     // We're in the parent so just record the child's pid and we're done.
-    this->platform_data_->pid = fork_pid;
+    this->handle()->set_process(fork_pid);
     this->state = nsRunning;
     result = start.parent_post_fork();
   } else {
@@ -333,7 +328,7 @@ fat_bool_t NativeProcess::kill() {
 bool NativeProcess::mark_terminated(int result) {
   bool fulfilled = this->exit_code_.fulfill(WEXITSTATUS(result));
   if (!fulfilled)
-    WARN("Failed to fulfill for %lli", this->platform_data_->pid);
+    WARN("Failed to fulfill for %lli", this->handle()->guid());
   return fulfilled;
 }
 
@@ -350,8 +345,18 @@ fat_bool_t NativeProcessHandle::complete_inject_library(InjectRequest *request,
   return F_FALSE;
 }
 
-uint32_t NativeProcess::guid() {
-  return platform_data()->pid;
+pid_t NativeProcessHandle::guid() {
+  // The raw handle and id happen to be the same on posix, the pid.
+  return id_;
+}
+
+fat_bool_t NativeProcessHandle::open(pid_t id) {
+  id_ = id;
+  return F_TRUE;
+}
+
+fat_bool_t NativeProcessHandle::close() {
+  return F_TRUE;
 }
 
 bool ProcessRegistry::handle_signal(int signum, siginfo_t *info, void *context) {

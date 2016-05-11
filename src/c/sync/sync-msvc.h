@@ -27,5 +27,9 @@ typedef struct {
 
 typedef uint32_t platform_time_t;
 
+// An internal handle that gives one process access to another.
 typedef void *platform_process_t;
 #define kPlatformProcessInit INVALID_HANDLE_VALUE
+
+// An external process id that can be passed between processes.
+typedef uint32_t native_process_id_t;

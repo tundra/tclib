@@ -24,3 +24,6 @@ typedef int platform_pipe_t[2];
 
 typedef pid_t platform_process_t;
 #define kPlatformProcessInit 0
+
+// An external process id that can be passed between processes.
+typedef pid_t native_process_id_t;

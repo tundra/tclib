@@ -615,7 +615,7 @@ fat_bool_t NativeProcessStart::launch(utf8_t executable) {
     return F_TRUE;
   }
 
-  process()->handle()->set_id(data->child_process());
+  process()->handle()->set_process(data->child_process());
   process()->state = NativeProcess::nsRunning;
   if (!RegisterWaitForSingleObject(
       &data->wait_handle(),    // phNewWaitObject
@@ -687,6 +687,18 @@ fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
   return F_TRUE;
 }
 
-uint32_t NativeProcess::guid() {
-  return GetProcessId(platform_data()->child_process());
+uint32_t NativeProcessHandle::guid() {
+  return GetProcessId(id_);
+}
+
+fat_bool_t NativeProcessHandle::open(uint32_t id) {
+  handle_t hand = OpenProcess(PROCESS_ALL_ACCESS, false, id);
+  if (hand == NULL)
+    return F_FALSE;
+  id_ = hand;
+  return F_TRUE;
+}
+
+fat_bool_t NativeProcessHandle::close() {
+  return F_BOOL(CloseHandle(id_));
 }
