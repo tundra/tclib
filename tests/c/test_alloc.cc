@@ -2,10 +2,9 @@
 //- Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 #include "test/unittest.hh"
+#include "utils/alloc.hh"
 
-BEGIN_C_INCLUDES
-#include "utils/alloc.h"
-END_C_INCLUDES
+using namespace tclib;
 
 typedef struct {
   int64_t x;
@@ -65,4 +64,17 @@ TEST(alloc, malloc_struct) {
   allocator_t *prev = allocator_set_default(&blocked);
   ASSERT_PTREQ(NULL, allocator_default_malloc_struct(point_t));
   allocator_set_default(prev);
+}
+
+class Testy : public DefaultDestructable { };
+
+TEST(alloc, ref_nulls) {
+  def_ref_t<Testy> t0 = pass_def_ref_t<Testy>::null();
+  pass_def_ref_t<Testy> t1 = pass_def_ref_t<Testy>::null();
+
+  def_ref_t<Testy> t2 = pass_def_ref_t<Testy>(NULL);
+  pass_def_ref_t<Testy> t3 = pass_def_ref_t<Testy>(NULL);
+
+  def_ref_t<Testy> t4 = t3;
+  def_ref_t<Testy> t5 = t3;
 }

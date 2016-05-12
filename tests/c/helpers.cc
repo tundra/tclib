@@ -5,7 +5,7 @@
 #include "helpers.hh"
 
 utf8_t get_durian_main() {
-  const char *result = getenv("DURIAN_MAIN");
+  const char *result = getenv("DURIAN");
   ASSERT_TRUE(result != NULL);
   return new_c_string(result);
 }

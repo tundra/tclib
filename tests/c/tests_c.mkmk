@@ -104,7 +104,7 @@ for test_file_name in test_file_names:
   test_case.set_runner(test_main)
   stripped_test_case_name = re.match(r"test_(\w+).c", test_file_name).group(1)
   test_case.set_arguments(stripped_test_case_name)
-  test_case.add_env("DURIAN_MAIN", durian_main.get_output_path())
+  test_case.add_env("DURIAN", durian_main.get_output_path())
   test_case.add_env("INJECTEE", injectee.get_output_path())
   test_case.add_dependency(durian_main)
   test_case.add_dependency(injectee)

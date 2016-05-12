@@ -55,11 +55,11 @@ template <typename T>
 class pass_def_ref_t {
 public:
   pass_def_ref_t() : ptr_(NULL), has_arrived_(true) { }
-  pass_def_ref_t(T *ptr) : ptr_(ptr), has_arrived_(false) { }
+  pass_def_ref_t(T *ptr) : ptr_(ptr), has_arrived_(ptr == NULL) { }
   pass_def_ref_t(const pass_def_ref_t<T> &that);
   ~pass_def_ref_t() { CHECK_TRUE("pass-ref never arrived", has_arrived_); }
   void operator=(const pass_def_ref_t<T> &that);
-  bool is_null() { return ptr_ == NULL; }
+  bool is_null() const { return ptr_ == NULL; }
   static pass_def_ref_t<T> null() { return pass_def_ref_t<T>(); }
 
   // Return the value held by this pass-ref and mark the reference as having
@@ -73,6 +73,11 @@ public:
 private:
   T *ptr_;
   mutable bool has_arrived_;
+
+  // Use this instead of has_arrived_ because it's convenient for nulls to
+  // ignore the arrival discipline -- they don't need to be disposed so who
+  // cares about the discipline anyway.
+  bool allow_arrive() const { return is_null() || !has_arrived_; }
 };
 
 template <typename T>
@@ -82,7 +87,7 @@ pass_def_ref_t<T>::pass_def_ref_t(const pass_def_ref_t<T> &that)
 
 template <typename T>
 T *pass_def_ref_t<T>::arrive() const {
-  CHECK_FALSE("pass-ref already arrived", has_arrived_);
+  CHECK_TRUE("pass-ref already arrived", allow_arrive());
   has_arrived_ = true;
   return peek();
 }
