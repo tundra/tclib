@@ -4,9 +4,8 @@
 #ifndef _UTILS_FATBOOL_HH
 #define _UTILS_FATBOOL_HH
 
-// It should be safe to include this without the BEGIN_C_INCLUDES thing because
-// all the functions get inlined so there's no problem with linking and name
-// mangling.
+BEGIN_C_INCLUDES
 #include "utils/fatbool.h"
+END_C_INCLUDES
 
 #endif // _UTILS_FATBOOL_HH

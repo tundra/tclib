@@ -6,6 +6,7 @@
 
 #include "c/stdc-inl.h"
 #include "utils/alloc.h"
+#include "utils/fatbool.h"
 #include "utils/ook.h"
 #include "utils/string.h"
 
@@ -19,25 +20,25 @@ typedef struct {
 } string_buffer_t;
 
 // Initialize a string buffer.
-bool string_buffer_init(string_buffer_t *buf);
+fat_bool_t string_buffer_init(string_buffer_t *buf);
 
 // Disposes the given string buffer.
 void string_buffer_dispose(string_buffer_t *buf);
 
 // Add a single character to this buffer.
-bool string_buffer_putc(string_buffer_t *buf, char c);
+fat_bool_t string_buffer_putc(string_buffer_t *buf, char c);
 
 // Append the given text to the given buffer.
-bool string_buffer_printf(string_buffer_t *buf, const char *format, ...);
+fat_bool_t string_buffer_printf(string_buffer_t *buf, const char *format, ...);
 
 // Format the given input onto the given buffer using native sprintf.
-bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...);
+fat_bool_t string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...);
 
 // Append the given text to the given buffer.
-bool string_buffer_vprintf(string_buffer_t *buf, const char *format, va_list argp);
+fat_bool_t string_buffer_vprintf(string_buffer_t *buf, const char *format, va_list argp);
 
 // Append the contents of the string to this buffer.
-bool string_buffer_append(string_buffer_t *buf, utf8_t str);
+fat_bool_t string_buffer_append(string_buffer_t *buf, utf8_t str);
 
 // Null-terminates the buffer and stores the result in the given out parameter.
 // The string is still backed by the buffer and so becomes invalid when the
@@ -71,9 +72,9 @@ typedef struct {
   char format;
 } format_request_t;
 
-// Type of abort functions.
-typedef void (*write_format_value_m)(format_handler_o *self, format_request_t *request,
-    va_list_ref_t argp);
+// Type of format-write functions.
+typedef fat_bool_t (*write_format_value_m)(format_handler_o *self,
+    format_request_t *request, va_list_ref_t argp);
 
 struct format_handler_o_vtable_t {
   write_format_value_m write_format_value;

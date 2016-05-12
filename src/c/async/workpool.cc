@@ -5,7 +5,6 @@
 
 BEGIN_C_INCLUDES
 #include "utils/log.h"
-#include "utils/trybool.h"
 END_C_INCLUDES
 
 #include "async/workpool.hh"

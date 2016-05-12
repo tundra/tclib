@@ -60,3 +60,24 @@ TEST(fatbool, try_false) {
   ASSERT_EQ(kOwnFileId, fat_bool_file(fb));
   ASSERT_EQ(45, fat_bool_line(fb));
 }
+
+static fat_bool_t tryfail0(bool *except_block_hit, bool *continued, fat_bool_t cond) {
+  F_TRY_EXCEPT(cond);
+    *except_block_hit = true;
+  F_YRT();
+  *continued = true;
+  return F_TRUE;
+}
+
+TEST(fatbool, try_except) {
+  fat_bool_t no = F_FALSE;
+  bool except_block_hit = false;
+  bool continued = false;
+  ASSERT_EQ(no.code, tryfail0(&except_block_hit, &continued, no).code);
+  ASSERT_TRUE(except_block_hit);
+  ASSERT_FALSE(continued);
+  except_block_hit = false;
+  ASSERT_F_TRUE(tryfail0(&except_block_hit, &continued, F_TRUE));
+  ASSERT_FALSE(except_block_hit);
+  ASSERT_TRUE(continued);
+}

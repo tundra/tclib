@@ -10,6 +10,7 @@
 #include "c/stdc.h"
 #include "utils/ook.h"
 #include "utils/string.h"
+#include "fatbool.h"
 
 #include <stdarg.h>
 
@@ -84,7 +85,7 @@ void log_message(log_level_t level, const char *file, int line, const char *fmt,
     ...);
 
 // Va_list version of log message.
-bool vlog_message(log_level_t level, const char *file, int line, const char *fmt,
+fat_bool_t vlog_message(log_level_t level, const char *file, int line, const char *fmt,
     va_list argp);
 
 // The data that makes up an entry in the log.
@@ -109,7 +110,7 @@ void log_entry_default_init(log_entry_t *entry, log_level_t level,
     const char *file, int line, utf8_t message, utf8_t timestamp);
 
 // Logs a message that has already been processed into an entry.
-bool log_entry(log_entry_t *entry);
+fat_bool_t log_entry(log_entry_t *entry);
 
 // Returns true if an entry has been logged whose log level requires the runtime
 // to yield a non-successful error code.
@@ -118,7 +119,7 @@ bool has_logged_error_code_exit_entry();
 INTERFACE(log_o);
 
 // Type of log functions.
-typedef bool (*log_m)(log_o *self, log_entry_t *entry);
+typedef fat_bool_t (*log_m)(log_o *self, log_entry_t *entry);
 
 struct log_o_vtable_t {
   log_m log;

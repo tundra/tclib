@@ -11,7 +11,6 @@ BEGIN_C_INCLUDES
 #include "utils/ook.h"
 #include "utils/strbuf.h"
 #include "utils/string-inl.h"
-#include "utils/trybool.h"
 END_C_INCLUDES
 
 using namespace tclib;
@@ -100,7 +99,7 @@ static bool has_logged_error_code_exit_entry_ = false;
 
 // The default abort handler which prints the message to stdout/err and aborts
 // execution.
-static bool default_log(log_o *log, log_entry_t *entry) {
+static fat_bool_t default_log(log_o *log, log_entry_t *entry) {
   out_stream_t *dest = (entry->destination == lsStderr)
       ? file_system_stderr(file_system_native())
       : file_system_stdout(file_system_native());
@@ -125,7 +124,7 @@ static bool default_log(log_o *log, log_entry_t *entry) {
   if (get_log_level_fail_exit_code(entry->level))
     has_logged_error_code_exit_entry_ = true;
   out_stream_flush(dest);
-  return true;
+  return F_TRUE;
 }
 
 VTABLE(default_log_o, log_o) { default_log };
@@ -167,12 +166,12 @@ void log_entry_default_init(log_entry_t *entry, log_level_t level,
       get_log_level_behavior(level), file, line, level, message, timestamp);
 }
 
-bool vlog_message(log_level_t level, const char *file, int line, const char *fmt,
+fat_bool_t vlog_message(log_level_t level, const char *file, int line, const char *fmt,
     va_list argp) {
   // Write the error message into a string buffer.
   string_buffer_t buf;
-  B_TRY(string_buffer_init(&buf));
-  B_TRY(string_buffer_vprintf(&buf, fmt, argp));
+  F_TRY(string_buffer_init(&buf));
+  F_TRY(string_buffer_vprintf(&buf, fmt, argp));
   va_end(argp);
   // Flush the string buffer.
   utf8_t message_str = string_buffer_flush(&buf);
@@ -186,19 +185,19 @@ bool vlog_message(log_level_t level, const char *file, int line, const char *fmt
   // Print the result.
   log_entry_t entry;
   log_entry_default_init(&entry, level, file, line, message_str, timestamp_str);
-  B_TRY(log_entry(&entry));
+  F_TRY(log_entry(&entry));
   string_buffer_dispose(&buf);
-  return true;
+  return F_TRUE;
 }
 
-bool log_entry(log_entry_t *entry) {
+fat_bool_t log_entry(log_entry_t *entry) {
   log_o *log = get_global_log();
   return METHOD(log, log)(log, entry);
 }
 
 log_o_vtable_t Log::kVTable = {log_trampoline};
 
-bool Log::log_trampoline(log_o *self, log_entry_t *entry) {
+fat_bool_t Log::log_trampoline(log_o *self, log_entry_t *entry) {
   return static_cast<Log*>(self)->record(entry);
 }
 
@@ -220,7 +219,7 @@ void Log::ensure_uninstalled() {
   outer_ = NULL;
 }
 
-bool Log::propagate(log_entry_t *entry) {
+fat_bool_t Log::propagate(log_entry_t *entry) {
   return METHOD(outer_, log)(outer_, entry);
 }
 

@@ -21,9 +21,9 @@ extern char *strdup(const char*);
 
 IMPLEMENTATION(silent_log_o, log_o);
 
-static bool ignore_log(log_o *log, log_entry_t *entry) {
+static fat_bool_t ignore_log(log_o *log, log_entry_t *entry) {
   // ignore
-  return true;
+  return F_TRUE;
 }
 
 VTABLE(silent_log_o, log_o) { ignore_log };

@@ -4,12 +4,11 @@
 #include "check.h"
 #include "strbuf.h"
 #include "string-inl.h"
-#include "utils/trybool.h"
 
-bool string_buffer_init(string_buffer_t *buf) {
+fat_bool_t string_buffer_init(string_buffer_t *buf) {
   buf->length = 0;
   buf->memory = allocator_default_malloc(128);
-  return !blob_is_empty(buf->memory);
+  return F_BOOL(!blob_is_empty(buf->memory));
 }
 
 void string_buffer_dispose(string_buffer_t *buf) {
@@ -17,45 +16,45 @@ void string_buffer_dispose(string_buffer_t *buf) {
 }
 
 // Expands the buffer to make room for 'length' characters if necessary.
-static bool string_buffer_ensure_capacity(string_buffer_t *buf,
+static fat_bool_t string_buffer_ensure_capacity(string_buffer_t *buf,
     size_t length) {
   if (length < buf->memory.size)
-    return true;
+    return F_TRUE;
   size_t new_capacity = (length * 2);
   blob_t new_memory = allocator_default_malloc(new_capacity);
   if (blob_is_empty(new_memory))
-    return false;
+    return F_FALSE;
   memcpy(new_memory.start, buf->memory.start, buf->length);
   allocator_default_free(buf->memory);
   buf->memory = new_memory;
-  return true;
+  return F_TRUE;
 }
 
-bool string_buffer_append(string_buffer_t *buf, utf8_t str) {
-  B_TRY(string_buffer_ensure_capacity(buf, buf->length + string_size(str)));
+fat_bool_t string_buffer_append(string_buffer_t *buf, utf8_t str) {
+  F_TRY(string_buffer_ensure_capacity(buf, buf->length + string_size(str)));
   char *chars = (char*) buf->memory.start;
   string_copy_to(str, chars + buf->length, buf->memory.size - buf->length);
   buf->length += string_size(str);
-  return true;
+  return F_TRUE;
 }
 
-bool string_buffer_putc(string_buffer_t *buf, char c) {
-  B_TRY(string_buffer_ensure_capacity(buf, buf->length + 1));
+fat_bool_t string_buffer_putc(string_buffer_t *buf, char c) {
+  F_TRY(string_buffer_ensure_capacity(buf, buf->length + 1));
   char *chars = (char*) buf->memory.start;
   chars[buf->length] = c;
   buf->length++;
-  return true;
+  return F_TRUE;
 }
 
-bool string_buffer_printf(string_buffer_t *buf, const char *fmt, ...) {
+fat_bool_t string_buffer_printf(string_buffer_t *buf, const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
-  bool result = string_buffer_vprintf(buf, fmt, argp);
+  fat_bool_t result = string_buffer_vprintf(buf, fmt, argp);
   va_end(argp);
   return result;
 }
 
-bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
+fat_bool_t string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
   // We don't know how long the resulting string is going to be but usually it
   // will be small. So we allocate a buffer on the stack that will usually be
   // large enough but fall back to using a heap allocated one by looping around
@@ -78,7 +77,7 @@ bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
       // number of chars written fits the capacity exactly, it was actually too
       // small because there wasn't room for the terminator.
       utf8_t data = {written, current_buf};
-      B_TRY(string_buffer_append(buf, data));
+      F_TRY(string_buffer_append(buf, data));
       break;
     } else {
       // The output didn't fit in the buffer so we switch to using a heap
@@ -92,7 +91,7 @@ bool string_buffer_native_printf(string_buffer_t *buf, const char *fmt, ...) {
   }
   if (!blob_is_empty(scratch))
     allocator_default_free(scratch);
-  return true;
+  return F_TRUE;
 }
 
 static format_handler_o **get_format_handler_ref(int c) {
@@ -118,7 +117,7 @@ static bool string_contains(const char *str, char c) {
   return strchr(str, c) != NULL;
 }
 
-bool string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) {
+fat_bool_t string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) {
   // This is incredibly tedious code but in the absence of a reliable way to
   // introduce new format types this seems like the best way to allow custom
   // format types in a way that localizes the complexity here rather than
@@ -166,46 +165,46 @@ bool string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
       char fmt_buf[256];
       size_t fmt_size = (size_t) (p - start + 1);
       if (fmt_size > 255)
-        return false;
+        return F_FALSE;
       memcpy(fmt_buf, start, fmt_size);
       fmt_buf[fmt_size] = '\0';
       switch (c) {
         case 'd': case 'i': case 'o': case 'x': case 'X': case 'u': case 'c':
           if (ls == 0) {
-            B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, int)));
+            F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, int)));
           } else if (ls == 1) {
-            B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, long)));
+            F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, long)));
           } else {
-            B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, long long)));
+            F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, long long)));
           }
           break;
         case 's': {
-          B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, char*)));
+          F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, char*)));
           break;
         }
         case 'f': case 'e': case 'E': case 'g': case 'G': {
           if (Ls == 0) {
-            B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, double)));
+            F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, double)));
           } else {
-            B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, long double)));
+            F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, long double)));
           }
           break;
         }
         case 'p': {
-          B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, void*)));
+          F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, void*)));
           break;
         }
         case 'n': {
-          B_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, int*)));
+          F_TRY(string_buffer_native_printf(buf, fmt_buf, va_arg(argp, int*)));
           break;
         }
         case '%':
-          B_TRY(string_buffer_putc(buf, '%'));
+          F_TRY(string_buffer_putc(buf, '%'));
           break;
         default: {
           format_handler_o **handler = get_format_handler_ref(c);
           if (handler == NULL || (*handler) == NULL) {
-            B_TRY(string_buffer_native_printf(buf, "%%%c", c));
+            F_TRY(string_buffer_native_printf(buf, "%%%c", c));
           } else {
             format_request_t request = {buf, width, flags, c};
             METHOD(*handler, write_format_value)(*handler, &request, VA_LIST_REF(argp));
@@ -214,10 +213,10 @@ bool string_buffer_vprintf(string_buffer_t *buf, const char *fmt, va_list argp) 
         }
       }
     } else {
-      B_TRY(string_buffer_putc(buf, *p));
+      F_TRY(string_buffer_putc(buf, *p));
     }
   }
-  return true;
+  return F_TRUE;
 }
 
 utf8_t string_buffer_flush(string_buffer_t *buf) {

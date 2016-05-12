@@ -21,7 +21,7 @@ public:
   virtual ~Log() { ensure_uninstalled(); }
 
   // Override this to implement your custom logging behavior.
-  virtual bool record(log_entry_t *entry) = 0;
+  virtual fat_bool_t record(log_entry_t *entry) = 0;
 
   // If this log is not already installed, installs it. If it is installed
   // nothing happens.
@@ -36,10 +36,10 @@ public:
 
 protected:
   // Passed the given entry on to the enclosing logger.
-  bool propagate(log_entry_t *entry);
+  fat_bool_t propagate(log_entry_t *entry);
 
 private:
-  static bool log_trampoline(log_o *self, log_entry_t *entry);
+  static fat_bool_t log_trampoline(log_o *self, log_entry_t *entry);
   static log_o_vtable_t kVTable;
   log_o *outer_;
 };

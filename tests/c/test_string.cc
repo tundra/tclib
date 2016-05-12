@@ -122,12 +122,13 @@ typedef struct {
   size_t count;
 } test_format_handler_o;
 
-static void format_test_value(format_handler_o *self, format_request_t *request,
+static fat_bool_t format_test_value(format_handler_o *self, format_request_t *request,
     va_list_ref_t argp) {
   test_format_handler_o *handler = (test_format_handler_o*) self;
   char *value = va_arg(VA_LIST_DEREF(argp), char*);
-  string_buffer_native_printf(request->buf, "[T %s %i w%i f%i]", value,
-      handler->count++, request->width, request->flags);
+  F_TRY(string_buffer_native_printf(request->buf, "[T %s %i w%i f%i]", value,
+      handler->count++, request->width, request->flags));
+  return F_TRUE;
 }
 
 TEST(string, custom_formatter) {

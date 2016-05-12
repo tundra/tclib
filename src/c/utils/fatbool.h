@@ -108,6 +108,26 @@ void fat_bool_log(const char *file, int line, fat_bool_t error);
 } while (false)
 #endif
 
+// Used together with F_YRT, like so:
+//
+//   F_TRY_EXCEPT(expr);
+//     <except block>
+//   F_YRT();
+//
+// This works as follows: first expr is executed, then if it yields a false
+// fat-bool the except block is executed and then the result of expr is
+// returned. If it yields the true value the except block is skipped.
+//
+#define F_TRY_EXCEPT(EXPR) do {                                                \
+  fat_bool_t __value__ = (EXPR);                                               \
+  if (!__value__) {                                                            \
+    do { } while (false)
+
+#define F_YRT()                                                                \
+    return __value__;                                                          \
+  }                                                                            \
+} while (false)
+
 // Returns an opaque whose o2b yields the given boolean value.
 static always_inline opaque_t f2o(fat_bool_t value) {
   return u2o(value.code);
