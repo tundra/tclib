@@ -18,6 +18,7 @@
 // Encodes a file and line id as a fat-bool code.
 #define __JOIN_IDS__(FID, LID) ((((uint32_t) (FID)) << 16) | (((uint32_t) (LID)) + 1))
 
+// Macro that evaluates to boolean true iff the given fat-bool is true.
 #define FAT_BOOL_TO_BOOL(B) ((B).code == 0)
 
 // A fat bool is similar to a boolean in that it's a small integer, really, but

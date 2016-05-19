@@ -325,7 +325,7 @@ bool NativeProcess::mark_terminated(int result) {
   return fulfilled;
 }
 
-fat_bool_t NativeProcessHandle::start_inject_library(NativeProcessHandle::InjectRequest *request) {
+fat_bool_t NativeProcessHandle::start_inject_library(InjectRequest *request) {
   return F_FALSE;
 }
 
