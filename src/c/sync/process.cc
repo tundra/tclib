@@ -128,6 +128,12 @@ void *NativeProcess::resolve_jump_thunk(void *fun) {
   return addr + 5 + offset;
 }
 
+fat_bool_t NativeProcess::start_inject_library(NativeProcessHandle::InjectRequest *request) {
+  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+  CHECK_TRUE("already injecting", request->state() == NULL);
+  return handle()->start_inject_library(request);
+}
+
 PipeRedirector::PipeRedirector(pipe_direction_t direction)
   : direction_(direction) { }
 

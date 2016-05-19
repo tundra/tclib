@@ -162,6 +162,9 @@ public:
   // Waits for the injection process to complete.
   fat_bool_t complete_inject_library(InjectRequest *request, Duration timeout = Duration::unlimited());
 
+  // Attempt to forcefully destroy this process.
+  fat_bool_t kill();
+
 private:
   platform_process_t id() { return id_; }
   platform_process_t id_;
@@ -190,12 +193,6 @@ public:
   // the child process, there is no guarantee that the executable is started or
   // indeed completes successfully.
   fat_bool_t start(utf8_t executable, size_t argc, utf8_t *argv);
-
-  // If this thread was started in suspended mode resumes execution.
-  fat_bool_t resume();
-
-  // Attempt to forcefully destroy this process.
-  fat_bool_t kill();
 
   // Adds an environment mapping to the set visible to the process. The process
   // copies the key and value so they can be released immediately after this
@@ -261,6 +258,9 @@ public:
   // incremental linking under MSVC returns a pointer to the actual destination.
   // If the function is not a jump thunk just returns the function itself.
   static void *resolve_jump_thunk(void *fun);
+
+  // If this thread was started in suspended mode resumes execution.
+  fat_bool_t resume();
 
   // Can be used to test whether suspend/resume works on this platform.
   static const bool kCanSuspendResume = kIsMsvc;

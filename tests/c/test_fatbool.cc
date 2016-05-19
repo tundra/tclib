@@ -81,3 +81,16 @@ TEST(fatbool, try_except) {
   ASSERT_FALSE(except_block_hit);
   ASSERT_TRUE(continued);
 }
+
+TEST(fatbool, logand) {
+  fat_bool_t n0 = F_FALSE;
+  fat_bool_t n1 = F_FALSE;
+  ASSERT_EQ(n0.code, (n0 & n1).code);
+  ASSERT_EQ(n0.code, (n0 & F_TRUE).code);
+  ASSERT_EQ(n1.code, (F_TRUE & n1).code);
+  ASSERT_EQ(F_TRUE.code, (F_TRUE & F_TRUE).code);
+  ASSERT_EQ(n1.code, (n0 | n1).code);
+  ASSERT_EQ(F_TRUE.code, (n0 | F_TRUE).code);
+  ASSERT_EQ(F_TRUE.code, (F_TRUE | n1).code);
+  ASSERT_EQ(F_TRUE.code, (F_TRUE | F_TRUE).code);
+}

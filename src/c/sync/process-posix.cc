@@ -309,12 +309,11 @@ fat_bool_t NativeProcess::start(utf8_t executable, size_t argc, utf8_t *argv) {
 }
 
 fat_bool_t NativeProcess::resume() {
-  CHECK_TRUE("resuming non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   // Not supported.
   return F_FALSE;
 }
 
-fat_bool_t NativeProcess::kill() {
+fat_bool_t NativeProcessHandle::kill() {
   // Add support for this if we ever need it.
   return F_FALSE;
 }
@@ -326,8 +325,7 @@ bool NativeProcess::mark_terminated(int result) {
   return fulfilled;
 }
 
-fat_bool_t NativeProcess::start_inject_library(NativeProcessHandle::InjectRequest *request) {
-  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
+fat_bool_t NativeProcessHandle::start_inject_library(NativeProcessHandle::InjectRequest *request) {
   return F_FALSE;
 }
 

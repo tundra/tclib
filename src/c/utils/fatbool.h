@@ -18,19 +18,39 @@
 // Encodes a file and line id as a fat-bool code.
 #define __JOIN_IDS__(FID, LID) ((((uint32_t) (FID)) << 16) | (((uint32_t) (LID)) + 1))
 
+#define FAT_BOOL_TO_BOOL(B) ((B).code == 0)
+
 // A fat bool is similar to a boolean in that it's a small integer, really, but
 // if it's false it encodes a file and line where it originated. Each file has
 // an id based on the basename of the toplevel file (so includes are not
 // considered) and you can use mkmk to generate a mapping from ids to files.
 // You generally don't want to construct these explicitly, rather use the macros
 // below.
-typedef struct {
+typedef struct fat_bool_t {
   uint32_t code;
   // Converts this fat-bool to a plain bool.
-  ONLY_CPP(always_inline operator bool() { return code == 0; })
+  ONLY_CPP(always_inline operator bool() { return FAT_BOOL_TO_BOOL(*this); })
   // Returns the negative value of this fat-bool as a plain bool.
-  ONLY_CPP(always_inline bool operator!() { return code != 0; })
+  ONLY_CPP(always_inline bool operator!() { return !FAT_BOOL_TO_BOOL(*this); })
+  // Eager-and of this and the given value.
+  ONLY_CPP(always_inline fat_bool_t operator&(fat_bool_t that);)
+  // Eager-or of this and the given value.
+  ONLY_CPP(always_inline fat_bool_t operator|(fat_bool_t that);)
 } fat_bool_t;
+
+// Eager-and of this and the given value.
+static always_inline fat_bool_t fat_bool_and(fat_bool_t a, fat_bool_t b) {
+  return FAT_BOOL_TO_BOOL(a) ? b : a;
+}
+
+// Eager-or of this and the given value.
+static always_inline fat_bool_t fat_bool_or(fat_bool_t a, fat_bool_t b) {
+  return FAT_BOOL_TO_BOOL(a) ? a : b;
+}
+
+ONLY_CPP(fat_bool_t fat_bool_t::operator&(fat_bool_t that) { return fat_bool_and(*this, that); })
+
+ONLY_CPP(fat_bool_t fat_bool_t::operator|(fat_bool_t that) { return fat_bool_or(*this, that); })
 
 // Returns a fat-bool value with the given code.
 static always_inline fat_bool_t fat_bool_new(uint32_t code) {
@@ -83,7 +103,7 @@ void fat_bool_log(const char *file, int line, fat_bool_t error);
 
 #define F_LOG_FALSE(EXPR) do {                                                 \
   fat_bool_t __value__ = (EXPR);                                               \
-  if (__value__.code != 0)                                                     \
+  if (!FAT_BOOL_TO_BOOL(__value__))                                            \
     fat_bool_log(__FILE__, __LINE__, __value__);                               \
 } while (false)
 
@@ -93,7 +113,7 @@ void fat_bool_log(const char *file, int line, fat_bool_t error);
 #  endif
 #  define F_TRY(EXPR) do {                                                     \
   fat_bool_t __value__ = (EXPR);                                               \
-  if (__value__.code != 0) {                                                   \
+  if (!FAT_BOOL_TO_BOOL(__value__)) {                                          \
     fat_bool_log(__FILE__, __LINE__, __value__);                               \
     return __value__;                                                          \
   }                                                                            \
@@ -103,7 +123,7 @@ void fat_bool_log(const char *file, int line, fat_bool_t error);
 // that value from the current context.
 #  define F_TRY(EXPR) do {                                                     \
   fat_bool_t __value__ = (EXPR);                                               \
-  if (__value__.code != 0)                                                     \
+  if (!FAT_BOOL_TO_BOOL(__value__))                                            \
     return __value__;                                                          \
 } while (false)
 #endif

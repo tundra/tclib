@@ -220,12 +220,6 @@ fat_bool_t NativeProcessHandle::InjectState::read_data_from_child_process(const 
   return F_TRUE;
 }
 
-fat_bool_t NativeProcess::start_inject_library(NativeProcessHandle::InjectRequest *request) {
-  CHECK_TRUE("injecting non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
-  CHECK_TRUE("already injecting", request->state() == NULL);
-  return handle()->start_inject_library(request);
-}
-
 fat_bool_t NativeProcessHandle::start_inject_library(InjectRequest *request) {
   InjectState *state = new (kDefaultAlloc) InjectState(request, id());
   request->set_state(state);
@@ -398,7 +392,6 @@ fat_bool_t NativeProcessHandle::InjectState::complete_inject_dll(Duration timeou
 }
 
 fat_bool_t NativeProcess::resume() {
-  CHECK_TRUE("resuming non-suspended", (flags() & pfStartSuspendedOnWindows) != 0);
   dword_t retval = ResumeThread(platform_data()->child_main_thread());
   if (retval == -1) {
     LOG_ERROR("Failed to resume suspended process: %i", GetLastError());
@@ -407,8 +400,8 @@ fat_bool_t NativeProcess::resume() {
   return F_TRUE;
 }
 
-fat_bool_t NativeProcess::kill() {
-  if (!TerminateProcess(platform_data()->child_process(), 1)) {
+fat_bool_t NativeProcessHandle::kill() {
+  if (!TerminateProcess(id(), 1)) {
     LOG_ERROR("TerminateProcess(-, 1): %i", GetLastError());
     return F_FALSE;
   }
